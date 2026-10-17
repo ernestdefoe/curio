@@ -8,6 +8,7 @@ import { fieldValue } from '../../common/labels';
 import { typeBadge, statusPill, owner } from './bits';
 import ItemEditModal from './ItemEditModal';
 import CollectionEditModal from './CollectionEditModal';
+import useStyles from '../styles';
 
 const LONG = 600;
 
@@ -15,6 +16,7 @@ const LONG = 600;
 export default class ItemModal extends Modal {
   oninit(vnode) {
     super.oninit(vnode);
+    useStyles();
     this.item = null;
     this.photo = 0;
     this.expanded = false;

@@ -5,6 +5,7 @@ import Switch from 'flarum/common/components/Switch';
 import Icon from 'flarum/common/components/Icon';
 import Stream from 'flarum/common/utils/Stream';
 import { t, text, label, types, loadTypes } from '../util';
+import useStyles from '../styles';
 
 const VISIBILITIES = ['public', 'members', 'private'];
 
@@ -12,6 +13,7 @@ const VISIBILITIES = ['public', 'members', 'private'];
 export default class CollectionEditModal extends FormModal {
   oninit(vnode) {
     super.oninit(vnode);
+    useStyles();
     const c = this.attrs.collection;
 
     this.name = Stream(c ? c.name() : '');

@@ -10,11 +10,13 @@ import username from 'flarum/common/helpers/username';
 import { t, text, label, types, loadTypes } from '../util';
 import { collectionCard, cover } from './bits';
 import ItemModal from './ItemModal';
+import useStyles from '../styles';
 
 /** /collections: what this forum collects. */
 export default class BrowsePage extends Page {
   oninit(vnode) {
     super.oninit(vnode);
+    useStyles();
     this.bodyClass = 'App--curio';
     this.overview = null;
     this.recent = null;

@@ -9,6 +9,7 @@ import Stream from 'flarum/common/utils/Stream';
 import { t, text, label, locale, STATUSES, CONDITIONS, lookup } from '../util';
 import { pick } from '../../common/labels';
 import { canScan, scan } from '../scanner';
+import useStyles from '../styles';
 
 const MAX_PHOTOS = 6;
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'BRL', 'MXN', 'INR'];
@@ -26,6 +27,7 @@ const defaultCurrency = () => {
 export default class ItemEditModal extends FormModal {
   oninit(vnode) {
     super.oninit(vnode);
+    useStyles();
     const item = this.attrs.item;
     const from = this.attrs.prefill;
 

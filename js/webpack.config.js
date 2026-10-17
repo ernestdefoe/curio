@@ -27,7 +27,15 @@ module.exports = (...args) => {
   let base = config();
   if (typeof base === 'function') base = base(...args);
 
-  base.optimization = { ...base.optimization, chunkIds: false };
+  // No shared chunks: each page carries the modals and styles it uses, so
+  // every chunk lives in dist/forum (where Flarum serves them) and a page is
+  // one request.
+  const split = base.optimization?.splitChunks || {};
+  base.optimization = {
+    ...base.optimization,
+    chunkIds: false,
+    splitChunks: { ...split, cacheGroups: { ...(split.cacheGroups || {}), default: false } },
+  };
   base.output = { ...base.output, chunkLoadingGlobal: 'webpackChunk_ernestdefoe_curio' };
   base.plugins = [...(base.plugins || []), new NamespacedChunkIds()];
 

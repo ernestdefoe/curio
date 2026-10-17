@@ -8,3 +8,4 @@ tests/integration/tmp
 composer.dev.json
 composer.dev.lock
 tests/.phpunit.result.cache
+js/generated

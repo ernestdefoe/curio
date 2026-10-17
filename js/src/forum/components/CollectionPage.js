@@ -12,6 +12,7 @@ import GridSort from '../../common/gridSort';
 import ItemModal from './ItemModal';
 import ItemEditModal from './ItemEditModal';
 import CollectionEditModal from './CollectionEditModal';
+import useStyles from '../styles';
 
 const PAGE = 48;
 const FILTERS = ['all', 'owned', 'wishlist', 'trade'];
@@ -21,6 +22,7 @@ const SORTS = { position: 'position', recent: '-createdAt', title: 'title', year
 export default class CollectionPage extends Page {
   oninit(vnode) {
     super.oninit(vnode);
+    useStyles();
     this.bodyClass = 'App--curio';
     this.collection = null;
     this.items = [];

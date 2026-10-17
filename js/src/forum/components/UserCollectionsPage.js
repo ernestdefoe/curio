@@ -9,11 +9,13 @@ import { collectionCard, cover } from './bits';
 import GridSort from '../../common/gridSort';
 import CollectionEditModal from './CollectionEditModal';
 import ItemModal from './ItemModal';
+import useStyles from '../styles';
 
 /** Profile → Collections: what the member collects, their collections, their wishlist. */
 export default class UserCollectionsPage extends UserPage {
   oninit(vnode) {
     super.oninit(vnode);
+    useStyles();
     this.collections = null;
     this.wanted = [];
     this.arranging = false;
