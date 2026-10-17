@@ -5,6 +5,7 @@ namespace Ernestdefoe\Curio\Lookup\Sources;
 use Ernestdefoe\Curio\Lookup\Http;
 use Ernestdefoe\Curio\Lookup\LookupException;
 use Ernestdefoe\Curio\Lookup\Source;
+use Illuminate\Contracts\Cache\Repository as Cache;
 
 /**
  * Records by barcode from MusicBrainz: no key, but one request a second per
@@ -18,8 +19,18 @@ class MusicBrainz implements Source
 
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
-    public function __construct(private Http $http)
+    public function __construct(private Http $http, private Cache $cache)
     {
+    }
+
+    /** MusicBrainz allows one request a second per client: wait for the slot. */
+    private function json(string $path, array $query): array
+    {
+        for ($tries = 0; $tries < 3 && ! $this->cache->add('curio.musicbrainz.slot', true, 1); $tries++) {
+            usleep(1_100_000);
+        }
+
+        return $this->http->json('musicbrainz', self::BASE.$path, $query);
     }
 
     public function key(): string
@@ -38,7 +49,7 @@ class MusicBrainz implements Source
             throw new LookupException("Not a MusicBrainz release group: $id");
         }
 
-        $group = $this->http->json('musicbrainz', self::BASE."release-group/$id", ['inc' => 'artist-credits', 'fmt' => 'json']);
+        $group = $this->json("release-group/$id", ['inc' => 'artist-credits', 'fmt' => 'json']);
 
         if (empty($group['title'])) {
             throw new LookupException("MusicBrainz has no release group $id");
@@ -60,7 +71,7 @@ class MusicBrainz implements Source
      */
     public function groupForBarcode(string $code): ?array
     {
-        $releases = $this->http->json('musicbrainz', self::BASE.'release/', ['query' => 'barcode:'.$code, 'fmt' => 'json', 'limit' => 1])['releases'] ?? [];
+        $releases = $this->json('release/', ['query' => 'barcode:'.$code, 'fmt' => 'json', 'limit' => 1])['releases'] ?? [];
         $release = $releases[0] ?? null;
         $group = $release['release-group']['id'] ?? null;
 

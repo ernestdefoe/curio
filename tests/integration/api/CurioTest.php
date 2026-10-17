@@ -4,6 +4,7 @@ namespace Ernestdefoe\Curio\Tests\integration\api;
 
 use Carbon\Carbon;
 use Ernestdefoe\Curio\Lookup\BarcodeLookup;
+use Ernestdefoe\Curio\Lookup\UpcItemDb;
 use Flarum\Testing\integration\RetrievesAuthorizedUsers;
 use Flarum\Testing\integration\TestCase;
 use Flarum\User\User;
@@ -334,6 +335,18 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function look_ups_only_take_well_formed_ids(): void
+    {
+        foreach ([['marquee-movie', '../account'], ['openlibrary', 'OL1W/../x'], ['deezer', '1?x=1'], ['musicbrainz', 'nope'], ['nowhere', '1']] as [$source, $id]) {
+            $response = $this->send($this->request('POST', '/api/curio/lookup', [
+                'authenticatedAs' => 3,
+                'json' => ['source' => $source, 'id' => $id],
+            ]));
+            $this->assertSame(404, $response->getStatusCode(), "$source $id");
+        }
+    }
+
+    #[Test]
     public function guests_cannot_look_things_up(): void
     {
         $response = $this->send($this->request('POST', '/api/curio/lookup', ['json' => ['type' => 1, 'q' => 'dune']]));
@@ -371,6 +384,68 @@ class CurioTest extends TestCase
 
         $remove = $this->send($this->request('DELETE', "/api/curio-items/$item/photos/0", ['authenticatedAs' => 3]));
         $this->assertCount(5, $this->json($remove)['data']['attributes']['photos']);
+    }
+
+    #[Test]
+    public function photo_uploads_are_rate_limited(): void
+    {
+        $id = $this->newCollection(3);
+        $items = [];
+        for ($i = 0; $i < 3; $i++) {
+            $items[] = (int) $this->json($this->item(3, $id, ['title' => "Box $i"]))['data']['id'];
+        }
+
+        $statuses = [];
+        for ($n = 0; $n < 13; $n++) {
+            $path = tempnam(sys_get_temp_dir(), 'curio').'.png';
+            imagepng(imagecreatetruecolor(20, 20), $path);
+            $statuses[] = $this->send($this->request('POST', '/api/curio-items/'.$items[intdiv($n, 5)].'/photos', ['authenticatedAs' => 3])
+                ->withUploadedFiles(['photo' => new UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'box.png', 'image/png')]))->getStatusCode();
+        }
+
+        $this->assertSame(array_fill(0, 12, 200), array_slice($statuses, 0, 12));
+        $this->assertSame(429, $statuses[12]);
+    }
+
+    #[Test]
+    public function unknown_barcodes_cannot_spend_the_forums_allowance(): void
+    {
+        $container = $this->app()->getContainer();
+        $fake = new class($container->make(\Ernestdefoe\Curio\Lookup\Http::class), $container->make(\Flarum\Settings\SettingsRepositoryInterface::class), $container->make(\Illuminate\Contracts\Cache\Repository::class)) extends UpcItemDb {
+            public int $asked = 0;
+
+            protected function ask(string $ean, string $key): ?string
+            {
+                $this->asked++;
+
+                return null;
+            }
+        };
+        $container->instance(UpcItemDb::class, $fake);
+
+        $lookup = fn (string $code) => $this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 4,
+            'json' => ['type' => $this->typeId('lego'), 'q' => $code],
+        ]));
+
+        // The same unknown barcode is asked about once.
+        $this->assertSame(200, $lookup('045496590420')->getStatusCode());
+        $lookup('045496590420');
+        $this->assertSame(1, $fake->asked);
+
+        // One member spends at most 25 a day, however many barcodes they try.
+        // 26 fresh, valid barcodes (under the 30-a-minute look-up limit).
+        for ($i = 0, $made = 0; $made < 26; $i++) {
+            for ($check = 0; $check < 10; $check++) {
+                $code = sprintf('7%010d%d', 4242000 + $i, $check);
+                if (\Ernestdefoe\Curio\Lookup\Barcode::normalise($code)) {
+                    $lookup($code);
+                    $made++;
+                    break;
+                }
+            }
+        }
+        $this->assertSame(25, $fake->asked);
     }
 
     #[Test]

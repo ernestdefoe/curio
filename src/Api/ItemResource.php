@@ -18,7 +18,9 @@ use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
+use Flarum\Post\Exception\FloodingException;
 use Flarum\User\Exception\PermissionDeniedException;
+use Flarum\User\User;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
@@ -97,7 +99,7 @@ class ItemResource extends AbstractDatabaseResource
                 ->route('POST', '/{id}/photos')
                 ->authenticated()
                 ->can('update')
-                ->action(fn (Context $context) => $this->addPhoto($context->model, Arr::get($context->request->getUploadedFiles(), 'photo'))),
+                ->action(fn (Context $context) => $this->addPhoto($context->model, Arr::get($context->request->getUploadedFiles(), 'photo'), $context->getActor())),
             Endpoint\Endpoint::make('curio.items.photos.remove')
                 ->route('DELETE', '/{id}/photos/{index}')
                 ->authenticated()
@@ -311,8 +313,14 @@ class ItemResource extends AbstractDatabaseResource
         return $clean;
     }
 
-    private function addPhoto(Item $item, ?UploadedFileInterface $file): Item
+    private function addPhoto(Item $item, ?UploadedFileInterface $file, User $actor): Item
     {
+        // Each photo is decoded and encoded twice: members get a dozen a minute and 200 a day.
+        if (! $actor->isAdmin() && (! $this->spend("curio.photos.$actor->id.".intdiv(time(), 60), 12, 120)
+            || ! $this->spend("curio.photos.$actor->id.".date('Ymd'), 200, 2 * 86400))) {
+            throw new FloodingException();
+        }
+
         if (count($item->photos ?? []) >= Item::MAX_PHOTOS) {
             throw new ValidationException(['photo' => $this->translator->trans('ernestdefoe-curio.api.too_many_photos', ['count' => Item::MAX_PHOTOS])]);
         }
@@ -328,6 +336,13 @@ class ItemResource extends AbstractDatabaseResource
         $this->refreshCollection($item);
 
         return $item;
+    }
+
+    private function spend(string $counter, int $limit, int $ttl): bool
+    {
+        $this->cache->add($counter, 0, $ttl);
+
+        return $this->cache->increment($counter) <= $limit;
     }
 
     private function removePhoto(Item $item, int $index): Item

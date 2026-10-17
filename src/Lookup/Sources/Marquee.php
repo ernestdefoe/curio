@@ -53,6 +53,12 @@ class Marquee implements Source
 
     public function details(string $id): array
     {
+        // TMDB and IGDB ids are numbers. Marquee's sources put the id straight into
+        // the API path, so nothing else may reach them with the forum's keys.
+        if (! ctype_digit($id) || strlen($id) > 12) {
+            throw new LookupException("Not a Marquee id: $id");
+        }
+
         try {
             $d = ($this->details)($id);
         } catch (Throwable $e) {

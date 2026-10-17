@@ -45,7 +45,7 @@ class BarcodeLookup
      * @return array{code: string, results: list<array<string, mixed>>, fields: array<string, string>, title: ?string, known: bool}
      * @throws LookupException
      */
-    public function lookup(Type $type, string $ean): array
+    public function lookup(Type $type, string $ean, int $actorId): array
     {
         $answer = ['code' => $ean, 'results' => [], 'fields' => [], 'title' => null, 'known' => false];
         $cached = $this->db->table('curio_barcodes')->where('code', $ean)->first();
@@ -76,7 +76,7 @@ class BarcodeLookup
             }
         }
 
-        $name = $this->upc->name($ean);
+        $name = $this->upc->name($ean, $actorId);
 
         if (! $name) {
             return $answer;

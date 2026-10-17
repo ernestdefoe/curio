@@ -23,6 +23,8 @@ class RemoteImage
 
     private const MAX_BYTES = 8 * 1024 * 1024;
 
+    private const MAX_PIXELS = 24_000_000;
+
     private ?Client $http = null;
 
     public static function allowed(string|UriInterface $url): bool
@@ -77,6 +79,9 @@ class RemoteImage
             }
         }
 
-        return @getimagesizefromstring($data) ? $data : null;
+        // Dimensions are read from the header before anything decodes the pixels.
+        $size = @getimagesizefromstring($data);
+
+        return $size && $size[0] * $size[1] <= self::MAX_PIXELS ? $data : null;
     }
 }

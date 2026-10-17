@@ -51,13 +51,13 @@ class LookupController implements RequestHandlerInterface
         try {
             return isset($body['source'])
                 ? $this->resolve($body)
-                : $this->search($body);
+                : $this->search($body, $actor->id);
         } catch (LookupException $e) {
             return new JsonResponse(['errors' => [['status' => $e->outage ? '503' : '404', 'code' => $e->outage ? 'source_unavailable' : 'not_found']]], $e->outage ? 503 : 404);
         }
     }
 
-    private function search(array $body): ResponseInterface
+    private function search(array $body, int $actorId): ResponseInterface
     {
         $type = Type::query()->find((int) Arr::get($body, 'type'));
         $q = trim(mb_substr((string) Arr::get($body, 'q', ''), 0, 120));
@@ -67,7 +67,7 @@ class LookupController implements RequestHandlerInterface
         }
 
         if ($ean = Barcode::normalise($q)) {
-            $found = $this->barcodes->lookup($type, $ean);
+            $found = $this->barcodes->lookup($type, $ean, $actorId);
             $found['results'] = array_map(fn ($r) => Arr::only($r, ['source', 'id', 'workId', 'title', 'creator', 'year', 'cover']), $found['results']);
             // An object even when empty, so the client can merge it into an item's details.
             $found['fields'] = (object) $found['fields'];
