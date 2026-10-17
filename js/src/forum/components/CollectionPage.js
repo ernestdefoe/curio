@@ -130,9 +130,7 @@ export default class CollectionPage extends Page {
     return (
       <header className="Hero CurioHero">
         <div className="CurioHero-backdrop" aria-hidden="true">
-          {[...backdrop, ...backdrop, ...backdrop].slice(0, 12).map((url) => (
-            <img src={url} alt="" />
-          ))}
+          {backdrop.length ? Array.from({ length: 12 }, (_, i) => <img src={backdrop[i % backdrop.length]} alt="" />) : null}
         </div>
         <div className="container CurioHero-inner">
           <div className="CurioHero-main">

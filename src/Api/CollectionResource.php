@@ -53,12 +53,15 @@ class CollectionResource extends AbstractDatabaseResource
     public function endpoints(): array
     {
         return [
+            // The owners' groups (for their badges) in one query, not one per owner.
             Endpoint\Index::make()
                 ->paginate(24, 50)
                 ->defaultInclude(['user', 'type'])
+                ->eagerLoadWhenIncluded(['user' => ['user.groups']])
                 ->defaultSort('position'),
             Endpoint\Show::make()
-                ->defaultInclude(['user', 'type']),
+                ->defaultInclude(['user', 'type'])
+                ->eagerLoadWhenIncluded(['user' => ['user.groups']]),
             Endpoint\Create::make()
                 ->authenticated()
                 ->can('ernestdefoe-curio.create')

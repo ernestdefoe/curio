@@ -69,6 +69,7 @@ class ItemResource extends AbstractDatabaseResource
                 ->paginate(48, 96)
                 ->defaultSort('position')
                 ->eagerLoad(['work'])
+                ->eagerLoadWhenIncluded(['collection.user' => ['collection.user.groups'], 'user' => ['user.groups']])
                 ->beforeSerialization(function (Context $context, array $results) {
                     $ids = [];
                     foreach ($results['models'] as $item) {
@@ -78,6 +79,7 @@ class ItemResource extends AbstractDatabaseResource
                 }),
             Endpoint\Show::make()
                 ->defaultInclude(['work', 'collection', 'collection.user', 'collection.type'])
+                ->eagerLoad(['collection.user.groups'])
                 ->beforeSerialization(fn (Context $context, Item $item) => $this->ensureTexts($item)),
             Endpoint\Create::make()
                 ->authenticated()
