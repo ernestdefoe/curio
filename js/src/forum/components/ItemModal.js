@@ -1,0 +1,260 @@
+import app from 'flarum/forum/app';
+import Modal from 'flarum/common/components/Modal';
+import Button from 'flarum/common/components/Button';
+import Icon from 'flarum/common/components/Icon';
+import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import { t, text, label, locale } from '../util';
+import { fieldValue } from '../../common/labels';
+import { typeBadge, statusPill, owner } from './bits';
+import ItemEditModal from './ItemEditModal';
+import CollectionEditModal from './CollectionEditModal';
+
+const LONG = 600;
+
+/** One item: its photos, details, the owner's notes and what the forum knows about it, in the reader's language. */
+export default class ItemModal extends Modal {
+  oninit(vnode) {
+    super.oninit(vnode);
+    this.item = null;
+    this.photo = 0;
+    this.expanded = false;
+    this.choosing = null;
+
+    app.store
+      .find('curio-items', this.attrs.itemId)
+      .then((item) => (this.item = item))
+      .catch(() => (this.missing = true))
+      .finally(() => m.redraw());
+  }
+
+  className() {
+    return 'CurioItemModal Modal--large';
+  }
+
+  title() {
+    return this.item ? this.item.displayTitle() : '';
+  }
+
+  content() {
+    if (this.missing) return <div className="Modal-body">{t('item.missing')}</div>;
+    if (!this.item)
+      return (
+        <div className="Modal-body">
+          <LoadingIndicator display="block" />
+        </div>
+      );
+
+    const item = this.item;
+    const collection = item.collection();
+    const type = collection?.type();
+    const work = item.work();
+    const photos = item.photos() || [];
+    const pictures = photos.length ? photos.map((p) => p.url) : work && work.coverUrl() ? [work.coverUrl()] : [];
+    const description = work && work.description();
+    const mine = app.session.user && collection && collection.user() === app.session.user;
+
+    return (
+      <div className="Modal-body CurioItem">
+        <div className={'CurioItem-gallery CurioItem-gallery--' + (type ? type.shape() : 'portrait')}>
+          <div className="CurioItem-photo">
+            {pictures.length ? (
+              <img src={pictures[this.photo] || pictures[0]} alt={item.displayTitle()} />
+            ) : (
+              <Icon name={type ? type.icon() : 'fas fa-box-open'} />
+            )}
+            {pictures.length > 1 ? (
+              <span className="CurioItem-photoCount">
+                <Icon name="fas fa-camera" /> {this.photo + 1} / {pictures.length}
+              </span>
+            ) : null}
+          </div>
+          {pictures.length > 1 ? (
+            <div className="CurioItem-thumbs">
+              {photos.map((p, i) => (
+                <button
+                  type="button"
+                  className={'CurioItem-thumb' + (i === this.photo ? ' active' : '')}
+                  onclick={() => (this.photo = i)}
+                  aria-label={text('item.photo_n', { n: i + 1 })}
+                >
+                  <img src={p.small} alt="" />
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="CurioItem-info">
+          <div className="CurioItem-badges">
+            {typeBadge(type)}
+            {statusPill(item.status())}
+            {item.favourite() ? (
+              <span className="CurioFav">
+                <Icon name="fas fa-star" /> {t('item.favourite')}
+              </span>
+            ) : null}
+          </div>
+          <h2 className="CurioItem-title">
+            {item.displayTitle()} {item.year() ? <span className="CurioMuted">({item.year()})</span> : null}
+          </h2>
+          {item.subtitle() ? <div className="CurioItem-sub">{item.subtitle()}</div> : null}
+
+          {this.facts(item, type)}
+
+          {item.notes() ? (
+            <blockquote className="CurioItem-notes">
+              {owner(collection?.user(), true)}
+              <p>{item.notes()}</p>
+            </blockquote>
+          ) : null}
+
+          {description ? (
+            <section className="CurioItem-about">
+              <h4>{t('item.about')}</h4>
+              <p>{description.length > LONG && !this.expanded ? description.slice(0, description.lastIndexOf(' ', LONG)) + ' …' : description}</p>
+              {description.length > LONG ? (
+                <Button className="Button Button--link CurioMore" onclick={() => (this.expanded = !this.expanded)}>
+                  {this.expanded ? t('item.less') : t('item.more')}
+                </Button>
+              ) : null}
+              <div className="CurioItem-source">
+                {this.credit(work)}
+                {work.languages() > 1 ? (
+                  <span className="CurioItem-langs">
+                    <Icon name="fas fa-language" /> {t('item.languages', { count: work.languages() })}
+                  </span>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {this.choosing ? this.chooser() : this.actions(item, collection, mine)}
+        </div>
+      </div>
+    );
+  }
+
+  facts(item, type) {
+    const fields = type ? type.fields() || [] : [];
+    const values = item.fields() || {};
+    const rows = [];
+
+    fields.forEach((f) => {
+      const v = values[f.key];
+      if (v === undefined || v === null || v === '') return;
+      rows.push([label(f.labels), f.kind === 'bool' ? t(v ? 'item.yes' : 'item.no') : fieldValue(f, v, locale())]);
+    });
+    if (item.condition())
+      rows.push([t('item.condition'), <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span>]);
+    if (item.acquiredOn()) rows.push([t('item.acquired'), dayjs(item.acquiredOn()).format('LL')]);
+    if (item.pricePaid() !== null && item.pricePaid() !== undefined) {
+      rows.push([
+        <span>
+          {t('item.price')} <Icon name="fas fa-lock" className="CurioLock" />
+        </span>,
+        new Intl.NumberFormat(locale(), { style: 'currency', currency: item.priceCurrency() || 'USD' }).format(item.pricePaid()),
+      ]);
+    }
+
+    if (!rows.length) return null;
+
+    return (
+      <dl className="CurioItem-facts">
+        {rows.map(([k, v]) => (
+          <div>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  credit(work) {
+    const source = work.descriptionSource();
+    if (source === 'wikipedia')
+      return (
+        <a href={work.sourceUrl()} target="_blank" rel="noopener noreferrer">
+          <Icon name="fab fa-wikipedia-w" /> {t('item.from_wikipedia')}
+        </a>
+      );
+    if (source === 'deepl') return <span>{t('item.translated_deepl')}</span>;
+    if (source === 'wikidata') return <span>{t('item.from_wikidata')}</span>;
+    return null;
+  }
+
+  actions(item, collection, mine) {
+    if (mine) {
+      return (
+        <div className="CurioItem-actions">
+          <Button
+            className="Button Button--primary"
+            icon="fas fa-pen"
+            onclick={() =>
+              app.modal.show(ItemEditModal, {
+                item,
+                collection,
+                onsave: () => this.attrs.onchange && this.attrs.onchange(),
+                ondelete: () => this.attrs.onchange && this.attrs.onchange(),
+              })
+            }
+          >
+            {t('item.edit')}
+          </Button>
+        </div>
+      );
+    }
+
+    if (!app.forum.attribute('canCreateCurio') || !app.session.user) return null;
+
+    return (
+      <div className="CurioItem-actions">
+        <Button className="Button Button--primary" icon="fas fa-plus" loading={this.finding === 'owned'} onclick={() => this.copy(item, 'owned')}>
+          {t('item.have_too')}
+        </Button>
+        <Button className="Button" icon="far fa-heart" loading={this.finding === 'wishlist'} onclick={() => this.copy(item, 'wishlist')}>
+          {t('item.want_it')}
+        </Button>
+      </div>
+    );
+  }
+
+  /** "I have this too" / "Add to my wishlist": into one of my collections of the same type. */
+  copy(item, status) {
+    const type = item.collection().type();
+    this.finding = status;
+
+    app.store
+      .find('curio-collections', { filter: { user: app.session.user.id(), type: type.id() }, page: { limit: 50 } })
+      .then((mine) => {
+        this.finding = null;
+        const open = (collection) => app.modal.show(ItemEditModal, { collection, prefill: item, status });
+
+        if (mine.length === 1) return open(mine[0]);
+        if (mine.length > 1) return (this.choosing = { collections: mine, open });
+
+        app.modal.show(CollectionEditModal, { typeId: type.id(), onsave: (collection) => open(collection) });
+      })
+      .finally(() => m.redraw());
+  }
+
+  chooser() {
+    return (
+      <div className="CurioChooser">
+        <p>{t('item.choose_collection')}</p>
+        <ul>
+          {this.choosing.collections.map((c) => (
+            <li>
+              <Button className="Button" onclick={() => this.choosing.open(c)}>
+                {c.name()}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <Button className="Button Button--link" onclick={() => (this.choosing = null)}>
+          {t('item.cancel')}
+        </Button>
+      </div>
+    );
+  }
+}

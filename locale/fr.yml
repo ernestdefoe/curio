@@ -1,0 +1,218 @@
+ernestdefoe-curio:
+  forum:
+    status:
+      owned: Possédé
+      wishlist: Recherché
+      trade: Échangeable
+    condition:
+      sealed: Scellé
+      mint: Neuf
+      very_good: Très bon
+      good: Bon
+      fair: Correct
+      poor: Abîmé
+    visibility:
+      public: Tout le monde
+      public_help: Toute personne qui peut voir les collections de ce forum.
+      members: Membres
+      members_help: Seulement les personnes connectées au forum.
+      private: Moi seul
+      private_help: Personne d'autre, pas même les autres membres.
+    count:
+      items: "{count, plural, one {# objet} other {# objets}}"
+      wanted: "{count, plural, one {# recherché} other {# recherchés}}"
+      trade: "{count} à échanger"
+    filter:
+      all: Tout
+      owned: Possédés
+      wishlist: Recherchés
+      trade: Échangeables
+      any: "{field} : tout"
+    sort:
+      position: Ordre du propriétaire
+      recent: Ajouts récents
+      title: Titre
+      year: Plus récents d'abord
+    table:
+      title: Titre
+      status: Statut
+    page:
+      missing: Cette collection n'existe pas, ou vous ne pouvez pas la voir.
+      empty: Rien ici pour l'instant.
+      since: "Depuis {date}"
+      owned: Possédés
+      wanted: Recherchés
+      trade: À échanger
+      add_item: Ajouter un objet
+      settings: Réglages
+      search: "Chercher parmi {count} objets…"
+      filter_label: Afficher
+      view_label: Affichage
+      view_grid: Grille
+      view_list: Liste
+      arrange: Réorganiser
+      arrange_done: Terminé
+      load_more: Afficher plus
+    edit:
+      title_new: Nouvelle collection
+      title_edit: Réglages de la collection
+      type: Que collectionnez-vous ?
+      name: Nom
+      name_placeholder: L'étagère Nintendo
+      description: Description
+      visibility: Qui peut la voir
+      wishlist_public: Montrer aux autres ce que je recherche
+      featured: La mettre à la une sur la page Collections
+      create: Créer la collection
+      save: Enregistrer
+      delete: Supprimer la collection
+      delete_confirm: "Supprimer {name} et tout ce qu'elle contient ? C'est définitif."
+    item_edit:
+      title_new: "Ajouter à {name}"
+      title_edit: Modifier l'objet
+      tab_find: Rechercher
+      tab_details: Détails et photos
+      search_placeholder: Titre, ou scannez ou saisissez un code-barres ou un ISBN
+      barcode_placeholder: Scannez ou saisissez un code-barres ou un ISBN
+      scan: Scanner
+      scan_stop: Arrêter
+      camera_error: La caméra n'a pas pu démarrer. Vous pouvez saisir le code-barres à la place.
+      barcode_found: "Code-barres {code} reconnu."
+      barcode_unknown: "Personne ne connaît encore le code-barres {code}. Ajoutez-le à la main : la prochaine personne qui le scannera retrouvera votre fiche."
+      no_results: Aucun résultat. Essayez avec moins de mots, ou ajoutez-le à la main.
+      find_hint: Choisir un résultat remplit la jaquette et les détails, et son titre et sa description s'affichent dans toutes les langues du forum.
+      by_hand: L'ajouter à la main
+      lookup_failed: Ce titre n'a pas pu être récupéré pour l'instant. Réessayez, ou ajoutez-le à la main.
+      cover_looked_up: Jaquette trouvée
+      add_photos: Ajoutez vos photos
+      photos_hint: "Déposer, coller ou choisir · encore {count} au maximum"
+      remove_photo: Retirer la photo
+      title: Titre
+      translated_hint: "Chaque lecteur le voit dans sa langue ({count} disponibles)."
+      subtitle: Studio, artiste ou auteur
+      year: Année
+      status: Statut
+      condition: État
+      condition_none: Non précisé
+      acquired: Acquis le
+      notes: Notes
+      notes_placeholder: Où vous l'avez trouvé, ce qu'il y a dans la boîte…
+      price: Prix payé
+      price_private: Visible par vous seul
+      favourite: Favori
+      choose: Choisir…
+      add: Ajouter à la collection
+      save: Enregistrer
+      delete: Supprimer l'objet
+      delete_confirm: "Supprimer {title} ? C'est définitif."
+    item:
+      missing: Cet objet n'existe pas, ou vous ne pouvez pas le voir.
+      favourite: Favori
+      photo_n: "Photo {n}"
+      "yes": Oui
+      "no": Non
+      condition: État
+      acquired: Acquis le
+      price: Prix payé
+      about: À propos
+      more: Lire la suite
+      less: Réduire
+      from_wikipedia: Description issue de Wikipédia
+      from_wikidata: Description issue de Wikidata
+      translated_deepl: Traduit par DeepL
+      languages: "{count, plural, one {# langue} other {# langues}}"
+      edit: Modifier
+      have_too: Je l'ai aussi
+      want_it: Ajouter à mes envies
+      choose_collection: Dans quelle collection ?
+      cancel: Annuler
+    profile:
+      nav: Collections
+      items: Objets
+      collections: Collections
+      wanted: Recherchés
+      trade: À échanger
+      since: Collectionne depuis
+      collections_heading: Collections
+      new: Nouvelle collection
+      empty: Aucune collection pour l'instant.
+      empty_own: Commencez votre première collection et montrez ce que vous avez.
+      wishlist_heading: Liste d'envies
+    browse:
+      title: Collections
+      lead: "{items, plural, one {# objet} other {# objets}} dans les collections de {members, plural, one {# membre} other {# membres}}."
+      search: Chercher dans toutes les collections…
+      results: "Objets correspondant à « {q} »"
+      no_results: Rien ne correspond.
+      recent: Ajouts récents
+      featured: Collections à la une
+      none: Aucune collection ici pour l'instant.
+    widget:
+      label: Ajouts récents aux collections
+      field_title: Titre
+      field_limit: Combien
+      empty: Rien d'ajouté pour l'instant.
+  admin:
+    settings:
+      upc_label: Clé UPCitemdb (facultatif)
+      upc_help: Les codes-barres des jeux, films et autres produits sont recherchés sur UPCitemdb, qui en permet 100 par jour sans clé. Chaque code-barres trouvé est gardé par le forum, la plupart des forums n'ont donc jamais besoin de plus. Une clé payante relève la limite.
+      upc_link: Obtenir une clé
+      deepl_label: Clé DeepL (facultatif)
+      deepl_help: Quand Wikipédia n'a pas de description dans une langue, DeepL traduit celle en anglais. Les clés gratuites finissent par « :fx ».
+      deepl_link: Obtenir une clé
+      max_upload_label: Photo la plus lourde (Ko)
+      max_upload_help: Les photos sont réencodées en WebP et redimensionnées, ce qui est stocké est donc bien plus léger.
+    types:
+      heading: Types de collection
+      help: Les membres choisissent un type pour chaque collection. Le type fixe la forme des jaquettes, les détails demandés et la source des recherches. Glissez pour changer l'ordre.
+      drag: Glisser pour réordonner
+      add: Ajouter un type
+      labels_in: Libellés en
+      name: Nom
+      icon: Icône
+      color: Couleur
+      shape: Forme des jaquettes
+      source: Recherches
+      needs_marquee: La recherche de films, séries et jeux vient de Marquee. Tant qu'il n'est pas installé, les membres peuvent scanner des codes-barres ou ajouter des objets à la main.
+      fields: Détails
+      fields_help: Ce que les membres remplissent pour chaque objet. Le premier champ à choix sert à la répartition et au filtre des pages de collection (plateforme, format…).
+      field_label: "Libellé ({language})"
+      field_kind: Type
+      field_choices: Choix
+      add_choice: Ajouter un choix, puis Entrée
+      remove_choice: Retirer le choix
+      remove_field: Retirer le détail
+      add_field: Ajouter un détail
+      translation_note: Les titres et descriptions trouvés arrivent seuls dans chaque langue installée (Wikidata et Wikipédia). Seuls les libellés que vous écrivez ici sont à traduire.
+      save: Enregistrer le type
+      create: Créer le type
+      delete: Supprimer le type
+      delete_confirm: "Supprimer le type {name} ?"
+      in_use: Un type qui a des collections ne peut pas être supprimé.
+      save_failed: Le type n'a pas pu être enregistré.
+    shape:
+      portrait: Portrait
+      square: Carré
+      landscape: Paysage
+    source:
+      none: Aucune (codes-barres et à la main)
+      books: Livres (Open Library)
+      music: Albums (Deezer, MusicBrainz)
+      movies: Films (via Marquee)
+      tv: Séries (via Marquee)
+      games: Jeux (via Marquee)
+    kind:
+      select: Choix
+      text: Texte
+      number: Nombre
+      date: Date
+      bool: Oui / non
+    permissions:
+      view: Voir les collections
+      create: Créer des collections, ajouter des objets et des photos
+      moderate: Retirer les collections des autres et les mettre à la une
+  api:
+    type_in_use: Ce type a des collections, il ne peut donc pas être supprimé.
+    too_many_collections: "Vous pouvez avoir jusqu'à {count} collections."
+    collection_full: "Une collection contient jusqu'à {count} objets."
+    too_many_photos: "Un objet peut avoir jusqu'à {count} photos."

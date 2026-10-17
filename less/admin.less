@@ -1,0 +1,181 @@
+.CurioAdmin {
+  &-section {
+    border-top: 1px solid var(--control-bg);
+  }
+  &-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 24px;
+    margin-top: 16px;
+    align-items: start;
+  }
+  &-types {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid var(--control-bg);
+    border-radius: 10px;
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    li.active {
+      background: var(--control-bg);
+    }
+    li.is-dragging {
+      opacity: 0.5;
+    }
+  }
+  &-grip {
+    color: var(--muted-more-color);
+    font-size: 12px;
+    cursor: grab;
+    touch-action: none;
+    padding: 4px;
+  }
+  &-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  &-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &-meta {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted-color);
+  }
+  &-add {
+    color: var(--primary-color);
+  }
+  &-editor {
+    border: 1px solid var(--control-bg);
+    border-radius: 10px;
+    padding: 18px 20px;
+    background: var(--body-bg);
+    min-width: 0;
+  }
+  &-langs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--muted-color);
+  }
+  &-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  &-iconField {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  &-color {
+    height: 36px;
+    padding: 2px 6px;
+  }
+  &-warn {
+    display: block;
+    margin-top: 6px;
+    color: #b45309;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  &-fields {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted-color);
+      padding: 6px 8px;
+    }
+    td {
+      padding: 6px 8px;
+      border-top: 1px solid var(--control-bg);
+      vertical-align: top;
+    }
+    .FormControl {
+      min-width: 140px;
+    }
+  }
+  &-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  &-option {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--control-bg-shaded);
+    border-radius: 999px;
+    padding: 1px 4px 1px 10px;
+    input {
+      border: 0;
+      background: none;
+      font-size: 12px;
+      padding: 2px 0;
+      color: var(--text-color);
+    }
+    button {
+      border: 0;
+      background: none;
+      color: var(--muted-color);
+      cursor: pointer;
+      font-size: 11px;
+    }
+  }
+  &-newOption {
+    border: 1px dashed var(--control-bg-shaded);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+    background: none;
+    color: var(--text-color);
+    min-width: 160px;
+  }
+  &-note {
+    margin: 18px 0 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #e8f0fe;
+    color: #1a56c4;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  &-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+}
+
+@media @phone {
+  .CurioAdmin-layout {
+    grid-template-columns: 1fr;
+  }
+}

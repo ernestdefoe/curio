@@ -1,0 +1,62 @@
+{
+    "name": "ernestdefoe/curio",
+    "description": "Members show off what they collect: games, vinyl, books, films, LEGO, cards, anything. Collections with photos, details, wishlists and trades, barcode look-up, and titles and descriptions in every language the forum speaks.",
+    "keywords": ["flarum", "collections", "collectors", "wishlist", "barcode", "games", "vinyl", "books"],
+    "type": "flarum-extension",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ernest Defoe",
+            "email": "ernestdefoe@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "flarum/core": "^2.0"
+    },
+    "suggest": {
+        "ernestdefoe/marquee": "Adds film, TV and game search (TMDB and IGDB) to Curio's look-ups."
+    },
+    "extra": {
+        "flarum-extension": {
+            "title": "Curio",
+            "category": "feature",
+            "icon": {
+                "name": "fas fa-boxes-stacked",
+                "backgroundColor": "#5b3fd1",
+                "color": "#ffffff"
+            }
+        }
+    },
+    "minimum-stability": "beta",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "Ernestdefoe\\Curio\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ernestdefoe\\Curio\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "flarum/phpstan": "^2.0",
+        "flarum/testing": "^2.0",
+        "flarum/tags": "^2.0"
+    },
+    "scripts": {
+        "test": [
+            "@test:integration"
+        ],
+        "test:integration": "phpunit -c tests/phpunit.integration.xml",
+        "test:setup": "@php tests/integration/setup.php",
+        "analyse:phpstan": "phpstan analyse"
+    },
+    "scripts-descriptions": {
+        "test": "Runs all tests.",
+        "test:integration": "Runs all integration tests.",
+        "test:setup": "Sets up a database for use with integration tests. Execute this only once.",
+        "analyse:phpstan": "Run static analysis"
+    }
+}
