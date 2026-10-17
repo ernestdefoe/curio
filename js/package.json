@@ -17,5 +17,8 @@
     "webpack": "^5.0.0",
     "webpack-cli": "^5.0.0"
   },
-  "prettier": "@flarum/prettier-config"
+  "prettier": "@flarum/prettier-config",
+  "dependencies": {
+    "@ericblade/quagga2": "^1.12.1"
+  }
 }
