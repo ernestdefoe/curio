@@ -116,7 +116,10 @@ class ImportShelf extends AbstractCommand
             $stats->refresh($collection);
         }
 
-        $this->info(($dry ? 'Would import' : 'Imported')." $added titles into ".count($touched).' collections; skipped '.$skipped.'.');
+        $titles = $added === 1 ? '1 title' : "$added titles";
+        $this->info($dry
+            ? "Would import $titles; $skipped skipped."
+            : "Imported $titles into ".count($touched).' collection(s); '.$skipped.' already there or of an unknown kind.');
 
         return 0;
     }
