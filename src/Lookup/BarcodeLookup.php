@@ -23,6 +23,8 @@ class BarcodeLookup
         'ps5' => 'playstation-5', 'ps4' => 'playstation-4', 'ps3' => 'playstation-3', 'ps2' => 'playstation-2',
         'switch 2' => 'nintendo-switch-2', 'switch' => 'nintendo-switch', 'xbox series x' => 'xbox-series-x-s',
         '4k ultra hd' => '4k-uhd', 'blu ray' => 'blu-ray', 'bluray' => 'blu-ray', 'vinyl' => 'lp',
+        // Discogs writes "2xLP".
+        '2xlp' => '2-lp', '3xlp' => '3-lp', 'cass' => 'cassette', 'box set' => 'box-set',
     ];
 
     private const REGIONS = [

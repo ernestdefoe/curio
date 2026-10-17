@@ -43,6 +43,9 @@ ernestdefoe-curio:
       owned: Possédés
       wanted: Recherchés
       trade: À échanger
+      follow: Suivre
+      following: Suivie
+      followers: "{count, plural, one {# abonné} other {# abonnés}}"
       add_item: Ajouter un objet
       settings: Réglages
       search: "Chercher parmi {count} objets…"
@@ -121,6 +124,7 @@ ernestdefoe-curio:
       from_wikidata: Description issue de Wikidata
       translated_deepl: Traduit par DeepL
       languages: "{count, plural, one {# langue} other {# langues}}"
+      offers: "{count, plural, one {# membre le propose à l’échange} other {# membres le proposent à l’échange}}"
       edit: Modifier
       have_too: Je l'ai aussi
       want_it: Ajouter à mes envies
@@ -162,6 +166,21 @@ ernestdefoe-curio:
       view_in: "Voir dans la collection de {name}"
       in_my_collection: Voir dans ma collection
       open_item: Ouvrir l’objet
+    transfer:
+      heading: Importer et exporter
+      help: "Importez un tableur : un export Curio, un export de collection Discogs, ou un export de bibliothèque Goodreads ou StoryGraph. Les jaquettes et descriptions sont trouvées en arrière-plan dans les minutes qui suivent."
+      import: Importer un fichier CSV
+      export: Télécharger en CSV
+      done: "{count, plural, one {# objet importé} other {# objets importés}} depuis le fichier {format} ({skipped} ignorés)."
+      format_curio: Curio
+      format_discogs: Discogs
+      format_goodreads: Goodreads
+      format_storygraph: StoryGraph
+    notifications:
+      match: "{username} propose {title} à l’échange. Il est dans votre liste d’envies."
+      match_setting: Quelqu’un propose à l’échange un objet de ma liste d’envies
+      new_items: "{username} a ajouté des objets à {name}"
+      new_items_setting: Une collection que je suis a des nouveautés
     widget:
       label: Ajouts récents aux collections
       field_title: Titre
@@ -226,9 +245,22 @@ ernestdefoe-curio:
       view: Voir les collections
       create: Créer des collections, ajouter des objets et des photos
       moderate: Retirer les collections des autres et les mettre à la une
+  email:
+    match:
+      subject: "{title} est proposé à l’échange"
+      body: "Bonjour {recipient_display_name}, {owner} propose {title} à l’échange. Il est dans votre liste d’envies."
+      link: Voir l’offre
+    new_items:
+      subject: "Du nouveau dans {name}"
+      body: "Bonjour {recipient_display_name}, {owner} a ajouté des objets à {name}, une collection que vous suivez."
+      link: Voir la collection
   api:
     type_in_use: Ce type a des collections, il ne peut donc pas être supprimé.
     too_many_collections: "Vous pouvez avoir jusqu'à {count} collections."
     collection_full: "Une collection contient jusqu'à {count} objets."
     too_many_photos: "Un objet peut avoir jusqu'à {count} photos."
     not_your_item: Seuls vos propres objets, possédés ou échangeables, peuvent être montrés.
+    import_missing: Choisissez un fichier CSV à importer.
+    import_too_big: "Le fichier est trop lourd (maximum {size})."
+    import_too_often: Vous avez importé plusieurs fichiers cette dernière heure. Réessayez plus tard.
+    import_unknown_format: Curio ne sait pas lire ce fichier. Exportez-le depuis Curio, Discogs, Goodreads ou StoryGraph.

@@ -4,12 +4,15 @@ use Ernestdefoe\Curio\Access;
 use Ernestdefoe\Curio\Api;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\Console\ImportShelf;
+use Ernestdefoe\Curio\Console\MatchWorks;
 use Ernestdefoe\Curio\Console\RefreshTexts;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Search;
 use Ernestdefoe\Curio\Settings;
 use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Listener\LinkShownItem;
+use Ernestdefoe\Curio\Notification\NewItemsBlueprint;
+use Ernestdefoe\Curio\Notification\WishlistMatchBlueprint;
 use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\DiscussionResource;
@@ -75,6 +78,13 @@ return [
     (new Extend\Event())
         ->listen(Started::class, LinkShownItem::class),
 
+    (new Extend\View())
+        ->namespace('ernestdefoe-curio', __DIR__.'/views'),
+
+    (new Extend\Notification())
+        ->type(WishlistMatchBlueprint::class, ['alert', 'email'])
+        ->type(NewItemsBlueprint::class, ['alert']),
+
     (new Extend\Routes('api'))
         ->post('/curio/lookup', 'curio.lookup', Api\LookupController::class)
         ->get('/curio/overview', 'curio.overview', Api\OverviewController::class),
@@ -103,6 +113,10 @@ return [
     (new Extend\Console())
         ->command(RefreshTexts::class)
         ->command(ImportShelf::class)
+        ->command(MatchWorks::class)
+        ->schedule(MatchWorks::class, function (Event $event): void {
+            $event->everyFiveMinutes()->withoutOverlapping();
+        })
         ->schedule(RefreshTexts::class, function (Event $event): void {
             $event->daily()->withoutOverlapping();
         }),

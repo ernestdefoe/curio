@@ -141,6 +141,7 @@ export default class CollectionPage extends Page {
             <div className="CurioHero-meta">
               {owner(c.user())}
               <span>{t('page.since', { date: dayjs(c.createdAt()).format('MMMM YYYY') })}</span>
+              {c.followerCount() ? <span>{t('page.followers', { count: c.followerCount() })}</span> : null}
               {c.visibility() !== 'public' ? (
                 <span>
                   <Icon name={c.visibility() === 'private' ? 'fas fa-lock' : 'fas fa-user-group'} /> {t('visibility.' + c.visibility())}
@@ -187,6 +188,16 @@ export default class CollectionPage extends Page {
                   {t('page.add_item')}
                 </Button>
               ) : null}
+              {!mine && app.session.user ? (
+                <Button
+                  className={'Button ' + (c.followed() ? 'Button--primary' : 'CurioHero-ghost')}
+                  icon={c.followed() ? 'fas fa-bell' : 'far fa-bell'}
+                  aria-pressed={c.followed() ? 'true' : 'false'}
+                  onclick={() => c.save({ followed: !c.followed() })}
+                >
+                  {c.followed() ? t('page.following') : t('page.follow')}
+                </Button>
+              ) : null}
               {mine || c.canFeature() ? (
                 <Button
                   className="Button CurioHero-ghost"
@@ -194,6 +205,7 @@ export default class CollectionPage extends Page {
                   onclick={() =>
                     app.modal.show(CollectionEditModal, {
                       collection: c,
+                      onimport: () => this.refresh(),
                       onsave: (saved) => m.route.set(collectionUrl(saved), null, { replace: true }),
                       ondelete: () => m.route.set(app.route('user.curio', { username: c.user().slug() })),
                     })

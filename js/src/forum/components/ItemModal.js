@@ -131,6 +131,7 @@ export default class ItemModal extends Modal {
             </section>
           ) : null}
 
+          {this.offers(item)}
           {this.actions(item, collection, mine)}
         </div>
       </div>
@@ -184,6 +185,22 @@ export default class ItemModal extends Modal {
     if (source === 'deepl') return <span>{t('item.translated_deepl')}</span>;
     if (source === 'wikidata') return <span>{t('item.from_wikidata')}</span>;
     return null;
+  }
+
+  /** On a wanted item: who has it open to trade. */
+  offers(item) {
+    const offers = item.tradeOffers && item.tradeOffers();
+    if (!offers || !offers.count) return null;
+
+    return (
+      <Link
+        className="CurioOffers"
+        href={app.route('curio.collection', { id: offers.collectionId }) + `?item=${offers.itemId}`}
+        onclick={() => app.modal.close()}
+      >
+        <Icon name="fas fa-right-left" /> {t('item.offers', { count: offers.count })}
+      </Link>
+    );
   }
 
   actions(item, collection, mine) {

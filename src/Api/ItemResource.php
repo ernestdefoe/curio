@@ -24,6 +24,9 @@ use Flarum\Post\Exception\FloodingException;
 use Flarum\User\Exception\PermissionDeniedException;
 use Flarum\User\User;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Contracts\Queue\Queue;
+use Ernestdefoe\Curio\Job\NotifyFollowers;
+use Ernestdefoe\Curio\Job\NotifyWishlists;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Psr\Http\Message\UploadedFileInterface;
@@ -47,7 +50,8 @@ class ItemResource extends AbstractDatabaseResource
         private BarcodeLookup $barcodes,
         private WorkTexts $texts,
         private TranslatorInterface $translator,
-        private Cache $cache
+        private Cache $cache,
+        private Queue $queue
     ) {
     }
 
@@ -72,7 +76,6 @@ class ItemResource extends AbstractDatabaseResource
             Endpoint\Index::make()
                 ->paginate(48, 96)
                 ->defaultSort('position')
-                ->eagerLoad(['work'])
                 ->eagerLoadWhenIncluded(['collection.user' => ['collection.user.groups'], 'user' => ['user.groups']])
                 ->beforeSerialization(function (Context $context, array $results) {
                     $ids = [];
@@ -162,6 +165,16 @@ class ItemResource extends AbstractDatabaseResource
             $this->stats->refresh($model->collection);
         }
 
+        // Newly up for trade: the members who want it hear about it.
+        if ($model->status === 'trade' && $model->work_id && ($model->wasRecentlyCreated || $model->wasChanged('status') || $model->wasChanged('work_id'))) {
+            $this->queue->push(new NotifyWishlists($model->id));
+        }
+
+        // Something new on the shelf: the collection's followers hear about it (once a day).
+        if ($model->wasRecentlyCreated && $model->status !== 'wishlist') {
+            $this->queue->push(new NotifyFollowers($model->collection_id));
+        }
+
         return $model;
     }
 
@@ -193,9 +206,15 @@ class ItemResource extends AbstractDatabaseResource
                 ->rule('regex:/\S/'),
             // The title in the viewer's language when it came from a look-up and was left as it was.
             Schema\Str::make('displayTitle')
-                ->get(fn (Item $item) => $item->work_id && $item->work && $item->title === $item->work->title
-                    ? ($this->titles->get($item->work_id) ?? $item->title)
-                    : $item->title),
+                ->get(function (Item $item) {
+                    $this->titles->queue($item->work_id);
+
+                    return function () use ($item) {
+                        $work = $item->work_id ? $this->titles->work($item->work_id) : null;
+
+                        return $work && $item->title === $work['title'] ? ($work['local'] ?? $item->title) : $item->title;
+                    };
+                }),
             Schema\Str::make('subtitle')
                 ->nullable()
                 ->writable()
@@ -251,13 +270,33 @@ class ItemResource extends AbstractDatabaseResource
                 ->get(fn (Item $item) => array_map(fn ($p) => ['url' => $this->images->url($p), 'small' => $this->images->url($p, true)], $item->photos ?? [])),
             Schema\Str::make('coverUrl')
                 ->nullable()
-                ->get(fn (Item $item) => $this->images->url($item->coverPath(), true)),
+                ->get(function (Item $item) {
+                    if ($item->photos) {
+                        return $this->images->url($item->photos[0], true);
+                    }
+                    $this->titles->queue($item->work_id);
+
+                    return fn () => $item->work_id ? $this->images->url($this->titles->work($item->work_id)['cover'] ?? null, true) : null;
+                }),
             Schema\DateTime::make('createdAt'),
             // The discussion it was shown off in, on the item's own page, when the reader can see it.
             Schema\Integer::make('discussionId')
                 ->nullable()
                 ->visible(fn (Item $item, Context $context) => $item->discussion_id && self::alone($context))
                 ->get(fn (Item $item, Context $context) => Discussion::query()->whereVisibleTo($context->getActor())->whereKey($item->discussion_id)->exists() ? $item->discussion_id : null),
+            Schema\Integer::make('collectionId')->property('collection_id'),
+            // On a wanted item's own page: how many others have it open to trade, and the first such offer.
+            Schema\Arr::make('tradeOffers')
+                ->nullable()
+                ->visible(fn (Item $item, Context $context) => $item->work_id && $item->status === 'wishlist' && self::alone($context))
+                ->get(function (Item $item, Context $context) {
+                    $offers = Item::query()->whereVisibleTo($context->getActor())
+                        ->where('work_id', $item->work_id)->where('status', 'trade')->where('user_id', '!=', $item->user_id);
+
+                    $first = (clone $offers)->orderBy('id')->first(['id', 'collection_id']);
+
+                    return ['count' => (clone $offers)->count(), 'itemId' => $first?->id, 'collectionId' => $first?->collection_id];
+                }),
             // How many members have it (owned or to trade), on the item's own page.
             Schema\Integer::make('ownersCount')
                 ->visible(fn (Item $item, Context $context) => $item->work_id && self::alone($context))

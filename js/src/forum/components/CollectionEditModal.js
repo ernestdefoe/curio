@@ -97,6 +97,7 @@ export default class CollectionEditModal extends FormModal {
               </Switch>
             </div>
           ) : null}
+          {c && c.canEdit() ? this.transfer(c) : null}
           <div className="Form-group CurioEditModal-actions">
             <Button className="Button Button--primary" type="submit" loading={this.loading} disabled={!this.name().trim() || !this.typeId()}>
               {c ? t('edit.save') : t('edit.create')}
@@ -110,6 +111,46 @@ export default class CollectionEditModal extends FormModal {
         </div>
       </div>
     );
+  }
+
+  /** Bring a spreadsheet in, or take the collection out as one. */
+  transfer(c) {
+    return (
+      <div className="Form-group CurioTransfer">
+        <label>{t('transfer.heading')}</label>
+        <p className="helpText">{t('transfer.help')}</p>
+        <div className="CurioTransfer-buttons">
+          <label className={'Button' + (this.importing ? ' disabled' : '')}>
+            <Icon name={this.importing ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'} /> {t('transfer.import')}
+            <input type="file" accept=".csv,text/csv" hidden disabled={this.importing} onchange={(e) => this.importFile(c, e.target.files[0])} />
+          </label>
+          <a className="Button" href={`${app.forum.attribute('apiUrl')}/curio-collections/${c.id()}/export`} download>
+            <Icon name="fas fa-file-export" /> {t('transfer.export')}
+          </a>
+        </div>
+        {this.imported ? <p className="CurioTransfer-result">{t('transfer.done', this.imported)}</p> : null}
+      </div>
+    );
+  }
+
+  importFile(c, file) {
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    this.importing = true;
+    this.imported = null;
+
+    app
+      .request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/curio-collections/${c.id()}/import`, serialize: (raw) => raw, body })
+      .then((result) => {
+        this.imported = { count: result.imported, skipped: result.skipped, format: text('transfer.format_' + result.format) };
+        this.attrs.onimport && this.attrs.onimport();
+      })
+      .catch((error) => this.onerror(error))
+      .finally(() => {
+        this.importing = false;
+        m.redraw();
+      });
   }
 
   onsubmit(e) {

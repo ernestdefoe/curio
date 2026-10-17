@@ -9,7 +9,6 @@ import { registerModels } from '../common/models';
 import registerWidgets from './widgets';
 import { t } from './util';
 import { applyShowOff } from './showOff';
-
 /** Loaded the first time a "Show it off" discussion is opened, never with other pages. */
 let ItemHero = null;
 let heroLoading = null;
@@ -90,6 +89,11 @@ app.initializers.add('ernestdefoe-curio', () => {
       return original();
     }
     return <ItemHero discussion={discussion} item={item} />;
+  });
+
+  extend('flarum/forum/components/NotificationGrid', 'notificationTypes', (items) => {
+    items.add('curioWishlistMatch', { name: 'curioWishlistMatch', icon: 'fas fa-right-left', label: t('notifications.match_setting') });
+    items.add('curioNewItems', { name: 'curioNewItems', icon: 'fas fa-boxes-stacked', label: t('notifications.new_items_setting') });
   });
 
   extendMarquee();

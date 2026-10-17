@@ -1569,6 +1569,8 @@ button.CurioChip {
 
 .CurioEditModal-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: space-between;
 }
 
@@ -1950,4 +1952,54 @@ button.CurioChip {
     justify-content: space-between;
     align-items: center;
   }
+}
+
+.CurioTransfer {
+  border-top: 1px solid var(--control-bg);
+  padding-top: 14px;
+
+  &-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+
+    // A file input's label, styled as the button it acts as (form labels would otherwise win).
+    .Button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      background: var(--control-bg);
+      color: var(--control-color);
+      font-weight: 600;
+      cursor: pointer;
+
+      &.disabled {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+    }
+  }
+
+  &-result {
+    margin: 10px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #dcf5e8;
+    color: #146c43;
+    font-size: 13px;
+  }
+}
+
+.CurioOffers {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #dcf5e8;
+  color: #146c43 !important;
+  font-weight: 600;
+  font-size: 13px;
 }

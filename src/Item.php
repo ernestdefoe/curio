@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $favourite
  * @property int $position
  * @property int|null $discussion_id
+ * @property bool $needs_match
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Collection|null $collection
@@ -60,6 +61,7 @@ class Item extends AbstractModel
         'fields' => 'array',
         'photos' => 'array',
         'favourite' => 'boolean',
+        'needs_match' => 'boolean',
         'position' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

@@ -43,6 +43,9 @@ ernestdefoe-curio:
       owned: Owned
       wanted: Wanted
       trade: To trade
+      follow: Follow
+      following: Following
+      followers: "{count, plural, one {# follower} other {# followers}}"
       add_item: Add an item
       settings: Settings
       search: "Search {count} items…"
@@ -121,6 +124,7 @@ ernestdefoe-curio:
       from_wikidata: Description from Wikidata
       translated_deepl: Translated by DeepL
       languages: "{count, plural, one {# language} other {# languages}}"
+      offers: "{count, plural, one {# member has this open to trade} other {# members have this open to trade}}"
       edit: Edit
       have_too: I have this too
       want_it: Add to my wishlist
@@ -162,6 +166,21 @@ ernestdefoe-curio:
       view_in: "View in {name}’s collection"
       in_my_collection: View in my collection
       open_item: Open the item
+    transfer:
+      heading: Import and export
+      help: "Bring in a spreadsheet: a Curio export, a Discogs collection export, or a Goodreads or StoryGraph library export. Covers and descriptions are found in the background over the next few minutes."
+      import: Import a CSV file
+      export: Download as CSV
+      done: "{count, plural, one {# item} other {# items}} imported from the {format} file ({skipped} skipped)."
+      format_curio: Curio
+      format_discogs: Discogs
+      format_goodreads: Goodreads
+      format_storygraph: StoryGraph
+    notifications:
+      match: "{username} has {title} open to trade. It’s on your wishlist."
+      match_setting: Someone offers to trade something on my wishlist
+      new_items: "{username} added to {name}"
+      new_items_setting: A collection I follow has new things
     widget:
       label: Recently added to collections
       field_title: Title
@@ -226,9 +245,22 @@ ernestdefoe-curio:
       view: View collections
       create: Create collections, add items and photos
       moderate: Remove anyone's collections and feature them
+  email:
+    match:
+      subject: "{title} is open to trade"
+      body: "Hi {recipient_display_name}, {owner} has {title} open to trade. It’s on your wishlist."
+      link: See the offer
+    new_items:
+      subject: "New in {name}"
+      body: "Hi {recipient_display_name}, {owner} has added new things to {name}, a collection you follow."
+      link: See the collection
   api:
     type_in_use: This type has collections, so it cannot be deleted.
     too_many_collections: "You can have up to {count} collections."
     collection_full: "A collection holds up to {count} items."
     too_many_photos: "An item can have up to {count} photos."
     not_your_item: Only your own items, owned or open to trade, can be shown off.
+    import_missing: Choose a CSV file to import.
+    import_too_big: "The file is too big (largest {size})."
+    import_too_often: You have imported several files in the last hour. Try again later.
+    import_unknown_format: That file isn’t one Curio can read. Export it from Curio, Discogs, Goodreads or StoryGraph.

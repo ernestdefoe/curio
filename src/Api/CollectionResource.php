@@ -18,6 +18,11 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Laminas\Diactoros\Response\EmptyResponse;
+use Laminas\Diactoros\Response\JsonResponse;
+use Laminas\Diactoros\Response\TextResponse;
+use Ernestdefoe\Curio\Import\Exporter;
+use Ernestdefoe\Curio\Import\Importer;
+use Illuminate\Support\Arr;
 use Tobyz\JsonApiServer\Context as OriginalContext;
 
 /**
@@ -86,6 +91,26 @@ class CollectionResource extends AbstractDatabaseResource
                     return [];
                 })
                 ->response(fn () => new EmptyResponse(204)),
+            // Multipart: one "file" (Curio CSV, Discogs, Goodreads or StoryGraph export).
+            Endpoint\Endpoint::make('curio.collections.import')
+                ->route('POST', '/{id}/import')
+                ->authenticated()
+                ->can('update')
+                ->action(fn (Context $context) => resolve(Importer::class)->import(
+                    $context->model,
+                    Arr::get($context->request->getUploadedFiles(), 'file'),
+                    $context->getActor()
+                ))
+                ->response(fn (Context $context, array $result) => new JsonResponse($result)),
+            Endpoint\Endpoint::make('curio.collections.export')
+                ->route('GET', '/{id}/export')
+                ->authenticated()
+                ->can('update')
+                ->action(fn (Context $context) => resolve(Exporter::class)->csv($context->model))
+                ->response(fn (Context $context, string $csv) => new TextResponse($csv, 200, [
+                    'Content-Type' => 'text/csv; charset=utf-8',
+                    'Content-Disposition' => 'attachment; filename="'.($context->model->slug ?: 'collection').'.csv"',
+                ])),
         ];
     }
 
@@ -135,6 +160,17 @@ class CollectionResource extends AbstractDatabaseResource
         return $model;
     }
 
+    private function follow(Collection $collection, int $userId, bool $follow): void
+    {
+        $rows = $this->db->table('curio_follows')->where('collection_id', $collection->id)->where('user_id', $userId);
+
+        if (! $follow) {
+            $rows->delete();
+        } elseif (! $rows->exists()) {
+            $this->db->table('curio_follows')->insertOrIgnore(['collection_id' => $collection->id, 'user_id' => $userId, 'created_at' => Carbon::now()]);
+        }
+    }
+
     public function deleting(object $model, OriginalContext $context): void
     {
         /** @var Collection $model */
@@ -181,6 +217,16 @@ class CollectionResource extends AbstractDatabaseResource
                 ->get(fn (Collection $c) => (object) ($c->facets ?? [])),
             Schema\DateTime::make('createdAt'),
             Schema\DateTime::make('updatedAt'),
+            // On the collection's own page: whether you follow it, and how many do.
+            Schema\Boolean::make('followed')
+                ->visible(fn (Collection $c, Context $context) => $context->showing(self::class) || $context->updating(self::class))
+                ->get(fn (Collection $c, Context $context) => ! $context->getActor()->isGuest()
+                    && $this->db->table('curio_follows')->where('collection_id', $c->id)->where('user_id', $context->getActor()->id)->exists())
+                ->writable(fn (Collection $c, Context $context) => $c->exists && ! $context->getActor()->isGuest() && ! $c->isOwnedBy($context->getActor()))
+                ->set(fn (Collection $c, $value, Context $context) => $this->follow($c, $context->getActor()->id, (bool) $value)),
+            Schema\Integer::make('followerCount')
+                ->visible(fn (Collection $c, Context $context) => $context->showing(self::class))
+                ->get(fn (Collection $c) => $this->db->table('curio_follows')->where('collection_id', $c->id)->count()),
             Schema\Boolean::make('canEdit')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('update', $c)),
             Schema\Boolean::make('canDelete')

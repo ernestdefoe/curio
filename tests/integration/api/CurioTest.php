@@ -505,6 +505,165 @@ class CurioTest extends TestCase
         $this->assertSame((string) $item, $own['data']['relationships']['curioItem']['data']['id']);
     }
 
+    private function notifications(int $userId, string $type): int
+    {
+        return $this->database()->table('notifications')->where('user_id', $userId)->where('type', $type)->count();
+    }
+
+    #[Test]
+    public function an_offer_to_trade_reaches_those_who_want_it_and_can_see_it(): void
+    {
+        $wants = $this->newCollection(4, [], 'music');
+        $wanted = (int) $this->json($this->item(4, $wants, ['title' => 'Discovery', 'status' => 'wishlist'], 1))['data']['id'];
+
+        // A private offer tells nobody.
+        $hidden = $this->newCollection(3, ['name' => 'Hidden', 'visibility' => 'private'], 'music');
+        $this->item(3, $hidden, ['title' => 'Discovery', 'status' => 'trade'], 1);
+        $this->assertSame(0, $this->notifications(4, 'curioWishlistMatch'));
+
+        $open = $this->newCollection(3, ['name' => 'Spares'], 'music');
+        $offer = (int) $this->json($this->item(3, $open, ['title' => 'Discovery'], 1))['data']['id'];
+        $this->assertSame(0, $this->notifications(4, 'curioWishlistMatch'));
+
+        // Owned → open to trade: now they hear, once, however often it is re-offered.
+        $trade = fn (string $status) => $this->send($this->request('PATCH', "/api/curio-items/$offer", [
+            'authenticatedAs' => 3,
+            'json' => ['data' => ['type' => 'curio-items', 'id' => (string) $offer, 'attributes' => ['status' => $status]]],
+        ]));
+        $trade('trade');
+        $trade('owned');
+        $trade('trade');
+        $this->assertSame(1, $this->notifications(4, 'curioWishlistMatch'));
+        $this->assertSame(0, $this->notifications(3, 'curioWishlistMatch'));
+
+        // The wanted item points at the offer.
+        $offers = $this->json($this->get("/api/curio-items/$wanted", [], 4))['data']['attributes']['tradeOffers'];
+        $this->assertSame(['count' => 1, 'itemId' => $offer, 'collectionId' => $open], $offers);
+    }
+
+    #[Test]
+    public function a_list_of_curio_notifications_costs_a_fixed_number_of_queries(): void
+    {
+        $wants = $this->newCollection(4, [], 'music');
+        $this->item(4, $wants, ['title' => 'Discovery', 'status' => 'wishlist'], 1);
+
+        $spares = $this->newCollection(3, ['name' => 'Spares'], 'music');
+        for ($i = 0; $i < 8; $i++) {
+            $this->item(3, $spares, ['title' => 'Discovery (orig)', 'status' => 'trade'], 1);
+        }
+        $this->assertSame(8, $this->notifications(4, 'curioWishlistMatch'));
+
+        // The repeated-query detector fails this if each notification's item loads its own title or cover.
+        $response = $this->get('/api/notifications', [], 4);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('Discovery', collect($this->json($response)['included'])->firstWhere('type', 'curio-items')['attributes']['displayTitle']);
+    }
+
+    #[Test]
+    public function followers_hear_about_new_things_once_a_day(): void
+    {
+        $id = $this->newCollection(3);
+        $follow = fn (int $as, bool $on) => $this->send($this->request('PATCH', "/api/curio-collections/$id", [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'curio-collections', 'id' => (string) $id, 'attributes' => ['followed' => $on]]],
+        ]));
+
+        $this->assertTrue($this->json($follow(4, true))['data']['attributes']['followed']);
+        $follow(3, true);
+        $this->assertSame(0, $this->database()->table('curio_follows')->where('user_id', 3)->count());
+        $this->assertSame(1, $this->json($this->get("/api/curio-collections/$id", [], 4))['data']['attributes']['followerCount']);
+
+        $this->item(3, $id, ['title' => 'Wanted only', 'status' => 'wishlist']);
+        $this->assertSame(0, $this->notifications(4, 'curioNewItems'));
+
+        $this->item(3, $id, ['title' => 'Celeste']);
+        $this->item(3, $id, ['title' => 'Hades']);
+        $this->assertSame(1, $this->notifications(4, 'curioNewItems'));
+
+        $this->assertFalse($this->json($follow(4, false))['data']['attributes']['followed']);
+    }
+
+    private function upload(int $as, int $collection, string $csv): ResponseInterface
+    {
+        $path = tempnam(sys_get_temp_dir(), 'curio');
+        file_put_contents($path, $csv);
+
+        return $this->send($this->request('POST', "/api/curio-collections/$collection/import", ['authenticatedAs' => $as])
+            ->withUploadedFiles(['file' => new UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'export.csv', 'text/csv')]));
+    }
+
+    #[Test]
+    public function a_discogs_export_imports(): void
+    {
+        $id = $this->newCollection(3, [], 'music');
+        $csv = "Catalog#,Artist,Title,Label,Format,Rating,Released,release_id,CollectionFolder,Date Added,Collection Media Condition,Collection Sleeve Condition,Collection Notes\n"
+            ."K 56344,Fleetwood Mac,Rumours,Warner Bros. Records,\"LP, Album\",5,1977,1234,Uncategorized,2023-04-12 18:22:01,Very Good Plus (VG+),Very Good (VG),First press?\n"
+            ."0190295,Daft Punk (2),Discovery,Virgin,\"2xLP, Album, RE\",,2001,99,Uncategorized,2024-01-02 10:00:00,Mint (M),,\n"
+            .",,,,,,,,,,,,\n";
+
+        $response = $this->upload(3, $id, $csv);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame(['format' => 'discogs', 'imported' => 2, 'skipped' => 1], $this->json($response));
+
+        $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get();
+        $this->assertSame('Fleetwood Mac', $rows[0]->subtitle);
+        $this->assertSame('very_good', $rows[0]->condition);
+        $this->assertSame(1977, (int) $rows[0]->year);
+        $this->assertSame('2023-04-12', substr((string) $rows[0]->acquired_on, 0, 10));
+        $this->assertEquals(['format' => 'lp', 'label' => 'Warner Bros. Records', 'catalogue' => 'K 56344'], json_decode($rows[0]->fields, true));
+        $this->assertSame('Daft Punk', $rows[1]->subtitle);
+        $this->assertSame('2-lp', $rows[1]->facet);
+        $this->assertTrue((bool) $rows[1]->needs_match);
+        $this->assertSame(2, $this->json($this->get("/api/curio-collections/$id"))['data']['attributes']['ownedCount']);
+    }
+
+    #[Test]
+    public function a_goodreads_export_imports(): void
+    {
+        $id = $this->newCollection(3, [], 'books');
+        $csv = "Book Id,Title,Author,ISBN,ISBN13,My Rating,Year Published,Original Publication Year,Date Added,Exclusive Shelf\n"
+            ."1,Dune,Frank Herbert,\"=\"\"0441172717\"\"\",\"=\"\"9780441172719\"\"\",5,1990,1965,2023/04/12,read\n"
+            ."2,Hyperion,Dan Simmons,,,0,1990,1989,2024/05/01,to-read\n";
+
+        $this->assertSame('goodreads', $this->json($this->upload(3, $id, $csv))['format']);
+
+        $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get();
+        $this->assertSame(['Dune', 'owned', '9780441172719', 1965], [$rows[0]->title, $rows[0]->status, $rows[0]->barcode, (int) $rows[0]->year]);
+        $this->assertSame(['Hyperion', 'wishlist', null], [$rows[1]->title, $rows[1]->status, $rows[1]->acquired_on]);
+    }
+
+    #[Test]
+    public function an_export_reads_back_in_and_cannot_carry_formulas(): void
+    {
+        $from = $this->newCollection(3);
+        $this->item(3, $from, ['title' => 'Metroid Dread', 'year' => 2021, 'condition' => 'mint', 'pricePaid' => 20, 'priceCurrency' => 'GBP', 'fields' => ['platform' => 'nintendo-switch', 'cib' => true]]);
+        $this->item(3, $from, ['title' => '=HYPERLINK("http://evil")', 'status' => 'wishlist']);
+
+        $response = $this->send($this->request('GET', "/api/curio-collections/$from/export", ['authenticatedAs' => 3]));
+        $this->assertSame(200, $response->getStatusCode());
+        $csv = (string) $response->getBody();
+        $this->assertStringContainsString('Nintendo Switch', $csv);
+        $this->assertStringContainsString("'=HYPERLINK", $csv);
+
+        // Only the owner exports.
+        $this->assertSame(403, $this->send($this->request('GET', "/api/curio-collections/$from/export", ['authenticatedAs' => 4]))->getStatusCode());
+
+        $to = $this->newCollection(3, ['name' => 'Copy']);
+        $this->assertSame(['format' => 'curio', 'imported' => 2, 'skipped' => 0], $this->json($this->upload(3, $to, $csv)));
+
+        $copy = $this->database()->table('curio_items')->where('collection_id', $to)->orderBy('position')->first();
+        $this->assertSame(['Metroid Dread', 2021, 'mint', 'GBP'], [$copy->title, (int) $copy->year, $copy->condition, $copy->price_currency]);
+        $this->assertEquals(['platform' => 'nintendo-switch', 'cib' => true], json_decode($copy->fields, true));
+    }
+
+    #[Test]
+    public function imports_are_owner_only_and_known_formats_only(): void
+    {
+        $id = $this->newCollection(3);
+        $this->assertSame(403, $this->upload(4, $id, "title\nNope\n")->getStatusCode());
+        $this->assertSame(422, $this->upload(3, $id, "foo,bar\n1,2\n")->getStatusCode());
+    }
+
     #[Test]
     public function a_type_in_use_cannot_be_deleted(): void
     {

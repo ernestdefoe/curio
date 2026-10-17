@@ -32,6 +32,8 @@ Object.assign(CurioCollection.prototype, {
   canEdit: Model.attribute('canEdit'),
   canDelete: Model.attribute('canDelete'),
   canFeature: Model.attribute('canFeature'),
+  followed: Model.attribute('followed'),
+  followerCount: Model.attribute('followerCount'),
   user: Model.hasOne('user'),
   type: Model.hasOne('type'),
 });
@@ -58,6 +60,8 @@ Object.assign(CurioItem.prototype, {
   createdAt: Model.attribute('createdAt', Model.transformDate),
   canEdit: Model.attribute('canEdit'),
   discussionId: Model.attribute('discussionId'),
+  collectionId: Model.attribute('collectionId'),
+  tradeOffers: Model.attribute('tradeOffers'),
   ownersCount: Model.attribute('ownersCount'),
   collection: Model.hasOne('collection'),
   work: Model.hasOne('work'),
