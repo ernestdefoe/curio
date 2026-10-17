@@ -316,7 +316,7 @@ class ItemResource extends AbstractDatabaseResource
     private function addPhoto(Item $item, ?UploadedFileInterface $file, User $actor): Item
     {
         // Each photo is decoded and encoded twice: members get a dozen a minute and 200 a day.
-        if (! $actor->isAdmin() && (! $this->spend("curio.photos.$actor->id.".intdiv(time(), 60), 12, 120)
+        if (! $actor->isAdmin() && (! $this->spend("curio.photos.$actor->id.minute", 12, 60)
             || ! $this->spend("curio.photos.$actor->id.".date('Ymd'), 200, 2 * 86400))) {
             throw new FloodingException();
         }
@@ -338,6 +338,7 @@ class ItemResource extends AbstractDatabaseResource
         return $item;
     }
 
+    /** A window that starts with the first use, so no clock boundary resets it early. */
     private function spend(string $counter, int $limit, int $ttl): bool
     {
         $this->cache->add($counter, 0, $ttl);
