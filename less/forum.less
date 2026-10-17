@@ -56,3 +56,27 @@
   }
 }
 
+
+// The composer's "Showing off …" chip: the composer stays open across pages.
+.CurioComposerItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-color);
+
+  img {
+    width: 24px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+  }
+
+  .Button {
+    margin: 0;
+  }
+}
+
+.CurioMarqueeButton[disabled] {
+  opacity: 0.6;
+}

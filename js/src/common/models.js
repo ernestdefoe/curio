@@ -57,6 +57,8 @@ Object.assign(CurioItem.prototype, {
   coverUrl: Model.attribute('coverUrl'),
   createdAt: Model.attribute('createdAt', Model.transformDate),
   canEdit: Model.attribute('canEdit'),
+  discussionId: Model.attribute('discussionId'),
+  ownersCount: Model.attribute('ownersCount'),
   collection: Model.hasOne('collection'),
   work: Model.hasOne('work'),
   user: Model.hasOne('user'),
@@ -78,6 +80,9 @@ Object.assign(CurioWork.prototype, {
 });
 
 export function registerModels(app) {
+  // The item a "Show it off" discussion is about (on the discussion page only).
+  app.store.models.discussions.prototype.curioItem = Model.hasOne('curioItem');
+
   app.store.models['curio-types'] = CurioType;
   app.store.models['curio-collections'] = CurioCollection;
   app.store.models['curio-items'] = CurioItem;

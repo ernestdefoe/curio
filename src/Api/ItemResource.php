@@ -14,8 +14,10 @@ use Ernestdefoe\Curio\Type;
 use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\AbstractDatabaseResource;
+use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
+use Flarum\Discussion\Discussion;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\Post\Exception\FloodingException;
@@ -251,6 +253,15 @@ class ItemResource extends AbstractDatabaseResource
                 ->nullable()
                 ->get(fn (Item $item) => $this->images->url($item->coverPath(), true)),
             Schema\DateTime::make('createdAt'),
+            // The discussion it was shown off in, on the item's own page, when the reader can see it.
+            Schema\Integer::make('discussionId')
+                ->nullable()
+                ->visible(fn (Item $item, Context $context) => $item->discussion_id && self::alone($context))
+                ->get(fn (Item $item, Context $context) => Discussion::query()->whereVisibleTo($context->getActor())->whereKey($item->discussion_id)->exists() ? $item->discussion_id : null),
+            // How many members have it (owned or to trade), on the item's own page.
+            Schema\Integer::make('ownersCount')
+                ->visible(fn (Item $item, Context $context) => $item->work_id && self::alone($context))
+                ->get(fn (Item $item) => (int) Item::query()->where('work_id', $item->work_id)->where('status', '!=', 'wishlist')->distinct()->count('user_id')),
             Schema\Boolean::make('canEdit')
                 ->get(fn (Item $item, Context $context) => $context->getActor()->can('update', $item)),
 
@@ -268,6 +279,12 @@ class ItemResource extends AbstractDatabaseResource
                 ->type('users')
                 ->includable(),
         ];
+    }
+
+    /** Shown one at a time: the item's own page, or the hero of the discussion it is shown off in. */
+    private static function alone(Context $context): bool
+    {
+        return $context->showing(self::class) || $context->showing(DiscussionResource::class);
     }
 
     public function sorts(): array

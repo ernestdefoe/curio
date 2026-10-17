@@ -448,6 +448,63 @@ class CurioTest extends TestCase
         $this->assertSame(25, $fake->asked);
     }
 
+    private function startDiscussion(int $as, ?int $itemId, string $title = 'Look what I found'): ResponseInterface
+    {
+        return $this->send($this->request('POST', '/api/discussions', [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'discussions', 'attributes' => array_filter(['title' => $title, 'content' => 'It finally arrived.', 'curioItemId' => $itemId])]],
+        ]));
+    }
+
+    #[Test]
+    public function members_show_off_their_own_items(): void
+    {
+        $id = $this->newCollection(3);
+        $mine = (int) $this->json($this->item(3, $id, ['title' => 'Metroid Dread', 'fields' => ['platform' => 'nintendo-switch']]))['data']['id'];
+        $wanted = (int) $this->json($this->item(3, $id, ['title' => 'EarthBound', 'status' => 'wishlist']))['data']['id'];
+
+        // Not someone else's, and not something you only want.
+        $this->assertSame(422, $this->startDiscussion(4, $mine)->getStatusCode());
+        $this->assertSame(422, $this->startDiscussion(3, $wanted)->getStatusCode());
+
+        $response = $this->startDiscussion(3, $mine);
+        $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        $discussion = (int) $this->json($response)['data']['id'];
+        $this->assertSame($discussion, (int) $this->database()->table('curio_items')->where('id', $mine)->value('discussion_id'));
+
+        // The discussion page carries the item, its collection and its owner…
+        $page = $this->json($this->get("/api/discussions/$discussion"));
+        $this->assertSame((string) $mine, $page['data']['relationships']['curioItem']['data']['id']);
+        $types = array_count_values(array_column($page['included'], 'type'));
+        $this->assertSame(1, $types['curio-items']);
+        $this->assertSame(1, $types['curio-collections']);
+        $this->assertSame(1, $types['curio-types']);
+
+        // …and the item page links back to the discussion.
+        $this->assertSame($discussion, $this->json($this->get("/api/curio-items/$mine"))['data']['attributes']['discussionId']);
+
+        // Lists never carry it.
+        $list = $this->json($this->get('/api/discussions'));
+        $this->assertArrayNotHasKey('curioItem', $list['data'][0]['relationships'] ?? []);
+    }
+
+    #[Test]
+    public function a_private_item_does_not_leak_through_its_discussion(): void
+    {
+        $id = $this->newCollection(3, ['visibility' => 'private']);
+        $item = (int) $this->json($this->item(3, $id, ['title' => 'Secret grail', 'pricePaid' => 900]))['data']['id'];
+        $discussion = (int) $this->json($this->startDiscussion(3, $item))['data']['id'];
+
+        foreach ([null, 4] as $as) {
+            $page = $this->json($this->get("/api/discussions/$discussion", [], $as));
+            $this->assertNull($page['data']['relationships']['curioItem']['data'] ?? null);
+            $this->assertNotContains('curio-items', array_column($page['included'] ?? [], 'type'));
+        }
+
+        $own = $this->json($this->get("/api/discussions/$discussion", [], 3));
+        $this->assertSame((string) $item, $own['data']['relationships']['curioItem']['data']['id']);
+    }
+
     #[Test]
     public function a_type_in_use_cannot_be_deleted(): void
     {

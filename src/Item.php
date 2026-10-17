@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $price_currency
  * @property bool $favourite
  * @property int $position
+ * @property int|null $discussion_id
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Collection|null $collection

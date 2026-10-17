@@ -7,7 +7,9 @@ import { t, text, label, locale } from '../util';
 import { fieldValue } from '../../common/labels';
 import { typeBadge, statusPill, owner } from './bits';
 import ItemEditModal from './ItemEditModal';
-import CollectionEditModal from './CollectionEditModal';
+import Link from 'flarum/common/components/Link';
+import { startShowOff } from '../showOff';
+import addToMyCollection from '../copyItem';
 import useStyles from '../styles';
 
 const LONG = 600;
@@ -20,7 +22,6 @@ export default class ItemModal extends Modal {
     this.item = null;
     this.photo = 0;
     this.expanded = false;
-    this.choosing = null;
 
     app.store
       .find('curio-items', this.attrs.itemId)
@@ -130,7 +131,7 @@ export default class ItemModal extends Modal {
             </section>
           ) : null}
 
-          {this.choosing ? this.chooser() : this.actions(item, collection, mine)}
+          {this.actions(item, collection, mine)}
         </div>
       </div>
     );
@@ -186,6 +187,13 @@ export default class ItemModal extends Modal {
   }
 
   actions(item, collection, mine) {
+    const discussed = item.discussionId() ? (
+      <Link className="Button CurioItem-discussed" href={app.route('discussion', { id: item.discussionId() })} onclick={() => app.modal.close()}>
+        <Icon name="far fa-comments" className="Button-icon" />
+        <span className="Button-label">{t('item.discussed')}</span>
+      </Link>
+    ) : null;
+
     if (mine) {
       return (
         <div className="CurioItem-actions">
@@ -203,60 +211,37 @@ export default class ItemModal extends Modal {
           >
             {t('item.edit')}
           </Button>
+          {discussed ||
+            (item.status() !== 'wishlist' ? (
+              <Button className="Button" icon="fas fa-bullhorn" onclick={() => startShowOff(item)}>
+                {t('item.show_off')}
+              </Button>
+            ) : null)}
         </div>
       );
     }
 
-    if (!app.forum.attribute('canCreateCurio') || !app.session.user) return null;
+    const canAdd = app.forum.attribute('canCreateCurio') && app.session.user;
 
     return (
       <div className="CurioItem-actions">
-        <Button className="Button Button--primary" icon="fas fa-plus" loading={this.finding === 'owned'} onclick={() => this.copy(item, 'owned')}>
-          {t('item.have_too')}
-        </Button>
-        <Button className="Button" icon="far fa-heart" loading={this.finding === 'wishlist'} onclick={() => this.copy(item, 'wishlist')}>
-          {t('item.want_it')}
-        </Button>
+        {canAdd ? (
+          <Button className="Button Button--primary" icon="fas fa-plus" onclick={() => this.copy(item, 'owned')}>
+            {t('item.have_too')}
+          </Button>
+        ) : null}
+        {canAdd ? (
+          <Button className="Button" icon="far fa-heart" onclick={() => this.copy(item, 'wishlist')}>
+            {t('item.want_it')}
+          </Button>
+        ) : null}
+        {discussed}
       </div>
     );
   }
 
   /** "I have this too" / "Add to my wishlist": into one of my collections of the same type. */
   copy(item, status) {
-    const type = item.collection().type();
-    this.finding = status;
-
-    app.store
-      .find('curio-collections', { filter: { user: app.session.user.id(), type: type.id() }, page: { limit: 50 } })
-      .then((mine) => {
-        this.finding = null;
-        const open = (collection) => app.modal.show(ItemEditModal, { collection, prefill: item, status });
-
-        if (mine.length === 1) return open(mine[0]);
-        if (mine.length > 1) return (this.choosing = { collections: mine, open });
-
-        app.modal.show(CollectionEditModal, { typeId: type.id(), onsave: (collection) => open(collection) });
-      })
-      .finally(() => m.redraw());
-  }
-
-  chooser() {
-    return (
-      <div className="CurioChooser">
-        <p>{t('item.choose_collection')}</p>
-        <ul>
-          {this.choosing.collections.map((c) => (
-            <li>
-              <Button className="Button" onclick={() => this.choosing.open(c)}>
-                {c.name()}
-              </Button>
-            </li>
-          ))}
-        </ul>
-        <Button className="Button Button--link" onclick={() => (this.choosing = null)}>
-          {t('item.cancel')}
-        </Button>
-      </div>
-    );
+    addToMyCollection({ prefill: item, status, typeIds: [item.collection().type().id()] });
   }
 }

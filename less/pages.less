@@ -1595,8 +1595,190 @@ button.CurioChip {
   min-width: 0;
 }
 
+// ── "Show it off" discussion hero ──────────────────────────────────────
+.CurioItemHero {
+  position: relative;
+  overflow: hidden;
+  background: @curio-dark !important;
+  color: #fff !important;
+  padding: 48px 0 40px !important;
+  text-align: left !important;
+
+  &-backdrop {
+    position: absolute;
+    inset: -40px;
+    background-size: cover;
+    background-position: center 30%;
+    filter: blur(28px) saturate(1.4);
+    opacity: 0.55;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(90deg, rgba(18, 19, 26, 0.92), rgba(18, 19, 26, 0.7));
+  }
+
+  &-inner {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  &-cover {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: zoom-in;
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.7);
+
+    img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 2 / 3;
+      object-fit: cover;
+    }
+
+    &--square img {
+      aspect-ratio: 1;
+    }
+
+    &--landscape img {
+      aspect-ratio: 4 / 3;
+    }
+  }
+
+  &-kicker {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 13px;
+
+    a {
+      color: rgba(255, 255, 255, 0.8);
+    }
+  }
+
+  .DiscussionHero-badges {
+    margin: 0 0 10px;
+  }
+
+  .DiscussionHero-title {
+    color: #fff !important;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 12px 0 6px;
+  }
+
+  &-item {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 14px;
+  }
+
+  &-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  &-stats {
+    display: flex;
+    gap: 34px;
+    margin-bottom: 18px;
+
+    span {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    b {
+      font-size: 18px;
+    }
+  }
+
+  &-about {
+    max-width: 720px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0 0 22px;
+  }
+
+  &-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+
+  &-credit {
+    margin-left: auto;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+}
+
 // ── Phones ─────────────────────────────────────────────────────────────
 @media @phone {
+  .CurioItemHero-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .CurioItemHero-cover {
+    width: 120px;
+  }
+
+  .CurioItemHero-kicker {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .CurioItemHero-stats {
+    gap: 22px;
+    flex-wrap: wrap;
+
+    b {
+      font-size: 16px;
+    }
+  }
+
+  .CurioItemHero-about {
+    display: none;
+  }
+
+  .CurioItemHero-actions .Button {
+    flex: 1 1 auto;
+  }
+
+  .CurioItemHero-credit {
+    margin-left: 0;
+  }
+
+  .CurioItemHero .DiscussionHero-title {
+    font-size: 22px;
+  }
+
+
   .CurioHero {
     padding: 26px 0 22px;
 
@@ -1751,5 +1933,21 @@ button.CurioChip {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+.CurioChooseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &-item {
+    width: 100%;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
   }
 }

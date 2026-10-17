@@ -125,6 +125,8 @@ ernestdefoe-curio:
       have_too: Je l'ai aussi
       want_it: Ajouter à mes envies
       choose_collection: Dans quelle collection ?
+      show_off: Le montrer
+      discussed: Discussion
       cancel: Annuler
     profile:
       nav: Collections
@@ -147,6 +149,19 @@ ernestdefoe-curio:
       recent: Ajouts récents
       featured: Collections à la une
       none: Aucune collection ici pour l'instant.
+    showoff:
+      title: "Mon {title}"
+      composer: "Vous montrez {title}"
+      remove: Ne pas lier cet objet
+    marquee:
+      add: Ajouter à une collection
+    hero:
+      here: Sur ce forum
+      members: "{count, plural, one {# membre l’a} other {# membres l’ont}}"
+      from: "Tiré de {name}"
+      view_in: "Voir dans la collection de {name}"
+      in_my_collection: Voir dans ma collection
+      open_item: Ouvrir l’objet
     widget:
       label: Ajouts récents aux collections
       field_title: Titre
@@ -216,3 +231,4 @@ ernestdefoe-curio:
     too_many_collections: "Vous pouvez avoir jusqu'à {count} collections."
     collection_full: "Une collection contient jusqu'à {count} objets."
     too_many_photos: "Un objet peut avoir jusqu'à {count} photos."
+    not_your_item: Seuls vos propres objets, possédés ou échangeables, peuvent être montrés.

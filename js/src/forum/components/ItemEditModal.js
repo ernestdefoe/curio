@@ -34,7 +34,7 @@ export default class ItemEditModal extends FormModal {
     this.collection = this.attrs.collection;
     this.type = this.collection.type();
     // A new item starts at the look-up: even a type with no title search takes a barcode.
-    this.step = item || from ? 'details' : 'find';
+    this.step = item || from || this.attrs.work ? 'details' : 'find';
 
     this.query = Stream('');
     this.results = null;
@@ -42,12 +42,13 @@ export default class ItemEditModal extends FormModal {
     this.searching = false;
     this.resolving = false;
     this.scanning = null;
-    this.work = item ? item.work() : from ? from.work() : null;
+    this.work = item ? item.work() : from ? from.work() : this.attrs.work || null;
 
     const src = item || from;
-    this.itemTitle = Stream(src ? src.title() : '');
-    this.subtitle = Stream(src ? src.subtitle() || '' : '');
-    this.year = Stream(src && src.year() ? String(src.year()) : '');
+    const work = !src && this.work;
+    this.itemTitle = Stream(src ? src.title() : work ? work.originalTitle() : '');
+    this.subtitle = Stream(src ? src.subtitle() || '' : work ? work.creator() || '' : '');
+    this.year = Stream(src && src.year() ? String(src.year()) : work && work.year() ? String(work.year()) : '');
     this.status = Stream(item ? item.status() : this.attrs.status || 'owned');
     this.condition = Stream(item ? item.condition() || '' : '');
     this.acquiredOn = Stream(item ? item.acquiredOn() || '' : '');

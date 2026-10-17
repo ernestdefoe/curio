@@ -3,12 +3,18 @@
 use Ernestdefoe\Curio\Access;
 use Ernestdefoe\Curio\Api;
 use Ernestdefoe\Curio\Collection;
+use Ernestdefoe\Curio\Console\ImportShelf;
 use Ernestdefoe\Curio\Console\RefreshTexts;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Search;
 use Ernestdefoe\Curio\Settings;
 use Ernestdefoe\Curio\Storage\Images;
+use Ernestdefoe\Curio\Listener\LinkShownItem;
 use Flarum\Api\Context;
+use Flarum\Api\Endpoint;
+use Flarum\Api\Resource\DiscussionResource;
+use Flarum\Discussion\Discussion;
+use Flarum\Discussion\Event\Started;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Api\Schema;
 use Flarum\Extend;
@@ -57,6 +63,18 @@ return [
                 ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.moderate')),
         ]),
 
+    (new Extend\ApiResource(DiscussionResource::class))
+        ->fields(Api\DiscussionFields::class)
+        ->endpoint('show', fn (Endpoint\Show $endpoint) => $endpoint->addDefaultInclude([
+            'curioItem', 'curioItem.work', 'curioItem.collection', 'curioItem.collection.user', 'curioItem.collection.type',
+        ])),
+
+    (new Extend\Model(Discussion::class))
+        ->cast('curio_item_id', 'integer'),
+
+    (new Extend\Event())
+        ->listen(Started::class, LinkShownItem::class),
+
     (new Extend\Routes('api'))
         ->post('/curio/lookup', 'curio.lookup', Api\LookupController::class)
         ->get('/curio/overview', 'curio.overview', Api\OverviewController::class),
@@ -84,6 +102,7 @@ return [
 
     (new Extend\Console())
         ->command(RefreshTexts::class)
+        ->command(ImportShelf::class)
         ->schedule(RefreshTexts::class, function (Event $event): void {
             $event->daily()->withoutOverlapping();
         }),
