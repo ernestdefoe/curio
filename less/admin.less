@@ -167,8 +167,13 @@
   }
   &-actions {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-top: 12px;
+
+    .Button--danger {
+      margin-left: auto;
+    }
   }
 }
 
