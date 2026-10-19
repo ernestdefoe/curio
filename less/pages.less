@@ -2047,8 +2047,11 @@ button.CurioChip {
     position: relative;
     background: var(--tag-bg);
 
+    // Two classes on the links: themes colour links with selectors like
+    // `:root:not([data-theme^=dark]) a:not(.Button)`, which beat `.TagTile a`.
     &,
-    a {
+    &.colored > a.TagTile-info,
+    &.colored > a.TagTile-lastPostedDiscussion {
       color: var(--contrast-color, var(--body-bg));
     }
     // Themes colour headings, paragraphs and links themselves; on a tile they follow the tile.
