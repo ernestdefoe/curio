@@ -338,8 +338,8 @@ class ItemResource extends AbstractDatabaseResource
             SortColumn::make('position'),
             SortColumn::make('createdAt'),
             SortColumn::make('title'),
-            SortColumn::make('year'),
-            SortColumn::make('rating'),
+            NullsLastSort::make('year'),
+            NullsLastSort::make('rating'),
         ];
     }
 
