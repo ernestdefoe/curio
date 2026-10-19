@@ -6,7 +6,7 @@ import Select from 'flarum/common/components/Select';
 import Switch from 'flarum/common/components/Switch';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Stream from 'flarum/common/utils/Stream';
-import { t, text, label, locale, STATUSES, CONDITIONS, lookup } from '../util';
+import { t, text, label, locale, STATUSES, CONDITIONS, lookup, closeThen } from '../util';
 import { pick, onlyOption } from '../../common/labels';
 import Stars from './Stars';
 import { canScan, scan } from '../scanner';
@@ -629,10 +629,7 @@ export default class ItemEditModal extends FormModal {
     (item || app.store.createRecord('curio-items'))
       .save(attrs)
       .then((saved) => this.uploadQueued(saved).then(() => saved))
-      .then((saved) => {
-        this.hide();
-        this.attrs.onsave && this.attrs.onsave(saved);
-      })
+      .then((saved) => closeThen(this.attrs.onsave, saved))
       .catch((error) => {
         this.loading = false;
         this.onerror(error);
@@ -642,9 +639,13 @@ export default class ItemEditModal extends FormModal {
   deleteItem() {
     const item = this.attrs.item;
     if (!confirm(text('item_edit.delete_confirm', { title: item.title() }))) return;
-    item.delete().then(() => {
-      this.hide();
-      this.attrs.ondelete && this.attrs.ondelete(item);
-    });
+    this.loading = true;
+    item
+      .delete()
+      .then(() => closeThen(this.attrs.ondelete, item))
+      .catch((error) => {
+        this.loading = false;
+        this.onerror(error);
+      });
   }
 }

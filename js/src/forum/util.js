@@ -31,3 +31,16 @@ export const types = () => app.store.all('curio-types').sort((a, b) => a.positio
 export function lookup(body) {
   return app.request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/curio/lookup`, body });
 }
+
+/**
+ * Close a Curio window, then carry on (navigate, open the next window).
+ * Core's animated hide() waits for a transitionend; when what follows
+ * navigates or opens another window, that element is gone before the
+ * transition ends, core's ModalManager stays "closing" for the rest of the
+ * visit and ignores every later hide(), so the next Save spun forever.
+ * Closing the modal state directly never waits on an animation.
+ */
+export function closeThen(next, ...args) {
+  app.modal.close();
+  next && next(...args);
+}

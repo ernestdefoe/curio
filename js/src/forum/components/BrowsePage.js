@@ -52,6 +52,7 @@ export default class BrowsePage extends Page {
 
   loadCollections() {
     this.collections = null;
+    this.standIn = false;
     const query = this.typeId
       ? { filter: { type: this.typeId }, sort: '-ownedCount', page: { limit: 24 } }
       : { filter: { featured: '1' }, sort: '-featuredAt', page: { limit: 12 } };
@@ -60,6 +61,8 @@ export default class BrowsePage extends Page {
       // No collection featured yet: the biggest public ones stand in.
       if (!found.length && !this.typeId) {
         return app.store.find('curio-collections', { sort: '-ownedCount', page: { limit: 12 } }).then((biggest) => {
+          // Headed as what they are, never as "Featured".
+          this.standIn = true;
           this.collections = biggest;
           m.redraw();
         });
@@ -149,7 +152,7 @@ export default class BrowsePage extends Page {
               label(chosen.names())
             ) : (
               <>
-                <Icon name="fas fa-award" /> {t('browse.featured')}
+                <Icon name={this.standIn ? 'fas fa-ranking-star' : 'fas fa-award'} /> {t(this.standIn ? 'browse.largest' : 'browse.featured')}
               </>
             )}
           </h2>

@@ -4,7 +4,7 @@ import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
 import Icon from 'flarum/common/components/Icon';
 import Stream from 'flarum/common/utils/Stream';
-import { t, text, label, types, loadTypes } from '../util';
+import { t, text, label, types, loadTypes, closeThen } from '../util';
 import useStyles from '../styles';
 
 const VISIBILITIES = ['public', 'members', 'private'];
@@ -169,10 +169,7 @@ export default class CollectionEditModal extends FormModal {
     this.loading = true;
     (c || app.store.createRecord('curio-collections'))
       .save(attrs)
-      .then((saved) => {
-        this.hide();
-        this.attrs.onsave && this.attrs.onsave(saved);
-      })
+      .then((saved) => closeThen(this.attrs.onsave, saved))
       .catch((error) => {
         this.loading = false;
         this.onerror(error);
@@ -183,9 +180,12 @@ export default class CollectionEditModal extends FormModal {
     const c = this.attrs.collection;
     if (!confirm(text('edit.delete_confirm', { name: c.name() }))) return;
 
-    c.delete().then(() => {
-      this.hide();
-      this.attrs.ondelete && this.attrs.ondelete();
-    });
+    this.loading = true;
+    c.delete()
+      .then(() => closeThen(this.attrs.ondelete))
+      .catch((error) => {
+        this.loading = false;
+        this.onerror(error);
+      });
   }
 }

@@ -163,6 +163,7 @@ ernestdefoe-curio:
       no_results: Rien ne correspond.
       recent: Ajouts récents
       featured: Collections à la une
+      largest: Les plus grandes collections
       none: Aucune collection ici pour l'instant.
       add: Ajouter un objet
     nav:

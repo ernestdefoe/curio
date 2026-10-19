@@ -878,4 +878,38 @@ class CurioTest extends TestCase
         $this->assertSame(200, $this->get('/api/curio-items', ['filter' => ['status' => 'owned'], 'include' => 'collection.user,collection.type', 'sort' => '-createdAt'])->getStatusCode());
         $this->assertSame(200, $this->get('/api/curio-collections', ['filter' => ['user' => 3]], 4)->getStatusCode());
     }
+
+    private function patchCollection(int $as, int $id, array $attributes): ResponseInterface
+    {
+        return $this->send($this->request('PATCH', "/api/curio-collections/$id", [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'curio-collections', 'id' => (string) $id, 'attributes' => $attributes]],
+        ]));
+    }
+
+    private function featuredIds(): array
+    {
+        return array_column($this->json($this->get('/api/curio-collections', ['filter' => ['featured' => '1']]))['data'], 'id');
+    }
+
+    #[Test]
+    public function an_unfeatured_collection_leaves_the_featured_list(): void
+    {
+        $kept = $this->newCollection(3, ['name' => 'Kept']);
+        $dropped = $this->newCollection(3, ['name' => 'Dropped']);
+
+        $this->assertSame(200, $this->patchCollection(1, $kept, ['featured' => true])->getStatusCode());
+        $this->assertSame(200, $this->patchCollection(1, $dropped, ['featured' => true])->getStatusCode());
+        $this->assertEqualsCanonicalizing([(string) $kept, (string) $dropped], $this->featuredIds());
+
+        $response = $this->patchCollection(1, $dropped, ['featured' => false]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertFalse($this->json($response)['data']['attributes']['featured']);
+        $this->assertNull($this->database()->table('curio_collections')->where('id', $dropped)->value('featured_at'));
+        $this->assertSame([(string) $kept], $this->featuredIds());
+
+        // The owner cannot feature their own collection.
+        $this->patchCollection(3, $dropped, ['featured' => true]);
+        $this->assertSame([(string) $kept], $this->featuredIds());
+    }
 }
