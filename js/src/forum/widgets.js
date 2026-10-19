@@ -2,12 +2,17 @@ import app from 'flarum/forum/app';
 import Avatar from 'flarum/common/components/Avatar';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t } from './util';
+import { fofWidget } from '../common/widget';
 
 /**
  * "Recently added" for the widget hosts a forum may run: Bespoke and
  * fof/forum-widgets-core. Neither is a build dependency; each is found at run
  * time, so the bundle is the same with both, one or none installed. The list
  * is fetched only when a widget is actually on the page.
+ *
+ * Offered only once an admin turns it on in Curio's settings: FoF Forum
+ * Widgets puts every widget it is given on the page straight away, so
+ * offering it unasked put a box on forums that never wanted one.
  */
 class RecentList {
   oninit(vnode) {
@@ -52,7 +57,8 @@ class RecentList {
 
 export default function registerWidgets() {
   const flarum = globalThis.flarum;
-  if (!flarum || !flarum.extensions) return;
+  // Initializers run before app.forum exists, so the switch is read from the preloaded forum document.
+  if (!flarum || !flarum.extensions || !app.data.resources?.[0]?.attributes?.curioWidget) return;
 
   if ('ernestdefoe-bespoke' in flarum.extensions) {
     globalThis.BespokeWidgetQueue = globalThis.BespokeWidgetQueue || [];
@@ -104,8 +110,6 @@ export default function registerWidgets() {
       }
     }
 
-    new Widgets()
-      .add({ key: 'curioRecent', component: CurioRecentWidget, isDisabled: false, isUnique: true, placement: 'end', position: 3 })
-      .extend(app, 'ernestdefoe-curio');
+    new Widgets().add(fofWidget(CurioRecentWidget)).extend(app, 'ernestdefoe-curio');
   }
 }
