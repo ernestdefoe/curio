@@ -33,6 +33,30 @@ class Http
      */
     public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
     {
+        return $this->send('GET', $service, $url, ['query' => $query, 'headers' => $headers, 'timeout' => $timeout]);
+    }
+
+    /**
+     * A POST (IGDB queries, Twitch tokens). A 401 is thrown as `unauthorized`
+     * so a caller holding a token can renew it once.
+     *
+     * @param array<string, mixed> $query
+     * @param array<string, string> $headers
+     * @return array<mixed>
+     * @throws LookupException
+     */
+    public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+    {
+        return $this->send('POST', $service, $url, ['query' => $query, 'headers' => $headers, 'body' => $body, 'timeout' => $timeout]);
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<mixed>
+     * @throws LookupException
+     */
+    private function send(string $method, string $service, string $url, array $options): array
+    {
         $down = 'curio.down.'.$service;
 
         if ($this->cache->has($down)) {
@@ -40,7 +64,7 @@ class Http
         }
 
         try {
-            $response = $this->client()->get($url, ['query' => $query, 'headers' => $headers, 'timeout' => $timeout]);
+            $response = $this->client()->request($method, $url, array_filter($options, fn ($v) => $v !== null));
         } catch (GuzzleException $e) {
             $status = $e instanceof RequestException ? $e->getResponse()?->getStatusCode() : null;
 
@@ -54,7 +78,7 @@ class Http
                 $this->cache->put($down, true, self::DOWN_SECONDS);
             }
 
-            throw new LookupException("$service request failed ($status)", $outage);
+            throw new LookupException("$service request failed ($status)", $outage, $status === 401);
         }
 
         $body = json_decode((string) $response->getBody(), true);

@@ -91,7 +91,8 @@ export default class TypesEditor {
 
   editor() {
     const d = this.draft;
-    const marqueeNeeded = ['movies', 'tv', 'games'].includes(d.source) && !('ernestdefoe-marquee' in (app.data.extensions || {}));
+    const igdb = d.source === 'games' && !!app.data.settings['ernestdefoe-curio.igdb_client_id'];
+    const marqueeNeeded = ['movies', 'tv', 'games'].includes(d.source) && !igdb && !('ernestdefoe-marquee' in (app.data.extensions || {}));
 
     return (
       <div className="CurioAdmin-editor">

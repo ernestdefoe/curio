@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $year
  * @property string|null $cover
  * @property string|null $wikidata_id
+ * @property array{developer?: list<string>, publisher?: list<string>, released?: string, platforms?: list<string>, genres?: list<string>}|null $facts
  * @property int $languages
  * @property Carbon $refreshed_at
  * @property Carbon $created_at
@@ -31,6 +32,7 @@ class Work extends AbstractModel
     protected $casts = [
         'year' => 'integer',
         'languages' => 'integer',
+        'facts' => 'array',
         'refreshed_at' => 'datetime',
         'created_at' => 'datetime',
     ];

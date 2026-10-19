@@ -10,21 +10,24 @@ A [Flarum 2](https://flarum.org) extension for showing off what members collect:
 
 - **Collections on every profile.** A Collections tab with the member's collections, what they own, want and trade, and their wishlist.
 - **A page for each collection.** It has a hero built from the member's own covers and a breakdown by platform or format, which you can click to filter. You can also filter by owned, wanted and open to trade, search inside the collection, sort, and switch between grid and list. The owner drags items into order with a mouse or a finger.
-- **Items with photos and details.** Each item has up to six photos (re-encoded as WebP, with the phone's location data removed), the type's own details (platform, edition, region…), condition, the date it was acquired, notes, and a favourite star.
+- **Items with photos and details.** Each item has up to six photos (re-encoded as WebP, with the phone's location data removed), the type's own details (platform, edition, region…), condition, the date it was acquired, notes, a favourite star, and the owner's **rating** (five stars, in half stars). Collections sort by rating, and the stars show on the grid, in the list and on the item.
 - **Look it up, or scan it.** Search by title, or scan or type a barcode or ISBN. The cover and details fill in:
   - **Books** come from Open Library and **albums** from Deezer and MusicBrainz. Neither needs a key.
-  - **Films, TV and games** come through [Marquee](https://github.com/ernestdefoe/marquee) when it is installed.
+  - **Games** come from **IGDB** when you add a free Twitch app's client ID and secret: cover, developer, publisher, release date, platforms and genres (genre names are translated). When the game is on only one platform the forum knows, that platform is filled in too. Without the keys, games come through Marquee as before.
+  - **Films and TV** (and games, without IGDB keys) come through [Marquee](https://github.com/ernestdefoe/marquee) when it is installed.
   - **Any other barcode** (a game box, a Blu-ray) goes to UPCitemdb. The platform or format is read from the product's name, for example "Nintendo Switch", "PS5" or "4K".
 - **The forum keeps every barcode it learns.** A box anyone has scanned is never looked up again, so UPCitemdb's free 100 lookups a day is plenty for most forums. When nobody knows a barcode, the first member fills it in by hand, and the next person who scans it gets their entry.
 - **Every language the forum speaks.** Each looked-up title is matched to Wikidata, which supplies its name in every language, and its description comes from that language's Wikipedia, with credit. When Wikipedia has nothing in a language, an optional DeepL key translates the English description. The admin's own labels (types, details, choices) are edited per installed language. Curio ships in English and French.
 - **Show it off.** From any item you own, start a discussion about it. The discussion opens with the item as its hero: the cover, details, condition, how many members have it, and the description in the reader's language. Everyone else gets "I have this too" and "Add to my wishlist" right there, and the item links back to its discussion.
 - **Works with Marquee and Shelf.** With [Marquee](https://github.com/ernestdefoe/marquee) installed, its cards get **Add to collection**. With [Shelf](https://github.com/ernestdefoe/shelf), collections move to Curio: `php flarum curio:import-shelf` copies members' "In my collection" titles across once, and running it again adds nothing.
+- **Import and export.** A collection downloads as a CSV file, and a Curio export, a Discogs collection export, or a Goodreads or StoryGraph library export imports into one. Ratings come across from all four.
 - **Wishlists and trades.** Mark items as wanted or open to trade. A wishlist can be hidden on its own.
 - **"I have this too" / "Add to my wishlist"** on anyone's item copies it, cover and all, into one of your collections.
 - **Who sees what.** Each collection can be seen by everyone, by members only, or by its owner only. The price paid is private and is only ever sent to the owner.
-- **A Collections page** (`/collections`, with a sidebar link) has what the forum collects by type, recently added items, featured collections, and a search across every collection.
+- **A Collections page** (`/collections`, with a sidebar link) has what the forum collects by type, recently added items, featured collections, and a search across every collection. By default the types are drawn exactly like Flarum's own Tags page (coloured tiles, with the latest collection along the foot); cover tiles are the other choice in the settings. Signed-in members get **Add an item** right there, which asks which collection (or makes a new one).
+- **One click to your own.** Members get **My collections** in the forum sidebar and in their account menu.
 - **Types you can shape.** It starts with video games, vinyl & CDs, books, films & TV, board games, LEGO & models, trading cards, comics & manga, and other. You can add, rename, reorder or remove types, and choose each one's icon, colour, cover shape (portrait, square or landscape), look-up source and details.
-- **A widget, if you use one.** "Recently added" is offered to [Bespoke](https://github.com/ernestdefoe/bespoke) and [FoF Forum Widgets](https://github.com/FriendsOfFlarum/forum-widgets-core).
+- **A widget, if you want one.** "Recently added" can be offered to [Bespoke](https://github.com/ernestdefoe/bespoke) and [FoF Forum Widgets](https://github.com/FriendsOfFlarum/forum-widgets-core). It is off until you turn it on in Curio's settings; with FoF it then shows in FoF's layout editor, where it can be moved or removed.
 
 ![An item, in French](https://raw.githubusercontent.com/ernestdefoe/curio/main/.github/screenshots/fr-item.jpg)
 
@@ -53,6 +56,9 @@ php flarum migrate
 
 ## Settings
 
+- **Collections page layout.** Like the Tags page (the default) or cover tiles.
+- **Offer the "Recently added" widget** (off by default).
+- **IGDB client ID and secret** (optional). Game look-ups on IGDB. [Create a Twitch app](https://dev.twitch.tv/console/apps/create) (any name, OAuth redirect URL `http://localhost`, category Application Integration), then copy its Client ID and make a New Secret. The forum keeps its Twitch token until a day before it expires, keeps searches for a day, and sends IGDB at most four requests a second and 2,000 a day.
 - **UPCitemdb key** (optional). Without a key the forum gets 100 product barcode lookups a day. Every barcode it resolves is kept, so it never asks twice. [Get a key](https://www.upcitemdb.com/wp/docs/main/development/getting-started/).
 - **DeepL key** (optional). Translates a description when Wikipedia has none in a language. Keys ending in `:fx` use DeepL's free plan.
 - **Largest photo** (default 8 MB). Photos are resized and re-encoded, so what is stored is far smaller.

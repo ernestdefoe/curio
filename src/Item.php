@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $price_paid
  * @property string|null $price_currency
  * @property bool $favourite
+ * @property int|null $rating
  * @property int $position
  * @property int|null $discussion_id
  * @property bool $needs_match
@@ -61,6 +62,7 @@ class Item extends AbstractModel
         'fields' => 'array',
         'photos' => 'array',
         'favourite' => 'boolean',
+        'rating' => 'integer',
         'needs_match' => 'boolean',
         'position' => 'integer',
         'created_at' => 'datetime',

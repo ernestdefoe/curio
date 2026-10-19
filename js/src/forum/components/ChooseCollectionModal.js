@@ -31,6 +31,11 @@ export default class ChooseCollectionModal extends Modal {
             </li>
           ))}
         </ul>
+        {this.attrs.onnew ? (
+          <Button className="Button Button--link CurioChooseList-new" icon="fas fa-plus" onclick={() => this.attrs.onnew()}>
+            {t('profile.new')}
+          </Button>
+        ) : null}
       </div>
     );
   }

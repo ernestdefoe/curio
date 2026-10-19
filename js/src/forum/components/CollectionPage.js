@@ -13,10 +13,11 @@ import ItemModal from './ItemModal';
 import ItemEditModal from './ItemEditModal';
 import CollectionEditModal from './CollectionEditModal';
 import useStyles from '../styles';
+import Stars from './Stars';
 
 const PAGE = 48;
 const FILTERS = ['all', 'owned', 'wishlist', 'trade'];
-const SORTS = { position: 'position', recent: '-createdAt', title: 'title', year: '-year' };
+const SORTS = { position: 'position', recent: '-createdAt', title: 'title', year: '-year', rating: '-rating' };
 
 /** One member's collection: a hero built from their own covers, then the shelf. */
 export default class CollectionPage extends Page {
@@ -341,6 +342,7 @@ export default class CollectionPage extends Page {
               <div className="CurioItemCard-title">{item.displayTitle()}</div>
               <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>
               {facet ? <span className="CurioItemCard-field">{facet}</span> : null}
+              {item.rating() ? <Stars value={item.rating()} small /> : null}
             </li>
           );
         })}
@@ -362,6 +364,7 @@ export default class CollectionPage extends Page {
                 <th>{label(f.labels)}</th>
               ))}
               <th>{t('item.condition')}</th>
+              <th>{t('table.rating')}</th>
               <th>{t('table.status')}</th>
             </tr>
           </thead>
@@ -382,6 +385,7 @@ export default class CollectionPage extends Page {
                 <td>
                   {item.condition() ? <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span> : '—'}
                 </td>
+                <td>{item.rating() ? <Stars value={item.rating()} small /> : '—'}</td>
                 <td>{statusPill(item.status()) || <span className="CurioStatus CurioStatus--owned">{t('status.owned')}</span>}</td>
               </tr>
             ))}

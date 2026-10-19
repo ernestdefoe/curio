@@ -20,3 +20,20 @@ export function fieldValue(field, value, locale) {
   if (field.kind === 'select') return optionLabel(field, value, locale);
   return String(value);
 }
+
+/**
+ * The one option of a choice field that a looked-up list names (a game's
+ * platforms: "PlayStation 5", "PC (Microsoft Windows)"), or null when none or
+ * several match: a member's copy is on one platform, so a guess is worse than nothing.
+ */
+export function onlyOption(field, names) {
+  const plain = (s) =>
+    String(s)
+      .toLowerCase()
+      .replace(/\(.*?\)/g, '')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+  const wanted = new Set((names || []).map(plain));
+  const found = (field.options || []).filter((o) => Object.values(o.labels || {}).some((l) => wanted.has(plain(l))));
+  return found.length === 1 ? found[0].key : null;
+}

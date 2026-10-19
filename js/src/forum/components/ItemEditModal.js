@@ -7,7 +7,8 @@ import Switch from 'flarum/common/components/Switch';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Stream from 'flarum/common/utils/Stream';
 import { t, text, label, locale, STATUSES, CONDITIONS, lookup } from '../util';
-import { pick } from '../../common/labels';
+import { pick, onlyOption } from '../../common/labels';
+import Stars from './Stars';
 import { canScan, scan } from '../scanner';
 import useStyles from '../styles';
 
@@ -55,10 +56,12 @@ export default class ItemEditModal extends FormModal {
     this.fields = Object.assign({}, src ? src.fields() || {} : {});
     this.notes = Stream(item ? item.notes() || '' : '');
     this.favourite = Stream(item ? !!item.favourite() : false);
+    this.rating = Stream(item ? item.rating() || null : null);
     this.pricePaid = Stream(item && item.pricePaid() !== null && item.pricePaid() !== undefined ? String(item.pricePaid()) : '');
     this.priceCurrency = Stream(item ? item.priceCurrency() || defaultCurrency() : defaultCurrency());
     this.code = null;
     this.queued = [];
+    if (work) this.prefillFromFacts(work.facts());
   }
 
   onremove(vnode) {
@@ -287,12 +290,24 @@ export default class ItemEditModal extends FormModal {
         this.subtitle(work.creator() || '');
         this.year(work.year() ? String(work.year()) : '');
         if (this.barcode) Object.assign(this.fields, this.barcode.fields || {});
+        this.prefillFromFacts(work.facts());
         this.step = 'details';
       })
       .catch(() => (this.alertAttrs = { type: 'error', content: t('item_edit.lookup_failed') }))
       .finally(() => {
         this.resolving = false;
         m.redraw();
+      });
+  }
+
+  /** A game found on IGDB names its platforms: when only one of them is an option here, it is chosen. */
+  prefillFromFacts(facts) {
+    if (!facts || !facts.platforms) return;
+    (this.type.fields() || [])
+      .filter((f) => f.kind === 'select' && f.key === 'platform' && !this.fields[f.key])
+      .forEach((f) => {
+        const key = onlyOption(f, facts.platforms);
+        if (key) this.fields[f.key] = key;
       });
   }
 
@@ -456,6 +471,16 @@ export default class ItemEditModal extends FormModal {
             </div>
           )}
 
+          {this.status() === 'wishlist' ? null : (
+            <div className="Form-group">
+              <label>{t('item_edit.rating')}</label>
+              <div className="CurioRating">
+                <Stars value={this.rating()} onchange={this.rating} label={text('item_edit.rating')} />
+                <small>{this.rating() ? t('item_edit.rating_value', { stars: this.rating() / 2 }) : t('item_edit.rating_none')}</small>
+              </div>
+            </div>
+          )}
+
           <div className="Form-group">
             <Switch state={this.favourite()} onchange={this.favourite}>
               <Icon name="fas fa-star" /> {t('item_edit.favourite')}
@@ -589,6 +614,7 @@ export default class ItemEditModal extends FormModal {
       fields: this.fields,
       notes: this.notes().trim() || null,
       favourite: this.favourite(),
+      rating: wanted ? null : this.rating(),
       pricePaid: wanted || price === '' || isNaN(Number(price)) ? null : Number(price),
       priceCurrency: wanted || price === '' ? null : this.priceCurrency(),
     };

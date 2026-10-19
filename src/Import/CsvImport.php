@@ -13,7 +13,8 @@ use Throwable;
 /**
  * Reads a spreadsheet of things into rows Curio can store: its own export,
  * a Discogs collection export, or a Goodreads / StoryGraph library export,
- * told apart by their headers. Covers and texts are found later, in the
+ * told apart by their headers. Ratings come across from all four (stars out
+ * of five, rounded to the nearest half). Covers and texts are found later, in the
  * background (curio:match-works), so a big file imports at once.
  */
 class CsvImport
@@ -108,6 +109,7 @@ class CsvImport
             'price_paid' => $raw['price_paid'] ?? null,
             'price_currency' => $raw['price_currency'] ?? null,
             'favourite' => in_array(mb_strtolower($raw['favourite'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
+            'rating' => $raw['rating'] ?? null,
         ], $fields);
     }
 
@@ -129,6 +131,7 @@ class CsvImport
             'condition' => self::DISCOGS_CONDITIONS[mb_strtolower($raw['collection media condition'] ?? '')] ?? null,
             'acquired_on' => $raw['date added'] ?? null,
             'notes' => $raw['collection notes'] ?? null,
+            'rating' => $raw['rating'] ?? null,
         ], $fields);
     }
 
@@ -142,6 +145,8 @@ class CsvImport
             'acquired_on' => $raw['date added'] ?? null,
             // Goodreads writes ISBNs as ="978…" so spreadsheets keep the digits.
             'barcode' => preg_replace('/\D/', '', ($raw['isbn13'] ?? '') ?: ($raw['isbn'] ?? '')),
+            // 0 means not rated.
+            'rating' => $raw['my rating'] ?? null,
         ], []);
     }
 
@@ -153,7 +158,23 @@ class CsvImport
             'status' => ($raw['read status'] ?? '') === 'to-read' ? 'wishlist' : 'owned',
             'acquired_on' => $raw['date added'] ?? null,
             'barcode' => preg_replace('/[^\dX]/i', '', $raw['isbn/uid'] ?? ''),
+            // Quarter stars ("3.75"), rounded to halves.
+            'rating' => $raw['star rating'] ?? null,
         ], []);
+    }
+
+    /** Stars out of five ("4", "4.5", "3,75") as half stars 1–10; 0, blank or nonsense is unrated. */
+    public static function rating(mixed $stars): ?int
+    {
+        $stars = str_replace(',', '.', trim((string) $stars));
+
+        if (! is_numeric($stars)) {
+            return null;
+        }
+
+        $halves = (int) round((float) $stars * 2);
+
+        return $halves >= 1 && $halves <= 10 ? $halves : null;
     }
 
     /** A select field's value from its key or any of its labels. */
@@ -205,6 +226,7 @@ class CsvImport
             'price_paid' => is_numeric($price) && (float) $price >= 0 && (float) $price < 1e8 && $status !== 'wishlist' ? round((float) $price, 2) : null,
             'price_currency' => is_numeric($price) && preg_match('/^[A-Z]{3}$/', (string) ($v['price_currency'] ?? '')) ? $v['price_currency'] : null,
             'favourite' => (bool) ($v['favourite'] ?? false),
+            'rating' => self::rating($v['rating'] ?? null),
             'fields' => ItemResource::cleanFields($type, array_filter($fields, fn ($x) => $x !== null && $x !== '')),
         ];
     }

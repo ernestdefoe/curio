@@ -62,7 +62,7 @@ class ImportShelf extends AbstractCommand
             ->join('marquee_media', 'marquee_media.id', '=', 'shelf_entries.media_id')
             ->where('shelf_entries.owned', true)
             ->orderBy('shelf_entries.user_id')
-            ->select(['shelf_entries.user_id', 'marquee_media.kind', 'marquee_media.external_id', 'marquee_media.title', 'marquee_media.year'])
+            ->select(['shelf_entries.user_id', 'marquee_media.kind', 'marquee_media.external_id', 'marquee_media.title', 'marquee_media.year', 'shelf_entries.rating'])
             ->chunk(200, function ($rows) use ($dry, $works, $types, $locale, &$added, &$skipped, &$touched) {
                 foreach ($rows as $row) {
                     [$slug, $source] = self::KINDS[$row->kind] ?? [null, null];
@@ -104,6 +104,8 @@ class ImportShelf extends AbstractCommand
                     $item->year = $work->year ?? ($row->year ? (int) $row->year : null);
                     $item->status = 'owned';
                     $item->favourite = false;
+                    // Shelf rates in the same half stars (1-10).
+                    $item->rating = $row->rating >= 1 && $row->rating <= 10 ? (int) $row->rating : null;
                     $item->position = (int) Item::query()->where('collection_id', $collection->id)->max('position') + 1;
                     $item->save();
 

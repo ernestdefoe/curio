@@ -6,13 +6,21 @@ import Icon from 'flarum/common/components/Icon';
 import Avatar from 'flarum/common/components/Avatar';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Placeholder from 'flarum/common/components/Placeholder';
+import Button from 'flarum/common/components/Button';
+import Link from 'flarum/common/components/Link';
 import username from 'flarum/common/helpers/username';
-import { t, text, label, types, loadTypes } from '../util';
+import humanTime from 'flarum/common/helpers/humanTime';
+import textContrastClass from 'flarum/common/helpers/textContrastClass';
+import { t, text, label, types, loadTypes, collectionUrl } from '../util';
+import addToMyCollection from '../copyItem';
 import { collectionCard, cover } from './bits';
 import ItemModal from './ItemModal';
 import useStyles from '../styles';
 
-/** /collections: what this forum collects. */
+/**
+ * /collections: what this forum collects. Two looks, the admin's choice: the
+ * types as Flarum's own tags page tiles (the default), or as cover tiles.
+ */
 export default class BrowsePage extends Page {
   oninit(vnode) {
     super.oninit(vnode);
@@ -83,16 +91,23 @@ export default class BrowsePage extends Page {
             <h2>{t('browse.title')}</h2>
             {this.overview ? <p>{t('browse.lead', { items: this.overview.items, members: this.overview.members })}</p> : null}
           </div>
-          <div className="Form-group CurioSearchField">
-            <Icon name="fas fa-magnifying-glass" />
-            <input
-              className="FormControl"
-              type="search"
-              value={this.q}
-              placeholder={text('browse.search')}
-              aria-label={text('browse.search')}
-              oninput={(e) => this.search(e.target.value)}
-            />
+          <div className="CurioBrowse-tools">
+            <div className="Form-group CurioSearchField">
+              <Icon name="fas fa-magnifying-glass" />
+              <input
+                className="FormControl"
+                type="search"
+                value={this.q}
+                placeholder={text('browse.search')}
+                aria-label={text('browse.search')}
+                oninput={(e) => this.search(e.target.value)}
+              />
+            </div>
+            {app.session.user && app.forum.attribute('canCreateCurio') ? (
+              <Button className="Button Button--primary" icon="fas fa-plus" onclick={() => addToMyCollection({})}>
+                {t('browse.add')}
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -117,38 +132,7 @@ export default class BrowsePage extends Page {
 
     return (
       <>
-        <div className="CurioTypes" role="list">
-          {this.shownTypes(counts).map((type) => {
-            const s = counts[type.id()] || { items: 0, covers: [] };
-            const active = this.typeId === type.id();
-            return (
-              <button
-                type="button"
-                role="listitem"
-                className={'CurioTypeTile' + (active ? ' active' : '')}
-                style={{ '--curio-accent': type.color() }}
-                aria-pressed={active ? 'true' : 'false'}
-                onclick={() => {
-                  this.typeId = active ? null : type.id();
-                  this.loadCollections();
-                }}
-              >
-                <span className="CurioTypeTile-covers">
-                  {s.covers.length ? (
-                    s.covers.map((url) => <img src={url} alt="" loading="lazy" />)
-                  ) : (
-                    <Icon name={type.icon()} className="CurioTypeTile-empty" />
-                  )}
-                </span>
-                <span className="CurioTypeTile-body">
-                  <Icon name={type.icon()} className="CurioTypeTile-icon" />
-                  <strong>{label(type.names())}</strong>
-                  <span>{t('count.items', { count: s.items })}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {!this.overview ? <LoadingIndicator display="block" /> : this.overview.layout === 'covers' ? this.coverTiles(counts) : this.tagTiles(counts)}
 
         {!chosen && this.recent && this.recent.length ? (
           <>
@@ -182,6 +166,82 @@ export default class BrowsePage extends Page {
           <Placeholder text={t('browse.none')} />
         )}
       </>
+    );
+  }
+
+  /** The types as Flarum's tags page draws tags: coloured tiles, the latest collection along the foot. */
+  tagTiles(counts) {
+    return (
+      <ul className="TagTiles CurioTagTiles">
+        {this.shownTypes(counts).map((type) => {
+          const s = counts[type.id()] || { items: 0, collections: 0 };
+          const active = this.typeId === type.id();
+          const latest = s.latest;
+          return (
+            <li className={'TagTile colored ' + textContrastClass(type.color()) + (active ? ' active' : '')} style={{ '--tag-bg': type.color() }}>
+              <Link
+                className="TagTile-info"
+                href={active ? app.route('curio.browse') : app.route('curio.browse', { type: type.id() })}
+                aria-current={active ? 'true' : undefined}
+              >
+                <div className="TagTile-heading">
+                  <Icon name={type.icon()} />
+                  <h3 className="TagTile-name">{label(type.names())}</h3>
+                </div>
+                <p className="TagTile-description">
+                  {t('count.items', { count: s.items })} · {t('count.collections', { count: s.collections || 0 })}
+                </p>
+              </Link>
+              {latest ? (
+                <Link className="TagTile-lastPostedDiscussion" href={collectionUrl({ id: () => latest.id, slug: () => latest.slug })}>
+                  <span className="TagTile-lastPostedDiscussion-title">{latest.name}</span>
+                  {latest.updatedAt ? humanTime(new Date(latest.updatedAt)) : null}
+                </Link>
+              ) : (
+                <span className="TagTile-lastPostedDiscussion" />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  /** The types as cover tiles: a strip of their latest covers over the name. */
+  coverTiles(counts) {
+    return (
+      <div className="CurioTypes" role="list">
+        {this.shownTypes(counts).map((type) => {
+          const s = counts[type.id()] || { items: 0, covers: [] };
+          const active = this.typeId === type.id();
+          return (
+            <button
+              type="button"
+              role="listitem"
+              className={'CurioTypeTile' + (active ? ' active' : '')}
+              style={{ '--curio-accent': type.color() }}
+              aria-pressed={active ? 'true' : 'false'}
+              onclick={() => {
+                this.typeId = active ? null : type.id();
+                this.loadCollections();
+              }}
+            >
+              <span className="CurioTypeTile-covers">
+                {s.covers.length ? (
+                  s.covers.map((url) => <img src={url} alt="" loading="lazy" />)
+                ) : (
+                  <Icon name={type.icon()} className="CurioTypeTile-empty" />
+                )}
+              </span>
+              <span className="CurioTypeTile-body">
+                <Icon name={type.icon()} className="CurioTypeTile-icon" />
+                <strong>{label(type.names())}</strong>
+                <span>{t('count.items', { count: s.items })}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     );
   }
 

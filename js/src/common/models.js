@@ -51,6 +51,7 @@ Object.assign(CurioItem.prototype, {
   facet: Model.attribute('facet'),
   notes: Model.attribute('notes'),
   favourite: Model.attribute('favourite'),
+  rating: Model.attribute('rating'),
   barcode: Model.attribute('barcode'),
   pricePaid: Model.attribute('pricePaid'),
   priceCurrency: Model.attribute('priceCurrency'),
@@ -81,6 +82,7 @@ Object.assign(CurioWork.prototype, {
   sourceUrl: Model.attribute('sourceUrl'),
   languages: Model.attribute('languages'),
   source: Model.attribute('source'),
+  facts: Model.attribute('facts'),
 });
 
 export function registerModels(app) {

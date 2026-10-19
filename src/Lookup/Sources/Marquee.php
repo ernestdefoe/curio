@@ -80,7 +80,24 @@ class Marquee implements Source
             'cover' => self::image($d['poster'] ?? null),
             'wikidata' => $wikidata,
             'description' => is_string($d['overview'] ?? null) ? $d['overview'] : null,
+            // Marquee's game details carry the same facts as Curio's own IGDB look-up.
+            'facts' => $this->kind === 'game' ? [
+                'developer' => self::names($d['crew']['developer'] ?? []),
+                'publisher' => self::names($d['crew']['publisher'] ?? []),
+                'released' => is_string($d['date'] ?? null) ? $d['date'] : null,
+                'platforms' => self::names($d['platforms'] ?? []),
+                'genres' => self::names($d['genres'] ?? []),
+            ] : null,
         ];
+    }
+
+    /** @return list<string> names from a list of strings or of {name} */
+    private static function names(mixed $list): array
+    {
+        return array_values(array_filter(array_map(
+            fn ($v) => is_string($v) ? $v : (is_array($v) && is_string($v['name'] ?? null) ? $v['name'] : null),
+            is_array($list) ? $list : []
+        )));
     }
 
     /** Marquee marks an outage (down, rate-limited) by wrapping the cause. */

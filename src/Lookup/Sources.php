@@ -3,6 +3,7 @@
 namespace Ernestdefoe\Curio\Lookup;
 
 use Ernestdefoe\Curio\Lookup\Sources\Deezer;
+use Ernestdefoe\Curio\Lookup\Sources\Igdb;
 use Ernestdefoe\Curio\Lookup\Sources\Marquee;
 use Ernestdefoe\Curio\Lookup\Sources\MusicBrainz;
 use Ernestdefoe\Curio\Lookup\Sources\OpenLibrary;
@@ -12,8 +13,9 @@ use Illuminate\Contracts\Container\Container;
 
 /**
  * Which source answers for a type, and which one a stored work came from.
- * Books and music are built in (no keys). Films, TV and games come through
- * Marquee's own sources when Marquee is enabled and set up.
+ * Books and music are built in (no keys). Games come from IGDB when the forum
+ * has a Twitch app set up in Curio's settings. Films, TV and (without IGDB)
+ * games come through Marquee's own sources when Marquee is enabled and set up.
  */
 class Sources
 {
@@ -25,7 +27,8 @@ class Sources
         private ExtensionManager $extensions,
         private OpenLibrary $openLibrary,
         private Deezer $deezer,
-        private MusicBrainz $musicBrainz
+        private MusicBrainz $musicBrainz,
+        private Igdb $igdb
     ) {
     }
 
@@ -35,7 +38,8 @@ class Sources
         return match ($type->source) {
             'books' => $this->openLibrary,
             'music' => $this->deezer,
-            'movies', 'tv', 'games' => $this->marquee(self::MARQUEE_KINDS[$type->source]),
+            'games' => $this->igdb->configured() ? $this->igdb : $this->marquee('game'),
+            'movies', 'tv' => $this->marquee(self::MARQUEE_KINDS[$type->source]),
             default => null,
         };
     }
@@ -47,6 +51,7 @@ class Sources
             $key === 'openlibrary' => $this->openLibrary,
             $key === 'deezer' => $this->deezer,
             $key === 'musicbrainz' => $this->musicBrainz,
+            $key === 'igdb' => $this->igdb->configured() ? $this->igdb : null,
             str_starts_with($key, 'marquee-') && in_array(substr($key, 8), self::MARQUEE_KINDS, true) => $this->marquee(substr($key, 8)),
             default => null,
         };

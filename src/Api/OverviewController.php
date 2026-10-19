@@ -3,8 +3,10 @@
 namespace Ernestdefoe\Curio\Api;
 
 use Ernestdefoe\Curio\Collection;
+use Ernestdefoe\Curio\Settings;
 use Ernestdefoe\Curio\Storage\Images;
 use Flarum\Http\RequestUtil;
+use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\ConnectionInterface;
 use Laminas\Diactoros\Response\JsonResponse;
@@ -16,13 +18,14 @@ use Psr\Http\Server\RequestHandlerInterface;
  * GET /api/curio/overview: what the forum collects, per type, for the browse
  * page's tiles. Counted from public collections only, once every ten minutes,
  * and shared by everyone (so a members-only or private collection never shows
- * through, whoever asks).
+ * through, whoever asks). Each type also names its latest public collection,
+ * for the tags-page layout's footer line.
  */
 class OverviewController implements RequestHandlerInterface
 {
     private const SECONDS = 600;
 
-    public function __construct(private Cache $cache, private Images $images, private ConnectionInterface $db)
+    public function __construct(private Cache $cache, private Images $images, private ConnectionInterface $db, private SettingsRepositoryInterface $settings)
     {
     }
 
@@ -30,7 +33,10 @@ class OverviewController implements RequestHandlerInterface
     {
         RequestUtil::getActor($request)->assertCan('ernestdefoe-curio.view');
 
-        return new JsonResponse($this->cache->remember('curio.overview', self::SECONDS, function () {
+        // The layout is read fresh; only the counting is cached.
+        $layout = $this->settings->get(Settings::BROWSE_LAYOUT) === 'covers' ? 'covers' : 'tags';
+
+        return new JsonResponse(['layout' => $layout] + $this->cache->remember('curio.overview.2', self::SECONDS, function () {
             $public = Collection::query()->where('visibility', 'public');
 
             $types = [];
@@ -42,9 +48,12 @@ class OverviewController implements RequestHandlerInterface
             }
 
             foreach (array_keys($types) as $typeId) {
-                $types[$typeId]['covers'] = (clone $public)->where('type_id', $typeId)->where('owned_count', '>', 0)
-                    ->orderByDesc('updated_at')->limit(3)->get(['preview'])
-                    ->map(fn (Collection $c) => $this->images->url($c->preview[0] ?? null, true))->filter()->values()->all();
+                $latest = (clone $public)->where('type_id', $typeId)->where('owned_count', '>', 0)
+                    ->orderByDesc('updated_at')->limit(3)->get(['id', 'name', 'slug', 'preview', 'updated_at']);
+
+                $types[$typeId]['covers'] = $latest->map(fn (Collection $c) => $this->images->url($c->preview[0] ?? null, true))->filter()->values()->all();
+                $first = $latest->first();
+                $types[$typeId]['latest'] = $first ? ['id' => (string) $first->id, 'name' => $first->name, 'slug' => $first->slug, 'updatedAt' => $first->updated_at?->toIso8601String()] : null;
             }
 
             return [

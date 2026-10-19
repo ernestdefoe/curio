@@ -4,6 +4,7 @@ import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import Link from 'flarum/common/components/Link';
 import { registerModels } from '../common/models';
 import TypesEditor from './TypesEditor';
+import { fofWidget } from '../common/widget';
 
 const t = (key, params) => app.translator.trans(`ernestdefoe-curio.admin.${key}`, params);
 
@@ -28,12 +29,55 @@ class CurioPage extends ExtensionPage {
 
 app.initializers.add('ernestdefoe-curio', () => {
   registerModels(app);
+
+  // FoF Forum Widgets' layout editor only lists widgets registered on the
+  // admin side too; without this, a placed widget could not be moved or removed.
+  if (app.data.settings['ernestdefoe-curio.widget'] === '1' && app.widgets) {
+    const mod = globalThis.flarum?.reg?.get?.('fof-forum-widgets-core', 'common/extend/Widgets');
+    const Widgets = mod?.default ?? mod;
+    if (Widgets) new Widgets().add(fofWidget(null)).extend(app, 'ernestdefoe-curio');
+  }
 });
 
 // Callbacks, not values: this module runs before the app has booted.
 export const extend = [
   new Admin()
     .page(CurioPage)
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.browse_layout',
+      type: 'select',
+      label: t('settings.layout_label'),
+      help: t('settings.layout_help'),
+      options: { tags: t('settings.layout_tags'), covers: t('settings.layout_covers') },
+      default: 'tags',
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.widget',
+      type: 'boolean',
+      label: t('settings.widget_label'),
+      help: t('settings.widget_help'),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.igdb_client_id',
+      type: 'text',
+      label: t('settings.igdb_id_label'),
+      help: (
+        <>
+          {t('settings.igdb_help')}{' '}
+          <Link href="https://dev.twitch.tv/console/apps/create" external target="_blank">
+            {t('settings.igdb_link')}
+          </Link>{' '}
+          <Link href="https://api-docs.igdb.com/#account-creation" external target="_blank">
+            {t('settings.igdb_docs')}
+          </Link>
+        </>
+      ),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.igdb_client_secret',
+      type: 'password',
+      label: t('settings.igdb_secret_label'),
+    }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.upcitemdb_key',
       type: 'text',

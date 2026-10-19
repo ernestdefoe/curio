@@ -49,7 +49,11 @@ return [
         ]),
 
     (new Extend\Settings())
-        ->default(Settings::MAX_UPLOAD_KB, 8192),
+        ->default(Settings::MAX_UPLOAD_KB, 8192)
+        ->default(Settings::WIDGET, false)
+        ->default(Settings::BROWSE_LAYOUT, 'tags')
+        // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
+        ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval'),
 
     new Extend\ApiResource(Api\TypeResource::class),
     new Extend\ApiResource(Api\CollectionResource::class),

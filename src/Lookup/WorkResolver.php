@@ -52,6 +52,7 @@ class WorkResolver
         $work->creator = $details['creator'] ? mb_substr($details['creator'], 0, 255) : null;
         $work->year = $details['year'] && $details['year'] > 0 && $details['year'] < 3000 ? $details['year'] : null;
         $work->cover = $this->cover($details['cover'] ?? null);
+        $work->facts = self::facts($details['facts'] ?? null);
         $work->refreshed_at = $now;
         $work->created_at = $now;
 
@@ -67,6 +68,34 @@ class WorkResolver
         $this->texts->fill($work, $details['wikidata'] ?? null, $details['description'] ?? null);
 
         return $work;
+    }
+
+    /**
+     * Developer, publisher, release date, platforms and genres, when the source
+     * knows them: short lists of short names, nothing else.
+     */
+    public static function facts(mixed $facts): ?array
+    {
+        if (! is_array($facts)) {
+            return null;
+        }
+
+        $clean = [];
+        foreach (['developer', 'publisher', 'platforms', 'genres'] as $key) {
+            $names = array_values(array_unique(array_filter(array_map(
+                fn ($v) => is_string($v) ? mb_substr(trim($v), 0, 80) : '',
+                array_slice(is_array($facts[$key] ?? null) ? $facts[$key] : [], 0, 12)
+            ))));
+            if ($names) {
+                $clean[$key] = $names;
+            }
+        }
+
+        if (is_string($facts['released'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $facts['released'])) {
+            $clean['released'] = $facts['released'];
+        }
+
+        return $clean ?: null;
     }
 
     private function cover(?string $url): ?string

@@ -22,6 +22,7 @@ ernestdefoe-curio:
       items: "{count, plural, one {# objet} other {# objets}}"
       wanted: "{count, plural, one {# recherché} other {# recherchés}}"
       trade: "{count} à échanger"
+      collections: "{count, plural, one {# collection} other {# collections}}"
     filter:
       all: Tout
       owned: Possédés
@@ -33,9 +34,11 @@ ernestdefoe-curio:
       recent: Ajouts récents
       title: Titre
       year: Plus récents d'abord
+      rating: Mieux notés
     table:
       title: Titre
       status: Statut
+      rating: Note
     page:
       missing: Cette collection n'existe pas, ou vous ne pouvez pas la voir.
       empty: Rien ici pour l'instant.
@@ -108,6 +111,9 @@ ernestdefoe-curio:
       save: Enregistrer
       delete: Supprimer l'objet
       delete_confirm: "Supprimer {title} ? C'est définitif."
+      rating: Votre note
+      rating_value: "{stars} sur 5"
+      rating_none: Pas noté. Touchez une étoile ; touchez-la à nouveau pour effacer.
     item:
       missing: Cet objet n'existe pas, ou vous ne pouvez pas le voir.
       favourite: Favori
@@ -132,6 +138,11 @@ ernestdefoe-curio:
       show_off: Le montrer
       discussed: Discussion
       cancel: Annuler
+      developer: Développeur
+      publisher: Éditeur
+      released: Sortie
+      genres: Genres
+      platforms: Plateformes
     profile:
       nav: Collections
       items: Objets
@@ -153,6 +164,33 @@ ernestdefoe-curio:
       recent: Ajouts récents
       featured: Collections à la une
       none: Aucune collection ici pour l'instant.
+      add: Ajouter un objet
+    nav:
+      mine: Mes collections
+    genre:
+      point_and_click: "Pointer-et-cliquer"
+      fighting: "Combat"
+      shooter: "Tir"
+      music: "Musique"
+      platform: "Plates-formes"
+      puzzle: "Réflexion"
+      racing: "Course"
+      real_time_strategy_rts: "Stratégie en temps réel"
+      role_playing_rpg: "Jeu de rôle (RPG)"
+      simulator: "Simulation"
+      sport: "Sport"
+      strategy: "Stratégie"
+      turn_based_strategy_tbs: "Stratégie au tour par tour"
+      tactical: "Tactique"
+      hack_and_slash_beat_em_up: "Hack'n'slash / Beat'em all"
+      quiz_trivia: "Quiz"
+      pinball: "Flipper"
+      adventure: "Aventure"
+      indie: "Indépendant"
+      arcade: "Arcade"
+      visual_novel: "Visual novel"
+      card_board_game: "Jeu de cartes et de plateau"
+      moba: "MOBA"
     showoff:
       title: "Mon {title}"
       composer: "Vous montrez {title}"
@@ -168,7 +206,7 @@ ernestdefoe-curio:
       open_item: Ouvrir l’objet
     transfer:
       heading: Importer et exporter
-      help: "Importez un tableur : un export Curio, un export de collection Discogs, ou un export de bibliothèque Goodreads ou StoryGraph. Les jaquettes et descriptions sont trouvées en arrière-plan dans les minutes qui suivent."
+      help: "Importez un tableur : un export Curio, un export de collection Discogs, ou un export de bibliothèque Goodreads ou StoryGraph. Les notes suivent aussi. Les jaquettes et descriptions sont trouvées en arrière-plan dans les minutes qui suivent."
       import: Importer un fichier CSV
       export: Télécharger en CSV
       done: "{count, plural, one {# objet importé} other {# objets importés}} depuis le fichier {format} ({skipped} ignorés)."
@@ -196,6 +234,17 @@ ernestdefoe-curio:
       deepl_link: Obtenir une clé
       max_upload_label: Photo la plus lourde (Ko)
       max_upload_help: Les photos sont réencodées en WebP et redimensionnées, ce qui est stocké est donc bien plus léger.
+      layout_label: Présentation de la page Collections
+      layout_help: Comment la page Collections montre chaque type.
+      layout_tags: Comme la page des étiquettes (par défaut de Flarum)
+      layout_covers: Tuiles de couvertures
+      widget_label: Proposer le widget « Ajouts récents »
+      widget_help: Désactivé par défaut. Une fois activé, le widget peut être placé avec Bespoke ou FoF Forum Widgets (il apparaît d'abord dans la colonne de droite de FoF ; déplacez-le ou retirez-le dans l'éditeur de FoF). Rechargez l'administration après l'avoir activé.
+      igdb_id_label: Client ID IGDB (facultatif)
+      igdb_secret_label: Client secret IGDB
+      igdb_help: "Avec une application de développeur Twitch gratuite, la recherche de jeux passe par IGDB : jaquette, développeur, éditeur, date de sortie, plateformes et genres. Enregistrez une application (nom libre ; URL de redirection OAuth http://localhost ; catégorie Application Integration), puis copiez son Client ID et créez un nouveau secret. Sans cela, les jeux sont recherchés via Marquee s'il est installé."
+      igdb_link: Créer une application Twitch
+      igdb_docs: (instructions d'IGDB)
     types:
       heading: Types de collection
       help: Les membres choisissent un type pour chaque collection. Le type fixe la forme des jaquettes, les détails demandés et la source des recherches. Glissez pour changer l'ordre.
@@ -207,7 +256,7 @@ ernestdefoe-curio:
       color: Couleur
       shape: Forme des jaquettes
       source: Recherches
-      needs_marquee: La recherche de films, séries et jeux vient de Marquee. Tant qu'il n'est pas installé, les membres peuvent scanner des codes-barres ou ajouter des objets à la main.
+      needs_marquee: La recherche de films et séries vient de Marquee, celle de jeux d'IGDB (à configurer dans les réglages ci-dessus) ou de Marquee. Tant qu'il n'est pas installé, les membres peuvent scanner des codes-barres ou ajouter des objets à la main.
       fields: Détails
       fields_help: Ce que les membres remplissent pour chaque objet. Le premier champ à choix sert à la répartition et au filtre des pages de collection (plateforme, format…).
       field_label: "Libellé ({language})"
@@ -234,7 +283,7 @@ ernestdefoe-curio:
       music: Albums (Deezer, MusicBrainz)
       movies: Films (via Marquee)
       tv: Séries (via Marquee)
-      games: Jeux (via Marquee)
+      games: Jeux (IGDB, ou via Marquee)
     kind:
       select: Choix
       text: Texte

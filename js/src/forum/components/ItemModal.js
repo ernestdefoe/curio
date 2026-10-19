@@ -11,8 +11,20 @@ import Link from 'flarum/common/components/Link';
 import { startShowOff } from '../showOff';
 import addToMyCollection from '../copyItem';
 import useStyles from '../styles';
+import Stars from './Stars';
 
 const LONG = 600;
+
+/** IGDB's genre names in the reader's language, when Curio has a word for them. */
+const genre = (name) => {
+  const key =
+    'ernestdefoe-curio.forum.genre.' +
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
+  return app.translator.translations[key] ? app.translator.trans(key) : name;
+};
 
 /** One item: its photos, details, the owner's notes and what the forum knows about it, in the reader's language. */
 export default class ItemModal extends Modal {
@@ -101,8 +113,13 @@ export default class ItemModal extends Modal {
             {item.displayTitle()} {item.year() ? <span className="CurioMuted">({item.year()})</span> : null}
           </h2>
           {item.subtitle() ? <div className="CurioItem-sub">{item.subtitle()}</div> : null}
+          {item.rating() ? (
+            <div className="CurioItem-rating">
+              <Stars value={item.rating()} />
+            </div>
+          ) : null}
 
-          {this.facts(item, type)}
+          {this.facts(item, type, work)}
 
           {item.notes() ? (
             <blockquote className="CurioItem-notes">
@@ -138,10 +155,19 @@ export default class ItemModal extends Modal {
     );
   }
 
-  facts(item, type) {
+  facts(item, type, work) {
     const fields = type ? type.fields() || [] : [];
     const values = item.fields() || {};
     const rows = [];
+    const known = (work && work.facts()) || {};
+    const list = (names) => (names || []).join(', ');
+
+    // What the look-up knows about the title (IGDB for games).
+    if (known.developer) rows.push([t('item.developer'), list(known.developer)]);
+    if (known.publisher) rows.push([t('item.publisher'), list(known.publisher)]);
+    if (known.released) rows.push([t('item.released'), dayjs(known.released).format('LL')]);
+    if (known.genres) rows.push([t('item.genres'), list(known.genres.map(genre))]);
+    if (known.platforms) rows.push([t('item.platforms'), list(known.platforms)]);
 
     fields.forEach((f) => {
       const v = values[f.key];

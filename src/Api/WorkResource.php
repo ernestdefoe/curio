@@ -70,6 +70,9 @@ class WorkResource extends AbstractDatabaseResource
                 ->nullable()
                 ->get(fn (Work $work) => $this->text($work)?->source_url),
             Schema\Integer::make('languages'),
+            // Developer, publisher, release date, platforms, genres (games looked up on IGDB).
+            Schema\Arr::make('facts')
+                ->nullable(),
             Schema\Str::make('source'),
         ];
     }

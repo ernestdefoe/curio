@@ -53,6 +53,12 @@ class CurioTest extends TestCase
         return $this->send($this->request('GET', $path, $as ? ['authenticatedAs' => $as] : [])->withQueryParams($query));
     }
 
+    /** A setting changed after the app has booted. */
+    private function put(string $key, string $value): void
+    {
+        $this->app()->getContainer()->make(\Flarum\Settings\SettingsRepositoryInterface::class)->set($key, $value);
+    }
+
     private function typeId(string $slug): int
     {
         return (int) $this->database()->table('curio_types')->where('slug', $slug)->value('id');
@@ -607,6 +613,7 @@ class CurioTest extends TestCase
 
         $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get();
         $this->assertSame('Fleetwood Mac', $rows[0]->subtitle);
+        $this->assertSame([10, null], [(int) $rows[0]->rating, $rows[1]->rating]);
         $this->assertSame('very_good', $rows[0]->condition);
         $this->assertSame(1977, (int) $rows[0]->year);
         $this->assertSame('2023-04-12', substr((string) $rows[0]->acquired_on, 0, 10));
@@ -630,6 +637,168 @@ class CurioTest extends TestCase
         $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get();
         $this->assertSame(['Dune', 'owned', '9780441172719', 1965], [$rows[0]->title, $rows[0]->status, $rows[0]->barcode, (int) $rows[0]->year]);
         $this->assertSame(['Hyperion', 'wishlist', null], [$rows[1]->title, $rows[1]->status, $rows[1]->acquired_on]);
+        // Goodreads' "My Rating": 5 stars → 10 half stars; 0 is unrated.
+        $this->assertSame([10, null], [(int) $rows[0]->rating, $rows[1]->rating]);
+    }
+
+    #[Test]
+    public function a_storygraph_export_brings_its_quarter_star_ratings_as_halves(): void
+    {
+        $id = $this->newCollection(3, [], 'books');
+        $csv = "Title,Authors,Contributors,ISBN/UID,Format,Read Status,Date Added,Last Date Read,Dates Read,Read Count,Moods,Pace,Character- or Plot-Driven?,Strong Character Development?,Loveable Characters?,Diverse Characters?,Flawed Characters?,Star Rating,Review,Content Warnings,Content Warning Description,Tags,Owned?
+"
+            ."Piranesi,Susanna Clarke,,9781635575996,hardcover,read,2024/01/02,,,1,,,,,,,,3.75,,,,,Yes
+"
+            ."Circe,Madeline Miller,,9780316556347,paperback,to-read,2024/01/03,,,0,,,,,,,,,,,,,No
+";
+
+        $this->assertSame('storygraph', $this->json($this->upload(3, $id, $csv))['format']);
+        $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get();
+        $this->assertSame([8, null], [(int) $rows[0]->rating, $rows[1]->rating]);
+    }
+
+    #[Test]
+    public function owners_rate_items_in_half_stars_and_sort_by_rating(): void
+    {
+        $id = $this->newCollection(3);
+        $low = $this->json($this->item(3, $id, ['title' => 'Okay game', 'rating' => 5]))['data']['id'];
+        $this->item(3, $id, ['title' => 'Unrated game']);
+        $high = $this->json($this->item(3, $id, ['title' => 'Great game', 'rating' => 9]))['data']['id'];
+
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Too good', 'rating' => 11])->getStatusCode());
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Too bad', 'rating' => 0])->getStatusCode());
+
+        $list = $this->json($this->get('/api/curio-items', ['filter' => ['collection' => $id], 'sort' => '-rating'], 4))['data'];
+        $this->assertSame([$high, $low], array_slice(array_column($list, 'id'), 0, 2));
+        $this->assertSame(9, $list[0]['attributes']['rating']);
+
+        // Only the owner changes it.
+        $patch = fn (int $as) => $this->send($this->request('PATCH', "/api/curio-items/$low", [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'curio-items', 'id' => $low, 'attributes' => ['rating' => 10]]],
+        ]));
+        $this->assertSame(403, $patch(4)->getStatusCode());
+        $this->assertSame(200, $patch(3)->getStatusCode());
+
+        // Exported as stars out of five, and read back in.
+        $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
+        $this->assertStringContainsString(',4.5', $csv);
+        $to = $this->newCollection(3, ['name' => 'Copy']);
+        $this->upload(3, $to, $csv);
+        $this->assertEqualsCanonicalizing([10, 9, null], $this->database()->table('curio_items')->where('collection_id', $to)->pluck('rating')->map(fn ($r) => $r === null ? null : (int) $r)->all());
+    }
+
+    #[Test]
+    public function the_recently_added_widget_is_off_until_an_admin_turns_it_on(): void
+    {
+        $this->assertFalse($this->json($this->get('/api'))['data']['attributes']['curioWidget']);
+    }
+
+    #[Test]
+    public function an_admin_can_turn_the_widget_on(): void
+    {
+        $this->setting('ernestdefoe-curio.widget', '1');
+        $this->assertTrue($this->json($this->get('/api'))['data']['attributes']['curioWidget']);
+    }
+
+    #[Test]
+    public function the_browse_page_layout_is_the_tags_look_unless_the_admin_picks_covers(): void
+    {
+        $id = $this->newCollection(3, ['name' => 'Nintendo shelf']);
+        $this->item(3, $id, ['title' => 'Seen']);
+
+        $body = $this->json($this->get('/api/curio/overview'));
+        $this->assertSame('tags', $body['layout']);
+        $this->assertSame(['id' => (string) $id, 'name' => 'Nintendo shelf'], array_intersect_key($body['types'][(string) $this->typeId('games')]['latest'], ['id' => 1, 'name' => 1]));
+
+        $this->put('ernestdefoe-curio.browse_layout', 'covers');
+        $this->assertSame('covers', $this->json($this->get('/api/curio/overview'))['layout']);
+    }
+
+    /** IGDB answered by a fake: two token-holding searches, then a game's details. */
+    private function fakeIgdb(): object
+    {
+        $container = $this->app()->getContainer();
+        $fake = new class($container->make(\Illuminate\Contracts\Cache\Repository::class), $container->make(\Flarum\Http\UrlGenerator::class)) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $calls = [];
+
+            public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+            {
+                $this->calls[] = $service.' '.$url;
+
+                if ($service === 'twitch') {
+                    return ['access_token' => 'tok', 'expires_in' => 5000000];
+                }
+
+                $game = ['id' => 154986, 'name' => 'Metroid Dread', 'slug' => 'metroid-dread', 'first_release_date' => 1633651200,
+                    'summary' => 'Samus on ZDR.', 'cover' => ['image_id' => 'co2r5x'], 'total_rating_count' => 300,
+                    'platforms' => [['name' => 'Nintendo Switch']], 'genres' => [['name' => 'Platform'], ['name' => 'Adventure']],
+                    'involved_companies' => [
+                        ['company' => ['name' => 'MercurySteam'], 'developer' => true, 'publisher' => false],
+                        ['company' => ['name' => 'Nintendo'], 'developer' => false, 'publisher' => true],
+                    ]];
+
+                return str_contains((string) $body, 'search') ? [['id' => 1, 'name' => 'Metroid Dread Demo'], $game] : [$game];
+            }
+        };
+        $container->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        return $fake;
+    }
+
+    #[Test]
+    public function games_are_looked_up_on_igdb_with_the_forums_twitch_app(): void
+    {
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $fake = $this->fakeIgdb();
+
+        $search = fn () => $this->json($this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3,
+            'json' => ['type' => $this->typeId('games'), 'q' => 'metroid dread'],
+        ])));
+
+        $first = $search()['results'];
+        $this->assertSame(['igdb', '154986', 'Metroid Dread', 'MercurySteam', 2021], [$first[0]['source'], $first[0]['id'], $first[0]['title'], $first[0]['creator'], $first[0]['year']]);
+        $this->assertStringContainsString('images.igdb.com', $first[0]['cover']);
+
+        // The token and the search are both kept: a second search sends nothing.
+        $search();
+        $this->assertSame(['twitch https://id.twitch.tv/oauth2/token', 'igdb https://api.igdb.com/v4/games'], $fake->calls);
+    }
+
+    #[Test]
+    public function an_igdb_game_brings_its_developer_publisher_date_platforms_and_genres(): void
+    {
+        $details = \Ernestdefoe\Curio\Lookup\Sources\Igdb::normalise([
+            'name' => 'Metroid Dread', 'slug' => 'metroid-dread', 'first_release_date' => 1633651200,
+            'platforms' => [['name' => 'Nintendo Switch']], 'genres' => [['name' => 'Platform']],
+            'involved_companies' => [
+                ['company' => ['name' => 'MercurySteam'], 'developer' => true],
+                ['company' => ['name' => 'Nintendo'], 'publisher' => true],
+            ],
+        ]);
+
+        $this->assertSame(['P5794', 'metroid-dread'], $details['wikidata']);
+        $this->assertSame([
+            'developer' => ['MercurySteam'], 'publisher' => ['Nintendo'], 'platforms' => ['Nintendo Switch'], 'genres' => ['Platform'], 'released' => '2021-10-08',
+        ], \Ernestdefoe\Curio\Lookup\WorkResolver::facts($details['facts']));
+        $this->assertNull(\Ernestdefoe\Curio\Lookup\WorkResolver::facts(['developer' => 'not a list', 'released' => '8 Oct']));
+    }
+
+    #[Test]
+    public function without_igdb_keys_games_search_as_before(): void
+    {
+        // No IGDB keys and no Marquee: games have no title search, only barcodes and by hand.
+        $types = $this->json($this->get('/api/curio-types'))['data'];
+        $games = array_values(array_filter($types, fn ($t) => $t['attributes']['slug'] === 'games'))[0];
+        $this->assertFalse($games['attributes']['searchable']);
+
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $types = $this->json($this->get('/api/curio-types'))['data'];
+        $games = array_values(array_filter($types, fn ($t) => $t['attributes']['slug'] === 'games'))[0];
+        $this->assertTrue($games['attributes']['searchable']);
     }
 
     #[Test]

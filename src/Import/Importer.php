@@ -77,6 +77,7 @@ class Importer
                 $item->price_paid = $row['price_paid'] !== null ? (string) $row['price_paid'] : null;
                 $item->price_currency = $row['price_currency'];
                 $item->favourite = $row['favourite'];
+                $item->rating = $row['rating'];
                 $item->fields = $row['fields'];
                 $item->facet = $facet ? ($row['fields'][$facet['key']] ?? null) : null;
                 $item->position = ++$position;

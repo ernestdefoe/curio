@@ -10,6 +10,7 @@ import GridSort from '../../common/gridSort';
 import CollectionEditModal from './CollectionEditModal';
 import ItemModal from './ItemModal';
 import useStyles from '../styles';
+import addToMyCollection from '../copyItem';
 
 /** Profile → Collections: what the member collects, their collections, their wishlist. */
 export default class UserCollectionsPage extends UserPage {
@@ -96,10 +97,15 @@ export default class UserCollectionsPage extends UserPage {
             {own && app.forum.attribute('canCreateCurio') ? (
               <Button
                 className="Button"
-                icon="fas fa-plus"
+                icon="fas fa-folder-plus"
                 onclick={() => app.modal.show(CollectionEditModal, { onsave: (c) => m.route.set(collectionUrl(c)) })}
               >
                 {t('profile.new')}
+              </Button>
+            ) : null}
+            {own && app.forum.attribute('canCreateCurio') && list.length ? (
+              <Button className="Button Button--primary" icon="fas fa-plus" onclick={() => addToMyCollection({})}>
+                {t('browse.add')}
               </Button>
             ) : null}
           </div>

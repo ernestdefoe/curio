@@ -246,6 +246,12 @@ class ItemResource extends AbstractDatabaseResource
                 ->rule('max:2000'),
             Schema\Boolean::make('favourite')
                 ->writable(),
+            // The owner's rating in half stars, 1 (½ ★) to 10 (★★★★★); null when unrated.
+            Schema\Integer::make('rating')
+                ->nullable()
+                ->writable()
+                ->rule('integer')
+                ->rule('between:1,10'),
             Schema\Str::make('barcode')
                 ->nullable()
                 ->visible($isOwner)
@@ -333,6 +339,7 @@ class ItemResource extends AbstractDatabaseResource
             SortColumn::make('createdAt'),
             SortColumn::make('title'),
             SortColumn::make('year'),
+            SortColumn::make('rating'),
         ];
     }
 

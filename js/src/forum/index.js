@@ -18,6 +18,8 @@ const loadHero = () =>
     m.redraw();
   }));
 
+const myCollections = () => app.route('user.curio', { username: app.session.user.slug() });
+
 app.initializers.add('ernestdefoe-curio', () => {
   registerModels(app);
 
@@ -45,6 +47,27 @@ app.initializers.add('ernestdefoe-curio', () => {
         {t('browse.title')}
       </LinkButton>,
       85
+    );
+    // One click to your own collections (instead of Profile → Collections).
+    if (app.session.user && app.forum.attribute('canCreateCurio')) {
+      items.add(
+        'curioMine',
+        <LinkButton href={myCollections()} icon="fas fa-box-archive">
+          {t('nav.mine')}
+        </LinkButton>,
+        84
+      );
+    }
+  });
+
+  extend('flarum/forum/components/SessionDropdown', 'items', function (items) {
+    if (!app.forum.attribute('canCreateCurio')) return;
+    items.add(
+      'curio',
+      <LinkButton href={myCollections()} icon="fas fa-boxes-stacked">
+        {t('nav.mine')}
+      </LinkButton>,
+      95
     );
   });
 

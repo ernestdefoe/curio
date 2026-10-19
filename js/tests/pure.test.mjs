@@ -41,3 +41,32 @@ test('arrow keys move a card one place and save once', () => {
   press(1, 'Enter');
   assert.equal(saves, 2);
 });
+
+import { onlyOption } from '../src/common/labels.js';
+import { ratingAt, starsLabel } from '../src/common/rating.js';
+
+test('a looked-up platform list picks an option only when exactly one matches', () => {
+  const field = {
+    kind: 'select',
+    options: [
+      { key: 'ps5', labels: { en: 'PlayStation 5' } },
+      { key: 'pc', labels: { en: 'PC' } },
+      { key: 'switch', labels: { en: 'Nintendo Switch' } },
+    ],
+  };
+  assert.equal(onlyOption(field, ['PlayStation 5']), 'ps5');
+  assert.equal(onlyOption(field, ['PC (Microsoft Windows)', 'Mac']), 'pc');
+  assert.equal(onlyOption(field, ['PC (Microsoft Windows)', 'PlayStation 5']), null);
+  assert.equal(onlyOption(field, ['Dreamcast']), null);
+  assert.equal(onlyOption(field, undefined), null);
+});
+
+test('half-star ratings follow the pointer and read as stars', () => {
+  assert.equal(ratingAt(1, 100), 1);
+  assert.equal(ratingAt(50, 100), 5);
+  assert.equal(ratingAt(100, 100), 10);
+  assert.equal(ratingAt(150, 100), 10);
+  assert.equal(ratingAt(5, 0), 0);
+  assert.equal(starsLabel(9), '4.5');
+  assert.equal(starsLabel(8), '4');
+});
