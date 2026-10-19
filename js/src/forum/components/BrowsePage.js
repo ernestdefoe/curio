@@ -181,7 +181,11 @@ export default class BrowsePage extends Page {
           const active = this.typeId === type.id();
           const latest = s.latest;
           return (
-            <li className={'TagTile colored ' + textContrastClass(type.color()) + (active ? ' active' : '')} style={{ '--tag-bg': type.color() }}>
+            // A type with no colour is drawn like an uncoloured tag.
+            <li
+              className={'TagTile' + (type.color() ? ' colored ' + textContrastClass(type.color()) : '') + (active ? ' active' : '')}
+              style={{ '--tag-bg': type.color() || undefined }}
+            >
               <Link
                 className="TagTile-info"
                 href={active ? app.route('curio.browse') : app.route('curio.browse', { type: type.id() })}

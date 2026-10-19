@@ -87,9 +87,13 @@ class TypeResource extends AbstractDatabaseResource
             Schema\Str::make('icon')
                 ->writable()
                 ->rule('regex:/^fa[a-z]? fa-[a-z0-9-]{1,60}( fa-[a-z0-9-]{1,30})?$/'),
+            // Blank, like a tag with no colour: the forum's own colour is used.
             Schema\Str::make('color')
+                ->nullable()
                 ->writable()
-                ->rule('regex:/^#[0-9a-fA-F]{6}$/'),
+                ->rule('regex:/^#([0-9a-fA-F]{3}){1,2}$/')
+                ->get(fn (Type $type) => $type->color ?: null)
+                ->set(fn (Type $type, ?string $value) => $type->color = self::hex($value)),
             Schema\Str::make('shape')
                 ->writable()
                 ->in(Type::SHAPES),
@@ -113,6 +117,14 @@ class TypeResource extends AbstractDatabaseResource
     public function sorts(): array
     {
         return [SortColumn::make('position')];
+    }
+
+    /** "#abc" → "#aabbcc", lower case; blank stays blank (stored as ""). */
+    public static function hex(?string $value): string
+    {
+        $value = strtolower(trim((string) $value));
+
+        return strlen($value) === 4 ? preg_replace('/^#(.)(.)(.)$/', '#$1$1$2$2$3$3', $value) : $value;
     }
 
     /**

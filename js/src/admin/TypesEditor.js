@@ -2,6 +2,7 @@ import app from 'flarum/admin/app';
 import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import Select from 'flarum/common/components/Select';
+import ColorPreviewInput from 'flarum/common/components/ColorPreviewInput';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import extractText from 'flarum/common/utils/extractText';
 import GridSort from '../common/gridSort';
@@ -46,12 +47,31 @@ export default class TypesEditor {
       ? {
           names: clone(type.names() || {}),
           icon: type.icon(),
-          color: type.color(),
+          color: type.color() || '',
           shape: type.shape(),
           source: type.source(),
           fields: clone(type.fields() || []),
         }
-      : { names: {}, icon: 'fas fa-box', color: '#5b3fd1', shape: 'portrait', source: 'none', fields: [] };
+      : { names: {}, icon: 'fas fa-box', color: '', shape: 'portrait', source: 'none', fields: [] };
+  }
+
+  /**
+   * A new type starting as a copy of the open one: icon, colour, shape,
+   * look-ups and every detail with its labels in each language. Each name
+   * gets a number so the copy can be told apart until it is renamed.
+   */
+  duplicate() {
+    const copy = clone(this.draft);
+    const taken = (lang, name) => this.types.some((type) => (type.names() || {})[lang] === name);
+    Object.keys(copy.names).forEach((lang) => {
+      const base = copy.names[lang];
+      let n = 2;
+      while (taken(lang, `${base} ${n}`)) n++;
+      copy.names[lang] = `${base} ${n}`;
+    });
+    this.open = null;
+    this.error = null;
+    this.draft = copy;
   }
 
   view() {
@@ -72,7 +92,7 @@ export default class TypesEditor {
                 <span className="CurioAdmin-grip" {...this.sorter.attrs(i)} onclick={(e) => e.stopPropagation()} aria-label={text('types.drag')}>
                   <Icon name="fas fa-grip-vertical" />
                 </span>
-                <span className="CurioAdmin-icon" style={{ background: type.color() }}>
+                <span className="CurioAdmin-icon" style={{ background: type.color() || undefined }}>
                   <Icon name={type.icon()} />
                 </span>
                 <span className="CurioAdmin-name">{pick(type.names(), this.lang)}</span>
@@ -122,7 +142,7 @@ export default class TypesEditor {
           <div className="Form-group">
             <label>{t('types.icon')}</label>
             <div className="CurioAdmin-iconField">
-              <span className="CurioAdmin-icon" style={{ background: d.color }}>
+              <span className="CurioAdmin-icon" style={{ background: d.color || undefined }}>
                 <Icon name={d.icon} />
               </span>
               <input className="FormControl" value={d.icon} oninput={(e) => (d.icon = e.target.value)} placeholder="fas fa-gamepad" />
@@ -130,7 +150,14 @@ export default class TypesEditor {
           </div>
           <div className="Form-group">
             <label>{t('types.color')}</label>
-            <input className="FormControl CurioAdmin-color" type="color" value={d.color} oninput={(e) => (d.color = e.target.value)} />
+            <ColorPreviewInput
+              className="FormControl"
+              placeholder="#aaaaaa"
+              value={d.color}
+              oninput={(e) => (d.color = e.target.value)}
+              onchange={(e) => (d.color = e.target.value)}
+            />
+            <small className="helpText">{t('types.color_help')}</small>
           </div>
           <div className="Form-group">
             <label>{t('types.shape')}</label>
@@ -201,6 +228,11 @@ export default class TypesEditor {
             {this.open ? t('types.save') : t('types.create')}
           </Button>
           {this.open ? (
+            <Button className="Button" icon="fas fa-copy" onclick={() => this.duplicate()}>
+              {t('types.duplicate')}
+            </Button>
+          ) : null}
+          {this.open ? (
             <Button className="Button Button--danger" icon="fas fa-trash" onclick={() => this.remove()}>
               {t('types.delete')}
             </Button>
@@ -243,7 +275,7 @@ export default class TypesEditor {
 
   save() {
     const d = this.draft;
-    const attrs = { ...d, names: Object.fromEntries(Object.entries(d.names).filter(([, v]) => v && v.trim())) };
+    const attrs = { ...d, color: d.color.trim() || null, names: Object.fromEntries(Object.entries(d.names).filter(([, v]) => v && v.trim())) };
     if (!this.open)
       attrs.slug =
         (attrs.names.en || Object.values(attrs.names)[0] || 'type')

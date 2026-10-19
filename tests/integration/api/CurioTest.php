@@ -912,4 +912,76 @@ class CurioTest extends TestCase
         $this->patchCollection(3, $dropped, ['featured' => true]);
         $this->assertSame([(string) $kept], $this->featuredIds());
     }
+
+    #[Test]
+    public function the_my_collections_shortcut_goes_where_the_admin_chose(): void
+    {
+        $this->setting('ernestdefoe-curio.shortcut', 'menu');
+        $this->assertSame('menu', $this->json($this->get('/api'))['data']['attributes']['curioShortcut']);
+    }
+
+    #[Test]
+    public function the_my_collections_shortcut_is_in_both_places_by_default(): void
+    {
+        $this->assertSame('both', $this->json($this->get('/api'))['data']['attributes']['curioShortcut']);
+    }
+
+    #[Test]
+    public function an_unknown_shortcut_placement_falls_back_to_both(): void
+    {
+        $this->setting('ernestdefoe-curio.shortcut', 'everywhere');
+        $this->assertSame('both', $this->json($this->get('/api'))['data']['attributes']['curioShortcut']);
+    }
+
+    private function patchType(int $id, array $attributes): ResponseInterface
+    {
+        return $this->send($this->request('PATCH', "/api/curio-types/$id", [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'curio-types', 'id' => (string) $id, 'attributes' => $attributes]],
+        ]));
+    }
+
+    #[Test]
+    public function a_type_colour_is_a_hex_code_or_blank(): void
+    {
+        $id = $this->typeId('lego');
+        $this->assertNotNull($this->json($this->get("/api/curio-types/$id"))['data']['attributes']['color']);
+
+        $response = $this->patchType($id, ['color' => null]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertNull($this->json($response)['data']['attributes']['color']);
+
+        $this->assertSame('#aabbcc', $this->json($this->patchType($id, ['color' => '#ABC']))['data']['attributes']['color']);
+        $this->assertSame('#123456', $this->json($this->patchType($id, ['color' => '#123456']))['data']['attributes']['color']);
+
+        $this->assertSame(422, $this->patchType($id, ['color' => 'red'])->getStatusCode());
+        $this->assertSame(422, $this->patchType($id, ['color' => '#12345'])->getStatusCode());
+        $this->assertSame('#123456', $this->json($this->get("/api/curio-types/$id"))['data']['attributes']['color']);
+    }
+
+    #[Test]
+    public function a_copied_type_keeps_its_details_and_their_labels(): void
+    {
+        $games = $this->json($this->get('/api/curio-types/'.$this->typeId('games')))['data']['attributes'];
+        $names = array_map(fn ($name) => "$name 2", $games['names']);
+
+        $response = $this->send($this->request('POST', '/api/curio-types', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'curio-types', 'attributes' => [
+                'slug' => 'video-games-2',
+                'names' => $names,
+                'icon' => $games['icon'],
+                'color' => $games['color'],
+                'shape' => $games['shape'],
+                'source' => $games['source'],
+                'fields' => $games['fields'],
+            ]]],
+        ]));
+        $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+
+        $copy = $this->json($response)['data']['attributes'];
+        $this->assertSame($names, $copy['names']);
+        $this->assertSame($games['fields'], $copy['fields']);
+        $this->assertSame([$games['icon'], $games['color'], $games['shape'], $games['source']], [$copy['icon'], $copy['color'], $copy['shape'], $copy['source']]);
+    }
 }

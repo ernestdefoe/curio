@@ -19,4 +19,9 @@ final class Settings
 
     /** The /collections page: "tags" (Flarum's tags page look) or "covers" (cover tiles). */
     public const BROWSE_LAYOUT = 'ernestdefoe-curio.browse_layout';
+
+    /** Where "My collections" appears: "both", "sidebar" (index sidebar), "menu" (account menu) or "none". */
+    public const SHORTCUT = 'ernestdefoe-curio.shortcut';
+
+    public const SHORTCUTS = ['both', 'sidebar', 'menu', 'none'];
 }

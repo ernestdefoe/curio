@@ -52,8 +52,10 @@ return [
         ->default(Settings::MAX_UPLOAD_KB, 8192)
         ->default(Settings::WIDGET, false)
         ->default(Settings::BROWSE_LAYOUT, 'tags')
+        ->default(Settings::SHORTCUT, 'both')
         // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
-        ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval'),
+        ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
+        ->serializeToForum('curioShortcut', Settings::SHORTCUT, fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both'),
 
     new Extend\ApiResource(Api\TypeResource::class),
     new Extend\ApiResource(Api\CollectionResource::class),

@@ -52,6 +52,19 @@ export const extend = [
       default: 'tags',
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.shortcut',
+      type: 'select',
+      label: t('settings.shortcut_label'),
+      help: t('settings.shortcut_help'),
+      options: {
+        both: t('settings.shortcut_both'),
+        sidebar: t('settings.shortcut_sidebar'),
+        menu: t('settings.shortcut_menu'),
+        none: t('settings.shortcut_none'),
+      },
+      default: 'both',
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.widget',
       type: 'boolean',
       label: t('settings.widget_label'),

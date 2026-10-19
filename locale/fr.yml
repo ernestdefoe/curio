@@ -239,6 +239,12 @@ ernestdefoe-curio:
       layout_help: Comment la page Collections montre chaque type.
       layout_tags: Comme la page des étiquettes (par défaut de Flarum)
       layout_covers: Tuiles de couvertures
+      shortcut_label: Raccourci « Mes collections »
+      shortcut_help: Où les membres trouvent un lien vers leurs propres collections.
+      shortcut_both: Barre latérale et menu du compte
+      shortcut_sidebar: Barre latérale seulement
+      shortcut_menu: Menu du compte seulement
+      shortcut_none: Nulle part (Profil → Collections reste disponible)
       widget_label: Proposer le widget « Ajouts récents »
       widget_help: Désactivé par défaut. Une fois activé, le widget peut être placé avec Bespoke ou FoF Forum Widgets (il apparaît d'abord dans la colonne de droite de FoF ; déplacez-le ou retirez-le dans l'éditeur de FoF). Rechargez l'administration après l'avoir activé.
       igdb_id_label: Client ID IGDB (facultatif)
@@ -255,6 +261,7 @@ ernestdefoe-curio:
       name: Nom
       icon: Icône
       color: Couleur
+      color_help: "Un code hexadécimal comme #5b3fd1. Laissez vide pour utiliser la couleur du forum."
       shape: Forme des jaquettes
       source: Recherches
       needs_marquee: La recherche de films et séries vient de Marquee, celle de jeux d'IGDB (à configurer dans les réglages ci-dessus) ou de Marquee. Tant qu'il n'est pas installé, les membres peuvent scanner des codes-barres ou ajouter des objets à la main.
@@ -271,6 +278,7 @@ ernestdefoe-curio:
       save: Enregistrer le type
       create: Créer le type
       delete: Supprimer le type
+      duplicate: Dupliquer
       delete_confirm: "Supprimer le type {name} ?"
       in_use: Un type qui a des collections ne peut pas être supprimé.
       save_failed: Le type n'a pas pu être enregistré.

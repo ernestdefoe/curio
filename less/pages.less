@@ -13,12 +13,12 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--curio-accent);
+  color: var(--curio-accent, var(--primary-color));
   letter-spacing: 0.01em;
 
   &--solid {
     background: #fff;
-    color: var(--curio-accent);
+    color: var(--curio-accent, var(--primary-color));
     padding: 3px 9px;
     border-radius: 6px;
     font-size: 13px;
@@ -882,7 +882,7 @@
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--curio-accent);
+  background: var(--curio-accent, var(--primary-color));
   color: #fff !important;
   text-decoration: none !important;
   display: block;
@@ -1508,11 +1508,11 @@ button.CurioChip {
 
     .icon {
       font-size: 20px;
-      color: var(--curio-accent);
+      color: var(--curio-accent, var(--primary-color));
     }
 
     &.active {
-      border-color: var(--curio-accent);
+      border-color: var(--curio-accent, var(--primary-color));
       background: var(--body-bg-shaded);
     }
   }
@@ -1927,7 +1927,7 @@ button.CurioChip {
   }
 
   &.active {
-    outline: 3px solid var(--curio-accent);
+    outline: 3px solid var(--curio-accent, var(--primary-color));
     outline-offset: 2px;
   }
 

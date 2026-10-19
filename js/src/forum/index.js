@@ -19,6 +19,8 @@ const loadHero = () =>
   }));
 
 const myCollections = () => app.route('user.curio', { username: app.session.user.slug() });
+/** "My collections" goes where the admin chose: the sidebar, the account menu, both or neither. */
+const shortcutIn = (place) => ['both', place].includes(app.forum.attribute('curioShortcut') ?? 'both');
 
 app.initializers.add('ernestdefoe-curio', () => {
   registerModels(app);
@@ -49,7 +51,7 @@ app.initializers.add('ernestdefoe-curio', () => {
       85
     );
     // One click to your own collections (instead of Profile → Collections).
-    if (app.session.user && app.forum.attribute('canCreateCurio')) {
+    if (app.session.user && app.forum.attribute('canCreateCurio') && shortcutIn('sidebar')) {
       items.add(
         'curioMine',
         <LinkButton href={myCollections()} icon="fas fa-box-archive">
@@ -61,7 +63,7 @@ app.initializers.add('ernestdefoe-curio', () => {
   });
 
   extend('flarum/forum/components/SessionDropdown', 'items', function (items) {
-    if (!app.forum.attribute('canCreateCurio')) return;
+    if (!app.forum.attribute('canCreateCurio') || !shortcutIn('menu')) return;
     items.add(
       'curio',
       <LinkButton href={myCollections()} icon="fas fa-boxes-stacked">
