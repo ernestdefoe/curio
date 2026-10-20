@@ -15,7 +15,7 @@ $plain = fn (string ...$names) => array_map(fn ($n) => $opt(trim(strtolower(preg
 $field = fn (string $key, string $kind, array $labels, array $options = []) => ['key' => $key, 'kind' => $kind, 'labels' => $labels] + ($options ? ['options' => $options] : []);
 
 $types = [
-    ['games', $l('Video games', 'Jeux vidéo'), 'fas fa-gamepad', '#5b3fd1', 'portrait', 'games', [
+    ['games', $l('Video games', 'Jeux vidéo'), 'fas fa-gamepad', '#5b3fd1', 'box', 'games', [
         $field('platform', 'select', $l('Platform', 'Plateforme'), $plain(
             'Nintendo Switch 2', 'Nintendo Switch', 'PlayStation 5', 'PlayStation 4', 'PlayStation 3', 'PlayStation 2', 'PlayStation',
             'Xbox Series X|S', 'Xbox One', 'Xbox 360', 'Xbox', 'PC', 'Wii U', 'Wii', 'GameCube', 'Nintendo 64', 'SNES', 'NES',

@@ -254,6 +254,13 @@ ernestdefoe-curio:
       layout_help: Comment la page Collections montre chaque type.
       layout_tags: Comme la page des étiquettes (par défaut de Flarum)
       layout_covers: Tuiles de couvertures
+      hide_empty_label: Masquer les types sans rien dedans
+      hide_empty_help: Désactivé par défaut, la page Collections montre donc chaque type activé, comme la page des étiquettes montre chaque étiquette ; un type vide invite à lancer une première collection. Une fois activé, seuls les types qui contiennent quelque chose sont montrés (tous, tant que le forum n'a encore rien).
+      cover_fit_label: Jaquettes qui ne remplissent pas le cadre
+      cover_fit_help: "Chaque type a une forme de jaquette, pour que la grille d'une collection reste nette. Une jaquette d'une autre forme (une boîte de jeu 3:4 dans un cadre 2:3) peut être montrée entière sur une copie floutée d'elle-même, entière sur un fond uni, ou recadrée pour remplir le cadre. Un type dont la forme correspond à ses jaquettes (Portrait 3:4 pour les boîtes de jeu) n'en a pas besoin."
+      cover_fit_blur: Entière sur un fond flouté
+      cover_fit_plain: Entière sur un fond uni
+      cover_fit_crop: Recadrée pour remplir le cadre
       shortcut_label: Raccourci « Mes collections »
       shortcut_help: Où les membres trouvent un lien vers leurs propres collections.
       shortcut_both: Barre latérale et menu du compte
@@ -310,9 +317,10 @@ ernestdefoe-curio:
       import_done: "{count, plural, one {# type importé} other {# types importés}}"
       import_failed: "Ce fichier n'est pas un export de types Curio."
     shape:
-      portrait: Portrait
-      square: Carré
-      landscape: Paysage
+      portrait: Portrait 2:3 (livres, films)
+      box: Portrait 3:4 (boîtes de jeu)
+      square: Carré (albums)
+      landscape: Paysage 4:3
     source:
       none: Aucune (codes-barres et à la main)
       books: Livres (Open Library)

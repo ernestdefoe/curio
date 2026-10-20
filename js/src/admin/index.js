@@ -70,6 +70,20 @@ export const extend = [
       default: 'tags',
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.hide_empty_types',
+      type: 'boolean',
+      label: t('settings.hide_empty_label'),
+      help: t('settings.hide_empty_help'),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.cover_fit',
+      type: 'select',
+      label: t('settings.cover_fit_label'),
+      help: t('settings.cover_fit_help'),
+      options: { blur: t('settings.cover_fit_blur'), plain: t('settings.cover_fit_plain'), crop: t('settings.cover_fit_crop') },
+      default: 'blur',
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.shortcut',
       type: 'select',
       label: t('settings.shortcut_label'),

@@ -715,6 +715,56 @@ class CurioTest extends TestCase
         $this->assertSame('covers', $this->json($this->get('/api/curio/overview'))['layout']);
     }
 
+    #[Test]
+    public function every_switched_on_type_shows_unless_the_admin_hides_empty_ones(): void
+    {
+        $this->assertFalse($this->json($this->get('/api/curio/overview'))['hideEmpty']);
+
+        $this->put('ernestdefoe-curio.hide_empty_types', '1');
+        $this->assertTrue($this->json($this->get('/api/curio/overview'))['hideEmpty']);
+    }
+
+    #[Test]
+    public function covers_that_do_not_fit_are_blurred_by_default(): void
+    {
+        $this->assertSame('blur', $this->json($this->get('/api'))['data']['attributes']['curioCoverFit']);
+    }
+
+    #[Test]
+    public function covers_that_do_not_fit_can_be_cropped(): void
+    {
+        $this->setting('ernestdefoe-curio.cover_fit', 'crop');
+        $this->assertSame('crop', $this->json($this->get('/api'))['data']['attributes']['curioCoverFit']);
+    }
+
+    #[Test]
+    public function an_unknown_cover_fit_falls_back_to_blur(): void
+    {
+        $this->setting('ernestdefoe-curio.cover_fit', 'stretch');
+        $this->assertSame('blur', $this->json($this->get('/api'))['data']['attributes']['curioCoverFit']);
+    }
+
+    #[Test]
+    public function game_boxes_are_3_by_4_and_only_an_untouched_seeded_type_is_moved(): void
+    {
+        $this->app();
+        $db = $this->database();
+        $this->assertSame('box', $db->table('curio_types')->where('slug', 'games')->value('shape'));
+
+        $migration = require __DIR__.'/../../../migrations/2026_10_20_000002_games_type_box_covers.php';
+        $old = Carbon::parse('2026-01-01');
+
+        // An admin saved it (as portrait): left alone.
+        $db->table('curio_types')->where('slug', 'games')->update(['shape' => 'portrait', 'created_at' => $old, 'updated_at' => $old->copy()->addDay()]);
+        $migration['up']($db->getSchemaBuilder());
+        $this->assertSame('portrait', $db->table('curio_types')->where('slug', 'games')->value('shape'));
+
+        // Never saved since it was seeded: moved to 3:4.
+        $db->table('curio_types')->where('slug', 'games')->update(['updated_at' => $old]);
+        $migration['up']($db->getSchemaBuilder());
+        $this->assertSame('box', $db->table('curio_types')->where('slug', 'games')->value('shape'));
+    }
+
     /** IGDB answered by a fake: two token-holding searches, then a game's details. */
     private function fakeIgdb(): object
     {
@@ -1217,9 +1267,9 @@ class CurioTest extends TestCase
         $item = (int) $this->json($this->item(3, $this->newCollection(3), ['title' => 'Minishoot'], 2))['data']['id'];
         $english = ['description' => 'A twin-stick shooter.', 'source' => 'wikipedia', 'url' => 'https://en.wikipedia.org/wiki/Minishoot', 'locale' => 'en'];
 
-        // Only Wikidata's one-liner in French: shown, with the English article aside.
+        // Only Wikidata's one-liner in French: not a description, the English article aside.
         $work = $this->frenchWork($item);
-        $this->assertSame(['jeu vidéo de 2024', $english], [$work['description'], $work['fallback']]);
+        $this->assertSame([null, null, $english], [$work['description'], $work['descriptionSource'], $work['fallback']]);
 
         // Nothing in French at all: no description, the English one aside, never in its place.
         $this->database()->table('curio_work_texts')->where(['work_id' => 2, 'locale' => 'fr'])->delete();

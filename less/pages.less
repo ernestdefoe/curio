@@ -131,9 +131,11 @@
 }
 
 // ── Covers ─────────────────────────────────────────────────────────────
-// The whole picture, never cropped: one of another shape (IGDB's 3:4 covers in
-// a 2:3 frame) sits on a blurred copy of itself (--curio-cover, set inline).
-.curio-whole() {
+// A cover of another shape than its frame (a 3:4 game box in a 2:3 frame), as
+// the admin chose (html[data-curio-fit]): whole on a blurred copy of itself
+// (default; --curio-cover is set inline, the same URL, so no second download),
+// whole on a plain ground, or cropped to fill.
+.curio-whole(@plain: var(--control-bg)) {
   isolation: isolate;
 
   &::before {
@@ -147,6 +149,19 @@
 
   img {
     object-fit: contain;
+  }
+
+  [data-curio-fit='plain'] &,
+  [data-curio-fit='crop'] & {
+    background: @plain;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  [data-curio-fit='crop'] & img {
+    object-fit: cover;
   }
 }
 
@@ -165,6 +180,9 @@
     display: block;
   }
 
+  &--box {
+    aspect-ratio: 3 / 4;
+  }
   &--square {
     aspect-ratio: 1;
   }
@@ -264,6 +282,10 @@
     }
   }
 
+  &--box &-fan img {
+    aspect-ratio: 3 / 4;
+    height: 108px;
+  }
   &--square &-fan img {
     aspect-ratio: 1;
     height: 100px;
@@ -735,6 +757,11 @@
   gap: 30px;
   padding: 26px !important;
 
+  &-gallery--box {
+    .CurioItem-photo {
+      aspect-ratio: 3 / 4;
+    }
+  }
   &-gallery--square {
     .CurioItem-photo {
       aspect-ratio: 1;
@@ -1303,6 +1330,10 @@ button.CurioChip {
     color: var(--muted-color);
     flex-shrink: 0;
 
+    &--box {
+      aspect-ratio: 3 / 4;
+      width: 52px;
+    }
     &--square {
       aspect-ratio: 1;
       width: 56px;
@@ -1372,6 +1403,9 @@ button.CurioChip {
     font-size: 34px;
     color: var(--muted-more-color);
 
+    &--box {
+      aspect-ratio: 3 / 4;
+    }
     &--square {
       aspect-ratio: 1;
     }
@@ -1695,7 +1729,7 @@ button.CurioChip {
   }
 
   &-cover {
-    .curio-whole();
+    .curio-whole(rgba(255, 255, 255, 0.06));
     position: relative;
     display: flex;
     align-items: center;
@@ -1714,6 +1748,10 @@ button.CurioChip {
       width: 100%;
       display: block;
       aspect-ratio: 2 / 3;
+    }
+
+    &--box img {
+      aspect-ratio: 3 / 4;
     }
 
     &--square img {

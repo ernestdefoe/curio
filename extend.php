@@ -53,8 +53,11 @@ return [
         ->default(Settings::WIDGET, false)
         ->default(Settings::BROWSE_LAYOUT, 'tags')
         ->default(Settings::SHORTCUT, 'both')
+        ->default(Settings::COVER_FIT, 'blur')
+        ->default(Settings::HIDE_EMPTY, false)
         // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
         ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
+        ->serializeToForum('curioCoverFit', Settings::COVER_FIT, fn ($value) => in_array($value, Settings::COVER_FITS, true) ? $value : 'blur')
         ->serializeToForum('curioShortcut', Settings::SHORTCUT, fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both'),
 
     new Extend\ApiResource(Api\TypeResource::class),

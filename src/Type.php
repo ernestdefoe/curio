@@ -25,7 +25,8 @@ use Flarum\Database\AbstractModel;
  */
 class Type extends AbstractModel
 {
-    public const SHAPES = ['portrait', 'square', 'landscape'];
+    /** portrait = 2:3 (books, films), box = 3:4 (game boxes), square, landscape = 4:3. */
+    public const SHAPES = ['portrait', 'box', 'square', 'landscape'];
 
     public const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games'];
 

@@ -14,8 +14,9 @@ use Flarum\Locale\TranslatorInterface;
 /**
  * A looked-up title, in the viewer's language: the title, and the description
  * with where it came from (Wikipedia, the source, DeepL, Wikidata). The
- * description is only ever in the viewer's language; when that is missing or
- * just Wikidata's one-liner, the English one comes separately as `fallback`.
+ * description is only ever in the viewer's language, and Wikidata's one-liner
+ * ("2024 video game") is not one. Without one, the English description comes
+ * separately as `fallback`.
  *
  * @extends AbstractDatabaseResource<Work>
  */
@@ -48,21 +49,20 @@ class WorkResource extends AbstractDatabaseResource
         return $work->textFor($this->translator->getLocale());
     }
 
-    /** The viewer's own language, when it has a description. */
+    /** The viewer's own language, when it has a description (Wikidata's one-liner is not one). */
     private function local(Work $work): ?WorkText
     {
         $text = $work->texts->firstWhere('locale', WorkTexts::base($this->translator->getLocale()));
 
-        return $text?->description ? $text : null;
+        return $text?->description && $text->description_source !== 'wikidata' ? $text : null;
     }
 
     /** @return array{description: string, source: ?string, url: ?string, locale: string}|null */
     private function fallback(Work $work): ?array
     {
-        $local = $this->local($work);
         $en = $work->texts->firstWhere('locale', 'en');
 
-        if (($local && $local->description_source !== 'wikidata') || ! $en?->description || $en === $local || $en->description_source === 'wikidata') {
+        if ($this->local($work) || ! $en?->description || $en->description_source === 'wikidata') {
             return null;
         }
 

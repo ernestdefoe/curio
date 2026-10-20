@@ -24,4 +24,12 @@ final class Settings
     public const SHORTCUT = 'ernestdefoe-curio.shortcut';
 
     public const SHORTCUTS = ['both', 'sidebar', 'menu', 'none'];
+
+    /** A cover of another shape than its frame: "blur" (whole, on a blurred copy), "plain" (whole, on a plain ground) or "crop". */
+    public const COVER_FIT = 'ernestdefoe-curio.cover_fit';
+
+    public const COVER_FITS = ['blur', 'plain', 'crop'];
+
+    /** Leave types with nothing in them off the Collections page. Off: every switched-on type shows, like the Tags page. */
+    public const HIDE_EMPTY = 'ernestdefoe-curio.hide_empty_types';
 }

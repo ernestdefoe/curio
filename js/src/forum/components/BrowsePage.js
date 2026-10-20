@@ -252,9 +252,14 @@ export default class BrowsePage extends Page {
     );
   }
 
-  /** Types that hold something, or every type while the forum has nothing yet (and the chosen one, always). */
+  /**
+   * Every switched-on type, like the Tags page shows every tag: an empty tile
+   * invites a first collection. With "Hide types with nothing in them" on, only
+   * those holding something (and the chosen one), or all while nothing is.
+   */
   shownTypes(counts) {
     const all = types().filter((type) => type.enabled() !== false);
+    if (!this.overview.hideEmpty) return all;
     const used = all.filter((type) => (counts[type.id()]?.items || 0) > 0 || type.id() === this.typeId);
     return used.length ? used : all;
   }

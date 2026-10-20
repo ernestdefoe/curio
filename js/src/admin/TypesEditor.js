@@ -13,7 +13,7 @@ import { nextName, freeSlug } from './naming';
 const t = (key, params) => app.translator.trans(`ernestdefoe-curio.admin.${key}`, params);
 const text = (key, params) => extractText(t(key, params));
 
-const SHAPES = ['portrait', 'square', 'landscape'];
+const SHAPES = ['portrait', 'box', 'square', 'landscape'];
 const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games'];
 const KINDS = ['select', 'text', 'number', 'date', 'bool'];
 const clone = (v) => JSON.parse(JSON.stringify(v));
