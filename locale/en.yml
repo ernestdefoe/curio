@@ -2,8 +2,15 @@ ernestdefoe-curio:
   forum:
     status:
       owned: Owned
-      wishlist: Wanted
+      wishlist: Wishlist
       trade: Open to trade
+    progress:
+      label: Progress
+      none: Not set
+      any: Any progress
+      pending: Not started
+      in_progress: In progress
+      completed: Completed
     condition:
       sealed: Sealed
       mint: Mint
@@ -20,13 +27,13 @@ ernestdefoe-curio:
       private_help: Nobody else, not even other members.
     count:
       items: "{count, plural, one {# item} other {# items}}"
-      wanted: "{count} wanted"
+      wanted: "{count} on wishlist"
       trade: "{count} to trade"
       collections: "{count, plural, one {# collection} other {# collections}}"
     filter:
       all: All
       owned: Owned
-      wishlist: Wanted
+      wishlist: Wishlist
       trade: Open to trade
       any: "Any {field}"
     sort:
@@ -44,7 +51,7 @@ ernestdefoe-curio:
       empty: Nothing here yet.
       since: "Since {date}"
       owned: Owned
-      wanted: Wanted
+      wanted: Wishlist
       trade: To trade
       follow: Follow
       following: Following
@@ -67,7 +74,7 @@ ernestdefoe-curio:
       name_placeholder: The Nintendo shelf
       description: Description
       visibility: Who can see it
-      wishlist_public: Show what I'm looking for (wanted items) to others
+      wishlist_public: Show my wishlist to others
       featured: Feature it on the Collections page
       create: Create collection
       save: Save
@@ -147,7 +154,7 @@ ernestdefoe-curio:
       nav: Collections
       items: Items
       collections: Collections
-      wanted: Wanted
+      wanted: Wishlist
       trade: To trade
       since: Collecting since
       collections_heading: Collections

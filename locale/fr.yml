@@ -2,8 +2,15 @@ ernestdefoe-curio:
   forum:
     status:
       owned: Possédé
-      wishlist: Recherché
+      wishlist: Liste de souhaits
       trade: Échangeable
+    progress:
+      label: Avancement
+      none: Non renseigné
+      any: Tout avancement
+      pending: Pas commencé
+      in_progress: En cours
+      completed: Terminé
     condition:
       sealed: Scellé
       mint: Neuf
@@ -20,13 +27,13 @@ ernestdefoe-curio:
       private_help: Personne d'autre, pas même les autres membres.
     count:
       items: "{count, plural, one {# objet} other {# objets}}"
-      wanted: "{count, plural, one {# recherché} other {# recherchés}}"
+      wanted: "{count, plural, one {# souhait} other {# souhaits}}"
       trade: "{count} à échanger"
       collections: "{count, plural, one {# collection} other {# collections}}"
     filter:
       all: Tout
       owned: Possédés
-      wishlist: Recherchés
+      wishlist: Liste de souhaits
       trade: Échangeables
       any: "{field} : tout"
     sort:
@@ -44,7 +51,7 @@ ernestdefoe-curio:
       empty: Rien ici pour l'instant.
       since: "Depuis {date}"
       owned: Possédés
-      wanted: Recherchés
+      wanted: Souhaits
       trade: À échanger
       follow: Suivre
       following: Suivie
@@ -67,7 +74,7 @@ ernestdefoe-curio:
       name_placeholder: L'étagère Nintendo
       description: Description
       visibility: Qui peut la voir
-      wishlist_public: Montrer aux autres ce que je recherche
+      wishlist_public: Montrer ma liste de souhaits aux autres
       featured: La mettre à la une sur la page Collections
       create: Créer la collection
       save: Enregistrer
@@ -133,7 +140,7 @@ ernestdefoe-curio:
       offers: "{count, plural, one {# membre le propose à l’échange} other {# membres le proposent à l’échange}}"
       edit: Modifier
       have_too: Je l'ai aussi
-      want_it: Ajouter à mes envies
+      want_it: Ajouter à ma liste de souhaits
       choose_collection: Dans quelle collection ?
       show_off: Le montrer
       discussed: Discussion
@@ -147,14 +154,14 @@ ernestdefoe-curio:
       nav: Collections
       items: Objets
       collections: Collections
-      wanted: Recherchés
+      wanted: Souhaits
       trade: À échanger
       since: Collectionne depuis
       collections_heading: Collections
       new: Nouvelle collection
       empty: Aucune collection pour l'instant.
       empty_own: Commencez votre première collection et montrez ce que vous avez.
-      wishlist_heading: Liste d'envies
+      wishlist_heading: Liste de souhaits
     browse:
       title: Collections
       lead: "{items, plural, one {# objet} other {# objets}} dans les collections de {members, plural, one {# membre} other {# membres}}."
@@ -216,8 +223,8 @@ ernestdefoe-curio:
       format_goodreads: Goodreads
       format_storygraph: StoryGraph
     notifications:
-      match: "{username} propose {title} à l’échange. Il est dans votre liste d’envies."
-      match_setting: Quelqu’un propose à l’échange un objet de ma liste d’envies
+      match: "{username} propose {title} à l’échange. Il est dans votre liste de souhaits."
+      match_setting: Quelqu’un propose à l’échange un objet de ma liste de souhaits
       new_items: "{username} a ajouté des objets à {name}"
       new_items_setting: Une collection que je suis a des nouveautés
     widget:
@@ -307,7 +314,7 @@ ernestdefoe-curio:
   email:
     match:
       subject: "{title} est proposé à l’échange"
-      body: "Bonjour {recipient_display_name}, {owner} propose {title} à l’échange. Il est dans votre liste d’envies."
+      body: "Bonjour {recipient_display_name}, {owner} propose {title} à l’échange. Il est dans votre liste de souhaits."
       link: Voir l’offre
     new_items:
       subject: "Du nouveau dans {name}"
