@@ -207,7 +207,11 @@ export default class ItemModal extends Modal {
           </div>
         ) : null}
         {other ? (
-          <Button className="Button Button--link CurioMore" aria-expanded={this.showOther ? 'true' : 'false'} onclick={() => (this.showOther = !this.showOther)}>
+          <Button
+            className="Button Button--link CurioMore"
+            aria-expanded={this.showOther ? 'true' : 'false'}
+            onclick={() => (this.showOther = !this.showOther)}
+          >
             {t(this.showOther ? 'item.hide_other' : 'item.show_other', { language })}
           </Button>
         ) : null}
