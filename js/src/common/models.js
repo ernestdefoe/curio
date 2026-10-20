@@ -11,6 +11,8 @@ Object.assign(CurioType.prototype, {
   fields: Model.attribute('fields'),
   position: Model.attribute('position'),
   searchable: Model.attribute('searchable'),
+  enabled: Model.attribute('enabled'),
+  progress: Model.attribute('progress'),
 });
 
 export class CurioCollection extends Model {}
@@ -52,6 +54,7 @@ Object.assign(CurioItem.prototype, {
   notes: Model.attribute('notes'),
   favourite: Model.attribute('favourite'),
   rating: Model.attribute('rating'),
+  progress: Model.attribute('progress'),
   barcode: Model.attribute('barcode'),
   pricePaid: Model.attribute('pricePaid'),
   priceCurrency: Model.attribute('priceCurrency'),

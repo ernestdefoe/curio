@@ -254,7 +254,7 @@ export default class BrowsePage extends Page {
 
   /** Types that hold something, or every type while the forum has nothing yet (and the chosen one, always). */
   shownTypes(counts) {
-    const all = types();
+    const all = types().filter((type) => type.enabled() !== false);
     const used = all.filter((type) => (counts[type.id()]?.items || 0) > 0 || type.id() === this.typeId);
     return used.length ? used : all;
   }

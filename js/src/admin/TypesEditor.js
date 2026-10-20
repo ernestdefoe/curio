@@ -2,6 +2,7 @@ import app from 'flarum/admin/app';
 import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import Select from 'flarum/common/components/Select';
+import Switch from 'flarum/common/components/Switch';
 import ColorPreviewInput from 'flarum/common/components/ColorPreviewInput';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import extractText from 'flarum/common/utils/extractText';
@@ -15,6 +16,18 @@ const SHAPES = ['portrait', 'square', 'landscape'];
 const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games'];
 const KINDS = ['select', 'text', 'number', 'date', 'bool'];
 const clone = (v) => JSON.parse(JSON.stringify(v));
+// What a type export carries: everything an admin sets, labels in every language.
+const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress'];
+
+/** Saves text as a file in the browser. */
+function download(name, data) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
 /**
  * The collection types: drag to order, then for the open one its name, icon,
@@ -51,8 +64,10 @@ export default class TypesEditor {
           shape: type.shape(),
           source: type.source(),
           fields: clone(type.fields() || []),
+          enabled: type.enabled() !== false,
+          progress: !!type.progress(),
         }
-      : { names: {}, icon: 'fas fa-box', color: '', shape: 'portrait', source: 'none', fields: [] };
+      : { names: {}, icon: 'fas fa-box', color: '', shape: 'portrait', source: 'none', fields: [], enabled: true, progress: false };
   }
 
   /**
@@ -79,8 +94,21 @@ export default class TypesEditor {
 
     return (
       <div className="CurioAdmin">
-        <h3>{t('types.heading')}</h3>
+        <div className="CurioAdmin-head">
+          <h3>{t('types.heading')}</h3>
+          <div className="CurioAdmin-transfer">
+            <Button className="Button" icon="fas fa-file-export" onclick={() => this.exportTypes(this.types, 'curio-types.json')}>
+              {t('types.export_all')}
+            </Button>
+            <label className="Button" title={text('types.import_help')}>
+              <Icon name="fas fa-file-import" className="Button-icon" />
+              <span className="Button-label">{t('types.import')}</span>
+              <input type="file" accept=".json,application/json" hidden onchange={(e) => this.importTypes(e.target)} />
+            </label>
+          </div>
+        </div>
         <p className="helpText">{t('types.help')}</p>
+        {this.notice ? <div className={'Alert Alert--' + this.notice.type}>{this.notice.text}</div> : null}
         <div className="CurioAdmin-layout">
           <ul className="CurioAdmin-types" data-sortable="true">
             {this.types.map((type, i) => (
@@ -96,7 +124,9 @@ export default class TypesEditor {
                   <Icon name={type.icon()} />
                 </span>
                 <span className="CurioAdmin-name">{pick(type.names(), this.lang)}</span>
-                <span className="CurioAdmin-meta">{t('shape.' + type.shape())}</span>
+                <span className="CurioAdmin-meta">
+                  {type.enabled() === false ? <span className="CurioAdmin-off">{t('types.off')}</span> : t('shape.' + type.shape())}
+                </span>
               </li>
             ))}
             <li className={'CurioAdmin-add' + (this.open === null && this.draft ? ' active' : '')} onclick={() => this.edit(null)}>
@@ -170,6 +200,17 @@ export default class TypesEditor {
           </div>
         </div>
 
+        <div className="CurioAdmin-switches">
+          <Switch state={d.enabled} onchange={(v) => (d.enabled = v)}>
+            {t('types.enabled')}
+          </Switch>
+          <small className="helpText">{t('types.enabled_help')}</small>
+          <Switch state={d.progress} onchange={(v) => (d.progress = v)}>
+            {t('types.progress')}
+          </Switch>
+          <small className="helpText">{t('types.progress_help')}</small>
+        </div>
+
         <h4>{t('types.fields')}</h4>
         <p className="helpText">{t('types.fields_help')}</p>
         <table className="CurioAdmin-fields">
@@ -230,6 +271,11 @@ export default class TypesEditor {
           {this.open ? (
             <Button className="Button" icon="fas fa-copy" onclick={() => this.duplicate()}>
               {t('types.duplicate')}
+            </Button>
+          ) : null}
+          {this.open ? (
+            <Button className="Button" icon="fas fa-file-export" onclick={() => this.exportTypes([this.open], `curio-type-${this.open.slug()}.json`)}>
+              {t('types.export')}
             </Button>
           ) : null}
           {this.open ? (
@@ -311,6 +357,55 @@ export default class TypesEditor {
       })
       .catch((e) => (this.error = e.response?.errors?.[0]?.detail || text('types.in_use')))
       .finally(() => m.redraw());
+  }
+
+  exportTypes(list, name) {
+    download(name, {
+      curio: 'types',
+      version: 1,
+      types: list.map((type) => Object.fromEntries(EXPORTED.map((key) => [key, type.attribute(key)]))),
+    });
+  }
+
+  /**
+   * Adds every type in a Curio types file as a new type. A slug already in
+   * use gets a number, so importing never overwrites a type; the server
+   * cleans each one as if typed in the editor.
+   */
+  async importTypes(input) {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    this.notice = null;
+
+    let list;
+    try {
+      const data = JSON.parse(file.size < 1024 * 1024 ? await file.text() : '');
+      list = data && data.curio === 'types' && Array.isArray(data.types) ? data.types.filter((x) => x && typeof x === 'object').slice(0, 50) : null;
+    } catch (e) {
+      list = null;
+    }
+    if (!list || !list.length) {
+      this.notice = { type: 'error', text: text('types.import_failed') };
+      return m.redraw();
+    }
+
+    let count = 0;
+    for (const raw of list) {
+      const attrs = Object.fromEntries(EXPORTED.filter((key) => key in raw).map((key) => [key, raw[key]]));
+      const base = String(attrs.slug || 'type').slice(0, 44);
+      let slug = base;
+      for (let n = 2; this.types.some((type) => type.slug() === slug); n++) slug = `${base}-${n}`;
+      attrs.slug = slug;
+      try {
+        this.types.push(await app.store.createRecord('curio-types').save(attrs));
+        count++;
+      } catch (e) {
+        this.notice = { type: 'error', text: e.response?.errors?.[0]?.detail || text('types.save_failed') };
+      }
+    }
+    if (count) this.notice = { type: 'success', text: text('types.import_done', { count }) };
+    m.redraw();
   }
 
   saveOrder() {

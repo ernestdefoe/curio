@@ -21,6 +21,12 @@ class CsvImport
 {
     public const MAX_BYTES = 2 * 1024 * 1024;
 
+    private const PROGRESS_WORDS = [
+        'pending' => 'pending', 'not started' => 'pending', 'pas commencé' => 'pending', 'to-read' => 'pending',
+        'in_progress' => 'in_progress', 'in progress' => 'in_progress', 'en cours' => 'in_progress', 'currently-reading' => 'in_progress',
+        'completed' => 'completed', 'terminé' => 'completed', 'read' => 'completed',
+    ];
+
     private const DISCOGS_CONDITIONS = [
         'mint (m)' => 'mint', 'near mint (nm or m-)' => 'mint', 'very good plus (vg+)' => 'very_good',
         'very good (vg)' => 'very_good', 'good plus (g+)' => 'good', 'good (g)' => 'good', 'fair (f)' => 'fair', 'poor (p)' => 'poor',
@@ -110,6 +116,7 @@ class CsvImport
             'price_currency' => $raw['price_currency'] ?? null,
             'favourite' => in_array(mb_strtolower($raw['favourite'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
             'rating' => $raw['rating'] ?? null,
+            'progress' => $raw['progress'] ?? null,
         ], $fields);
     }
 
@@ -147,6 +154,7 @@ class CsvImport
             'barcode' => preg_replace('/\D/', '', ($raw['isbn13'] ?? '') ?: ($raw['isbn'] ?? '')),
             // 0 means not rated.
             'rating' => $raw['my rating'] ?? null,
+            'progress' => $raw['exclusive shelf'] ?? null,
         ], []);
     }
 
@@ -160,6 +168,7 @@ class CsvImport
             'barcode' => preg_replace('/[^\dX]/i', '', $raw['isbn/uid'] ?? ''),
             // Quarter stars ("3.75"), rounded to halves.
             'rating' => $raw['star rating'] ?? null,
+            'progress' => $raw['read status'] ?? null,
         ], []);
     }
 
@@ -175,6 +184,12 @@ class CsvImport
         $halves = (int) round((float) $stars * 2);
 
         return $halves >= 1 && $halves <= 10 ? $halves : null;
+    }
+
+    /** Progress from its key, its English or French label, or a reading app's shelf name. */
+    public static function progress(mixed $text): ?string
+    {
+        return self::PROGRESS_WORDS[mb_strtolower(trim((string) $text))] ?? null;
     }
 
     /** A select field's value from its key or any of its labels. */
@@ -227,6 +242,7 @@ class CsvImport
             'price_currency' => is_numeric($price) && preg_match('/^[A-Z]{3}$/', (string) ($v['price_currency'] ?? '')) ? $v['price_currency'] : null,
             'favourite' => (bool) ($v['favourite'] ?? false),
             'rating' => self::rating($v['rating'] ?? null),
+            'progress' => $type->progress && $status !== 'wishlist' ? self::progress($v['progress'] ?? null) : null,
             'fields' => ItemResource::cleanFields($type, array_filter($fields, fn ($x) => $x !== null && $x !== '')),
         ];
     }

@@ -5,7 +5,7 @@ import Icon from 'flarum/common/components/Icon';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t, text, label, locale } from '../util';
 import { fieldValue } from '../../common/labels';
-import { typeBadge, statusPill, owner } from './bits';
+import { typeBadge, statusPill, progressPill, owner } from './bits';
 import ItemEditModal from './ItemEditModal';
 import Link from 'flarum/common/components/Link';
 import { startShowOff } from '../showOff';
@@ -103,6 +103,7 @@ export default class ItemModal extends Modal {
           <div className="CurioItem-badges">
             {typeBadge(type)}
             {statusPill(item.status())}
+            {progressPill(item, type)}
             {item.favourite() ? (
               <span className="CurioFav">
                 <Icon name="fas fa-star" /> {t('item.favourite')}

@@ -57,6 +57,8 @@ export default class CollectionEditModal extends FormModal {
                   >
                     <Icon name={type.icon()} />
                     <span>{label(type.names())}</span>
+                    {/* Switched off: only admins are offered it, to try it out. */}
+                    {type.enabled() === false ? <Icon name="fas fa-eye-slash" className="CurioMuted" /> : null}
                   </button>
                 ))}
               </div>

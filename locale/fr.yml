@@ -46,6 +46,7 @@ ernestdefoe-curio:
       title: Titre
       status: Statut
       rating: Note
+      progress: Avancement
     page:
       missing: Cette collection n'existe pas, ou vous ne pouvez pas la voir.
       empty: Rien ici pour l'instant.
@@ -290,6 +291,17 @@ ernestdefoe-curio:
       delete_confirm: "Supprimer le type {name} ?"
       in_use: Un type qui a des collections ne peut pas être supprimé.
       save_failed: Le type n'a pas pu être enregistré.
+      enabled: Activé
+      enabled_help: "Désactivé, les membres ne voient pas ce type et ne peuvent pas créer de collection avec. Les collections déjà créées restent, visibles seulement par leurs propriétaires et les modérateurs. Les administrateurs peuvent toujours l'essayer."
+      "off": Désactivé
+      progress: Suivre l'avancement
+      progress_help: "Chaque objet peut être marqué Pas commencé, En cours ou Terminé : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
+      export: Exporter
+      export_all: Tout exporter
+      import: Importer
+      import_help: "Les types voyagent en fichiers JSON, avec leurs détails et leurs libellés dans chaque langue. L'import les ajoute comme nouveaux types."
+      import_done: "{count, plural, one {# type importé} other {# types importés}}"
+      import_failed: "Ce fichier n'est pas un export de types Curio."
     shape:
       portrait: Portrait
       square: Carré
@@ -322,6 +334,7 @@ ernestdefoe-curio:
       link: Voir la collection
   api:
     type_in_use: Ce type a des collections, il ne peut donc pas être supprimé.
+    type_disabled: Ce type de collection est désactivé.
     too_many_collections: "Vous pouvez avoir jusqu'à {count} collections."
     collection_full: "Une collection contient jusqu'à {count} objets."
     too_many_photos: "Un objet peut avoir jusqu'à {count} photos."

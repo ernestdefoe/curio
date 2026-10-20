@@ -49,6 +49,29 @@
   }
 }
 
+// Progress: quiet for "not started", the forum colour while in progress, green when done.
+.CurioProgress {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-color);
+  white-space: nowrap;
+
+  &--in_progress {
+    color: var(--primary-color);
+  }
+  &--completed {
+    color: #15803d;
+  }
+}
+
+.CurioItemCard .CurioProgress {
+  display: flex;
+  margin-top: 3px;
+}
+
 .CurioFav {
   font-size: 12px;
   font-weight: 700;
@@ -437,6 +460,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 16px;
   }
 
   &-side {
@@ -449,7 +473,6 @@
   &-buttons {
     display: flex;
     gap: 8px;
-    margin-top: 16px;
   }
 
 }

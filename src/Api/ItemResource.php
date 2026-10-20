@@ -252,6 +252,11 @@ class ItemResource extends AbstractDatabaseResource
                 ->writable()
                 ->rule('integer')
                 ->rule('between:1,10'),
+            // Not started, in progress or completed; shown where the item's type tracks it.
+            Schema\Str::make('progress')
+                ->nullable()
+                ->writable()
+                ->in(Item::PROGRESS),
             Schema\Str::make('barcode')
                 ->nullable()
                 ->visible($isOwner)

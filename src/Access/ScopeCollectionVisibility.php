@@ -2,13 +2,15 @@
 
 namespace Ernestdefoe\Curio\Access;
 
+use Ernestdefoe\Curio\Type;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Who sees a collection: moderators all of them; everyone else needs the view
  * permission, then sees public ones, members-only ones when signed in, and
- * always their own. A collection whose owner they cannot see is hidden too.
+ * always their own. A collection whose owner they cannot see is hidden too,
+ * and so is one of a switched-off type (to all but its owner).
  */
 class ScopeCollectionVisibility
 {
@@ -29,7 +31,8 @@ class ScopeCollectionVisibility
         $query->where(function (Builder $q) use ($actor, $table) {
             $q->where(function (Builder $q) use ($actor, $table) {
                 $q->whereIn("$table.visibility", $actor->isGuest() ? ['public'] : ['public', 'members'])
-                    ->whereIn("$table.user_id", User::query()->whereVisibleTo($actor)->select('users.id'));
+                    ->whereIn("$table.user_id", User::query()->whereVisibleTo($actor)->select('users.id'))
+                    ->whereIn("$table.type_id", Type::query()->where('enabled', true)->select('curio_types.id'));
             });
 
             if (! $actor->isGuest()) {

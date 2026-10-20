@@ -9,6 +9,7 @@ export const locale = () => app.translator.getLocale() || 'en';
 export const label = (labels) => pick(labels, locale());
 
 export const STATUSES = ['owned', 'wishlist', 'trade'];
+export const PROGRESS = ['pending', 'in_progress', 'completed'];
 export const CONDITIONS = ['sealed', 'mint', 'very_good', 'good', 'fair', 'poor'];
 
 export const collectionUrl = (collection) => app.route('curio.collection', { id: `${collection.id()}-${collection.slug()}` });
@@ -25,7 +26,12 @@ export function loadTypes() {
   }
   return typesLoading;
 }
-export const types = () => app.store.all('curio-types').sort((a, b) => a.position() - b.position());
+// Switched-off types are kept from members (an owner's collection may still bring one in); admins see them all.
+export const types = () =>
+  app.store
+    .all('curio-types')
+    .filter((type) => type.enabled() !== false || app.session.user?.isAdmin())
+    .sort((a, b) => a.position() - b.position());
 
 /** A JSON POST to Curio's look-up endpoint. */
 export function lookup(body) {

@@ -1,4 +1,26 @@
 .CurioAdmin {
+  &-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  &-transfer {
+    display: flex;
+    gap: 8px;
+  }
+  &-off {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  &-switches {
+    margin: 18px 0 6px;
+    .Checkbox {
+      margin: 10px 0 2px;
+    }
+  }
   &-section {
     border-top: 1px solid var(--control-bg);
   }

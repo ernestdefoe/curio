@@ -6,7 +6,7 @@ import Select from 'flarum/common/components/Select';
 import Switch from 'flarum/common/components/Switch';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Stream from 'flarum/common/utils/Stream';
-import { t, text, label, locale, STATUSES, CONDITIONS, lookup, closeThen } from '../util';
+import { t, text, label, locale, STATUSES, CONDITIONS, PROGRESS, lookup, closeThen } from '../util';
 import { pick, onlyOption } from '../../common/labels';
 import Stars from './Stars';
 import { canScan, scan } from '../scanner';
@@ -57,6 +57,7 @@ export default class ItemEditModal extends FormModal {
     this.notes = Stream(item ? item.notes() || '' : '');
     this.favourite = Stream(item ? !!item.favourite() : false);
     this.rating = Stream(item ? item.rating() || null : null);
+    this.progress = Stream(item ? item.progress() || '' : '');
     this.pricePaid = Stream(item && item.pricePaid() !== null && item.pricePaid() !== undefined ? String(item.pricePaid()) : '');
     this.priceCurrency = Stream(item ? item.priceCurrency() || defaultCurrency() : defaultCurrency());
     this.code = null;
@@ -418,6 +419,18 @@ export default class ItemEditModal extends FormModal {
             </div>
           </div>
 
+          {this.type.progress() && this.status() !== 'wishlist' ? (
+            <div className="Form-group">
+              <label for="curio-progress">{t('progress.label')}</label>
+              <Select
+                id="curio-progress"
+                value={this.progress()}
+                onchange={this.progress}
+                options={{ '': text('progress.none'), ...Object.fromEntries(PROGRESS.map((p) => [p, text('progress.' + p)])) }}
+              />
+            </div>
+          ) : null}
+
           {this.status() === 'wishlist' ? null : (
             <div className="CurioPair">
               <div className="Form-group">
@@ -615,6 +628,7 @@ export default class ItemEditModal extends FormModal {
       notes: this.notes().trim() || null,
       favourite: this.favourite(),
       rating: wanted ? null : this.rating(),
+      progress: wanted ? null : this.type.progress() ? this.progress() || null : item?.progress() || null,
       pricePaid: wanted || price === '' || isNaN(Number(price)) ? null : Number(price),
       priceCurrency: wanted || price === '' ? null : this.priceCurrency(),
     };

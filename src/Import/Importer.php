@@ -78,6 +78,7 @@ class Importer
                 $item->price_currency = $row['price_currency'];
                 $item->favourite = $row['favourite'];
                 $item->rating = $row['rating'];
+                $item->progress = $row['progress'];
                 $item->fields = $row['fields'];
                 $item->facet = $facet ? ($row['fields'][$facet['key']] ?? null) : null;
                 $item->position = ++$position;

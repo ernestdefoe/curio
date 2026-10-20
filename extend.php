@@ -104,6 +104,7 @@ return [
         ->addFilter(Search\ItemSearcher::class, Search\Filter\ItemCollectionFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\ItemUserFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\StatusFilter::class)
+        ->addFilter(Search\ItemSearcher::class, Search\Filter\ProgressFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\FacetFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\TitleFilter::class),
 

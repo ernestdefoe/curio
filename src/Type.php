@@ -18,6 +18,8 @@ use Flarum\Database\AbstractModel;
  * @property list<array{key: string, kind: string, labels: array<string, string>, options?: list<array{key: string, labels: array<string, string>}>}>|null $fields
  * @property string $source
  * @property int $position
+ * @property bool $enabled
+ * @property bool $progress
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -37,6 +39,8 @@ class Type extends AbstractModel
         'names' => 'array',
         'fields' => 'array',
         'position' => 'integer',
+        'enabled' => 'boolean',
+        'progress' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

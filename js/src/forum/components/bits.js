@@ -23,6 +23,18 @@ export function statusPill(status) {
   );
 }
 
+/** Not started, in progress or completed, where the item's type tracks it. */
+export function progressPill(item, type) {
+  const progress = type?.progress() && item.status() !== 'wishlist' ? item.progress() : null;
+  if (!progress) return null;
+  return (
+    <span className={'CurioProgress CurioProgress--' + progress}>
+      <Icon name={{ pending: 'far fa-circle', in_progress: 'fas fa-circle-half-stroke', completed: 'fas fa-circle-check' }[progress]} />{' '}
+      {t('progress.' + progress)}
+    </span>
+  );
+}
+
 export function cover(url, shape, wanted, alt = '') {
   return (
     <div className={'CurioCover CurioCover--' + (shape || 'portrait') + (wanted ? ' CurioCover--wanted' : '')}>

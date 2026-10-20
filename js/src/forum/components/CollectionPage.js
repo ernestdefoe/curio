@@ -5,9 +5,9 @@ import Icon from 'flarum/common/components/Icon';
 import Select from 'flarum/common/components/Select';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Placeholder from 'flarum/common/components/Placeholder';
-import { t, text, label, collectionUrl } from '../util';
+import { t, text, label, collectionUrl, PROGRESS } from '../util';
 import { optionLabel } from '../../common/labels';
-import { typeBadge, statusPill, owner, cover } from './bits';
+import { typeBadge, statusPill, progressPill, owner, cover } from './bits';
 import GridSort from '../../common/gridSort';
 import ItemModal from './ItemModal';
 import ItemEditModal from './ItemEditModal';
@@ -29,6 +29,7 @@ export default class CollectionPage extends Page {
     this.items = [];
     this.status = 'all';
     this.facet = '';
+    this.progress = '';
     this.sort = 'position';
     this.q = '';
     this.view_ = 'grid';
@@ -59,6 +60,7 @@ export default class CollectionPage extends Page {
     const filter = { collection: this.collection.id() };
     if (this.status !== 'all') filter.status = this.status;
     if (this.facet) filter.facet = this.facet;
+    if (this.progress) filter.progress = this.progress;
     if (this.q.trim()) filter.q = this.q.trim();
 
     return app.store
@@ -228,7 +230,8 @@ export default class CollectionPage extends Page {
   }
 
   toolbar(c, facetField, facets) {
-    const canArrange = c.canEdit() && this.sort === 'position' && this.status === 'all' && !this.facet && !this.q;
+    const canArrange = c.canEdit() && this.sort === 'position' && this.status === 'all' && !this.facet && !this.progress && !this.q;
+    const type = c.type();
 
     return (
       <div className="CurioToolbar">
@@ -254,6 +257,16 @@ export default class CollectionPage extends Page {
               '': text('filter.any', { field: label(facetField.labels) }),
               ...Object.fromEntries(Object.keys(facets).map((k) => [k, optionLabel(facetField, k, app.translator.getLocale())])),
             }}
+          />
+        ) : null}
+        {type?.progress() ? (
+          <Select
+            value={this.progress}
+            onchange={(v) => {
+              this.progress = v;
+              this.load(true);
+            }}
+            options={{ '': text('progress.any'), ...Object.fromEntries(PROGRESS.map((p) => [p, text('progress.' + p)])) }}
           />
         ) : null}
         <div className="CurioToolbar-right">
@@ -343,6 +356,7 @@ export default class CollectionPage extends Page {
               <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>
               {facet ? <span className="CurioItemCard-field">{facet}</span> : null}
               {item.rating() ? <Stars value={item.rating()} small /> : null}
+              {progressPill(item, type)}
             </li>
           );
         })}
@@ -365,6 +379,7 @@ export default class CollectionPage extends Page {
               ))}
               <th>{t('item.condition')}</th>
               <th>{t('table.rating')}</th>
+              {type?.progress() ? <th>{t('table.progress')}</th> : null}
               <th>{t('table.status')}</th>
             </tr>
           </thead>
@@ -386,6 +401,7 @@ export default class CollectionPage extends Page {
                   {item.condition() ? <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span> : '—'}
                 </td>
                 <td>{item.rating() ? <Stars value={item.rating()} small /> : '—'}</td>
+                {type?.progress() ? <td>{progressPill(item, type) || '—'}</td> : null}
                 <td>{statusPill(item.status()) || <span className="CurioStatus CurioStatus--owned">{t('status.owned')}</span>}</td>
               </tr>
             ))}

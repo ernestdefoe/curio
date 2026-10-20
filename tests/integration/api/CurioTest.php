@@ -984,4 +984,106 @@ class CurioTest extends TestCase
         $this->assertSame($games['fields'], $copy['fields']);
         $this->assertSame([$games['icon'], $games['color'], $games['shape'], $games['source']], [$copy['icon'], $copy['color'], $copy['shape'], $copy['source']]);
     }
+
+    #[Test]
+    public function any_font_awesome_class_list_is_an_icon(): void
+    {
+        $id = $this->typeId('games');
+
+        foreach (['fa-brands fa-playstation', 'fab fa-xbox', 'fa-solid fa-gamepad fa-fw', 'fas fa-dice-d20', 'fa-regular fa-heart'] as $icon) {
+            $response = $this->patchType($id, ['icon' => $icon]);
+            $this->assertSame(200, $response->getStatusCode(), "$icon: ".$response->getBody());
+            $this->assertSame($icon, $this->json($response)['data']['attributes']['icon']);
+        }
+
+        foreach (['gamepad', 'fa-brands', 'fas fa-x"><script>', 'fas  fa-x'] as $icon) {
+            $this->assertSame(422, $this->patchType($id, ['icon' => $icon])->getStatusCode(), $icon);
+        }
+    }
+
+    #[Test]
+    public function a_switched_off_type_is_hidden_from_members_but_not_from_its_owners(): void
+    {
+        $lego = $this->typeId('lego');
+        $shelf = $this->newCollection(3, ['name' => 'Bricks'], 'lego');
+        $this->item(3, $shelf, ['title' => 'Millennium Falcon']);
+
+        $this->assertSame(200, $this->patchType($lego, ['enabled' => false])->getStatusCode());
+
+        // Members and guests no longer see the type, and cannot start a collection of it.
+        $slugs = fn (?int $as) => array_column(array_column($this->json($this->get('/api/curio-types', [], $as))['data'], 'attributes'), 'slug');
+        $this->assertNotContains('lego', $slugs(null));
+        $this->assertNotContains('lego', $slugs(4));
+        $this->assertContains('lego', $slugs(1));
+        $this->assertSame(422, $this->collection(4, ['name' => 'Mine'], 'lego')->getStatusCode());
+        // An admin can still try it out.
+        $this->assertSame(201, $this->collection(1, ['name' => 'Test'], 'lego')->getStatusCode());
+
+        // The existing collection stays for its owner, with its type, and is hidden from others.
+        $own = $this->get("/api/curio-collections/$shelf", [], 3);
+        $this->assertSame(200, $own->getStatusCode());
+        $this->assertSame('lego', collect($this->json($own)['included'])->firstWhere('type', 'curio-types')['attributes']['slug']);
+        $this->assertSame(1, count($this->json($this->get('/api/curio-items', ['filter' => ['collection' => $shelf]], 3))['data']));
+        $this->assertSame(404, $this->get("/api/curio-collections/$shelf", [], 4)->getStatusCode());
+        $this->assertSame(404, $this->get("/api/curio-collections/$shelf")->getStatusCode());
+        $this->assertSame([], $this->json($this->get('/api/curio-items', ['filter' => ['collection' => $shelf]], 4))['data']);
+        $this->assertArrayNotHasKey((string) $lego, $this->json($this->get('/api/curio/overview'))['types']);
+
+        // Back on, back for everyone.
+        $this->assertSame(200, $this->patchType($lego, ['enabled' => true])->getStatusCode());
+        $this->assertSame(200, $this->get("/api/curio-collections/$shelf", [], 4)->getStatusCode());
+        $this->assertSame(1, $this->json($this->get('/api/curio/overview'))['types'][(string) $lego]['items']);
+    }
+
+    #[Test]
+    public function only_admins_switch_types_on_and_off(): void
+    {
+        $response = $this->send($this->request('PATCH', '/api/curio-types/'.$this->typeId('lego'), [
+            'authenticatedAs' => 3,
+            'json' => ['data' => ['type' => 'curio-types', 'id' => (string) $this->typeId('lego'), 'attributes' => ['enabled' => false]]],
+        ]));
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertTrue((bool) $this->database()->table('curio_types')->where('slug', 'lego')->value('enabled'));
+    }
+
+    #[Test]
+    public function items_track_progress_filter_by_it_and_carry_it_through_csv(): void
+    {
+        $types = array_column($this->json($this->get('/api/curio-types'))['data'], 'attributes', 'id');
+        $this->assertTrue($types[$this->typeId('games')]['progress']);
+        $this->assertFalse($types[$this->typeId('lego')]['progress']);
+
+        $id = $this->newCollection(3);
+        $playing = $this->json($this->item(3, $id, ['title' => 'Hades', 'progress' => 'in_progress']))['data']['id'];
+        $this->item(3, $id, ['title' => 'Celeste', 'progress' => 'completed']);
+        $this->item(3, $id, ['title' => 'Tunic']);
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Nope', 'progress' => 'abandoned'])->getStatusCode());
+
+        $titles = fn (array $filter) => array_column(array_column($this->json($this->get('/api/curio-items', ['filter' => $filter + ['collection' => $id]]))['data'], 'attributes'), 'title');
+        $this->assertSame(['Hades'], $titles(['progress' => 'in_progress']));
+        $this->assertSame(['Celeste'], $titles(['progress' => 'completed']));
+        $this->assertSame('in_progress', $this->json($this->get("/api/curio-items/$playing"))['data']['attributes']['progress']);
+
+        $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
+        $this->assertStringContainsString(',progress', strtok($csv, "\n"));
+
+        $to = $this->newCollection(3, ['name' => 'Copy']);
+        $this->upload(3, $to, $csv."Outer Wilds,,,,,,,,,,,,En cours\n");
+        $rows = $this->database()->table('curio_items')->where('collection_id', $to)->orderBy('position')->pluck('progress', 'title')->all();
+        $this->assertSame(['Hades' => 'in_progress', 'Celeste' => 'completed', 'Tunic' => null, 'Outer Wilds' => 'in_progress'], $rows);
+    }
+
+    #[Test]
+    public function a_reading_apps_shelves_become_progress(): void
+    {
+        $id = $this->newCollection(3, [], 'books');
+        $csv = "Book Id,Title,Author,ISBN,ISBN13,My Rating,Year Published,Original Publication Year,Date Added,Exclusive Shelf\n"
+            ."1,Dune,Frank Herbert,,,5,1965,1965,2024/01/02,read\n"
+            ."2,Hyperion,Dan Simmons,,,0,1989,1989,2024/01/03,currently-reading\n"
+            ."3,Foundation,Isaac Asimov,,,0,1951,1951,2024/01/04,to-read\n";
+        $this->assertSame(200, $this->upload(3, $id, $csv)->getStatusCode());
+
+        $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get(['title', 'status', 'progress']);
+        $this->assertSame([['Dune', 'owned', 'completed'], ['Hyperion', 'owned', 'in_progress'], ['Foundation', 'wishlist', null]], $rows->map(fn ($r) => [$r->title, $r->status, $r->progress])->all());
+    }
 }

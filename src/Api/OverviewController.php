@@ -4,11 +4,11 @@ namespace Ernestdefoe\Curio\Api;
 
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\Settings;
+use Ernestdefoe\Curio\Type;
 use Ernestdefoe\Curio\Storage\Images;
 use Flarum\Http\RequestUtil;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Repository as Cache;
-use Illuminate\Database\ConnectionInterface;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -25,7 +25,9 @@ class OverviewController implements RequestHandlerInterface
 {
     private const SECONDS = 600;
 
-    public function __construct(private Cache $cache, private Images $images, private ConnectionInterface $db, private SettingsRepositoryInterface $settings)
+    public const CACHE_KEY = 'curio.overview.3';
+
+    public function __construct(private Cache $cache, private Images $images, private SettingsRepositoryInterface $settings)
     {
     }
 
@@ -36,11 +38,13 @@ class OverviewController implements RequestHandlerInterface
         // The layout is read fresh; only the counting is cached.
         $layout = $this->settings->get(Settings::BROWSE_LAYOUT) === 'covers' ? 'covers' : 'tags';
 
-        return new JsonResponse(['layout' => $layout] + $this->cache->remember('curio.overview.2', self::SECONDS, function () {
-            $public = Collection::query()->where('visibility', 'public');
+        return new JsonResponse(['layout' => $layout] + $this->cache->remember(self::CACHE_KEY, self::SECONDS, function () {
+            // Public collections of switched-on types: what a guest can see.
+            $public = Collection::query()->where('visibility', 'public')
+                ->whereIn('type_id', Type::query()->where('enabled', true)->select('id'));
 
             $types = [];
-            $rows = $this->db->table('curio_collections')->where('visibility', 'public')
+            $rows = (clone $public)->toBase()
                 ->selectRaw('type_id, sum(owned_count) as total, count(*) as collections')->groupBy('type_id')->get();
 
             foreach ($rows as $row) {

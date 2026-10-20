@@ -12,18 +12,20 @@ use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
+use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Tobyz\JsonApiServer\Context as OriginalContext;
 
 /**
- * Collection types. Everyone who may see collections can list them; only
- * admins change them, and a type in use cannot be deleted.
+ * Collection types. Everyone who may see collections can list the switched-on
+ * ones; admins see and change them all, and a type in use cannot be deleted.
  *
  * @extends AbstractDatabaseResource<Type>
  */
 class TypeResource extends AbstractDatabaseResource
 {
-    public function __construct(private Sources $sources, private TranslatorInterface $translator)
+    public function __construct(private Sources $sources, private TranslatorInterface $translator, private Cache $cache)
     {
     }
 
@@ -54,10 +56,34 @@ class TypeResource extends AbstractDatabaseResource
         ];
     }
 
+    /**
+     * A switched-off type is only listed for admins. Only the list: an owner's
+     * collection of it still includes its type, which its pages need.
+     */
+    public function scope(Builder $query, OriginalContext $context): void
+    {
+        if ($context instanceof Context && $context->listing(self::class) && ! $context->getActor()->isAdmin()) {
+            $query->where('enabled', true);
+        }
+    }
+
     public function creating(object $model, OriginalContext $context): ?object
     {
         /** @var Type $model */
         $model->position = (int) Type::query()->max('position') + 1;
+        // Flarum's models do not take the column defaults, so a new row states its own.
+        $model->enabled ??= true;
+        $model->progress ??= false;
+
+        return $model;
+    }
+
+    /** The Collections page's per-type counts leave switched-off types out. */
+    public function saved(object $model, OriginalContext $context): ?object
+    {
+        if ($model->wasChanged('enabled') || $model->wasRecentlyCreated) {
+            $this->cache->forget(OverviewController::CACHE_KEY);
+        }
 
         return $model;
     }
@@ -110,6 +136,13 @@ class TypeResource extends AbstractDatabaseResource
                 ->get(fn (Type $type) => $type->fieldList())
                 ->set(fn (Type $type, $value) => $type->fields = self::fieldList($value)),
             Schema\Integer::make('position')
+                ->writable(),
+            // Off: members cannot see it or start a collection of it; existing
+            // collections of it stay, seen by their owners and moderators only.
+            Schema\Boolean::make('enabled')
+                ->writable(),
+            // Whether its items track progress: not started, in progress, completed.
+            Schema\Boolean::make('progress')
                 ->writable(),
             // Whether a title search exists for it here (films, TV and games need Marquee).
             Schema\Boolean::make('searchable')

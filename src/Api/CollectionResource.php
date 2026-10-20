@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\CollectionStats;
 use Ernestdefoe\Curio\Item;
+use Ernestdefoe\Curio\Type;
 use Ernestdefoe\Curio\Storage\Images;
 use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
@@ -121,6 +122,11 @@ class CollectionResource extends AbstractDatabaseResource
 
         if (Collection::query()->where('user_id', $actor->id)->count() >= Collection::MAX_PER_USER) {
             throw new ValidationException(['name' => $this->translator->trans('ernestdefoe-curio.api.too_many_collections', ['count' => Collection::MAX_PER_USER])]);
+        }
+
+        // A switched-off type takes no new collections, except an admin's (to try it out).
+        if (! $actor->isAdmin() && ! Type::query()->whereKey($model->type_id)->where('enabled', true)->exists()) {
+            throw new ValidationException(['type' => $this->translator->trans('ernestdefoe-curio.api.type_disabled')]);
         }
 
         $model->user_id = $actor->id;

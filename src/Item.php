@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $price_currency
  * @property bool $favourite
  * @property int|null $rating
+ * @property string|null $progress
  * @property int $position
  * @property int|null $discussion_id
  * @property bool $needs_match
@@ -46,6 +47,9 @@ class Item extends AbstractModel
     public const STATUSES = ['owned', 'wishlist', 'trade'];
 
     public const CONDITIONS = ['sealed', 'mint', 'very_good', 'good', 'fair', 'poor'];
+
+    /** Where the owner is with it: not started, in progress, completed. */
+    public const PROGRESS = ['pending', 'in_progress', 'completed'];
 
     public const MAX_PHOTOS = 6;
 
