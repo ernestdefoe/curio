@@ -42,11 +42,14 @@ export default class GridSort {
     const target = e.currentTarget;
     target.setPointerCapture && target.setPointerCapture(e.pointerId);
 
+    // A card is the grid's child that is (or holds) the handle: the admin's
+    // type list puts the handle on a grip inside each row.
+    const cards = () => Array.from(grid.children).filter((el) => el.matches('[data-sort-index]') || el.querySelector('[data-sort-index]'));
+
     const move = (ev) => {
-      const cards = Array.from(grid.querySelectorAll(':scope > [data-sort-index]'));
       let best = this.dragging;
       let bestDistance = Infinity;
-      cards.forEach((card, i) => {
+      cards().forEach((card, i) => {
         const r = card.getBoundingClientRect();
         const d = Math.hypot(ev.clientX - (r.left + r.width / 2), ev.clientY - (r.top + r.height / 2));
         if (d < bestDistance) {
