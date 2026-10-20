@@ -8,6 +8,7 @@ import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import extractText from 'flarum/common/utils/extractText';
 import GridSort from '../common/gridSort';
 import { pick } from '../common/labels';
+import { nextName, freeSlug } from './naming';
 
 const t = (key, params) => app.translator.trans(`ernestdefoe-curio.admin.${key}`, params);
 const text = (key, params) => extractText(t(key, params));
@@ -73,17 +74,18 @@ export default class TypesEditor {
   /**
    * A new type starting as a copy of the open one: icon, colour, shape,
    * look-ups and every detail with its labels in each language. Each name
-   * gets a number so the copy can be told apart until it is renamed.
+   * gets the next free number ("Games 2", then "Games 3") so the copy can be
+   * told apart until it is renamed.
    */
   duplicate() {
     const copy = clone(this.draft);
-    const taken = (lang, name) => this.types.some((type) => (type.names() || {})[lang] === name);
-    Object.keys(copy.names).forEach((lang) => {
-      const base = copy.names[lang];
-      let n = 2;
-      while (taken(lang, `${base} ${n}`)) n++;
-      copy.names[lang] = `${base} ${n}`;
-    });
+    Object.keys(copy.names).forEach(
+      (lang) =>
+        (copy.names[lang] = nextName(
+          copy.names[lang],
+          this.types.map((type) => (type.names() || {})[lang])
+        ))
+    );
     this.open = null;
     this.error = null;
     this.draft = copy;
@@ -322,13 +324,18 @@ export default class TypesEditor {
   save() {
     const d = this.draft;
     const attrs = { ...d, color: d.color.trim() || null, names: Object.fromEntries(Object.entries(d.names).filter(([, v]) => v && v.trim())) };
-    if (!this.open)
-      attrs.slug =
+    if (!this.open) {
+      const base =
         (attrs.names.en || Object.values(attrs.names)[0] || 'type')
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '')
           .slice(0, 40) || 'type';
+      attrs.slug = freeSlug(
+        base,
+        this.types.map((type) => type.slug())
+      );
+    }
 
     this.saving = true;
     this.error = null;
@@ -393,10 +400,10 @@ export default class TypesEditor {
     let count = 0;
     for (const raw of list) {
       const attrs = Object.fromEntries(EXPORTED.filter((key) => key in raw).map((key) => [key, raw[key]]));
-      const base = String(attrs.slug || 'type').slice(0, 44);
-      let slug = base;
-      for (let n = 2; this.types.some((type) => type.slug() === slug); n++) slug = `${base}-${n}`;
-      attrs.slug = slug;
+      attrs.slug = freeSlug(
+        String(attrs.slug || 'type').slice(0, 44),
+        this.types.map((type) => type.slug())
+      );
       try {
         this.types.push(await app.store.createRecord('curio-types').save(attrs));
         count++;

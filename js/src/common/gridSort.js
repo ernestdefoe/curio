@@ -39,14 +39,14 @@ export default class GridSort {
     e.preventDefault();
 
     this.dragging = index;
-    const target = e.currentTarget;
-    target.setPointerCapture && target.setPointerCapture(e.pointerId);
+    const pointer = e.pointerId;
 
     // A card is the grid's child that is (or holds) the handle: the admin's
     // type list puts the handle on a grip inside each row.
     const cards = () => Array.from(grid.children).filter((el) => el.matches('[data-sort-index]') || el.querySelector('[data-sort-index]'));
 
     const move = (ev) => {
+      if (ev.pointerId !== pointer) return;
       let best = this.dragging;
       let bestDistance = Infinity;
       cards().forEach((card, i) => {
@@ -66,18 +66,23 @@ export default class GridSort {
       }
     };
 
-    const end = () => {
-      target.removeEventListener('pointermove', move);
-      target.removeEventListener('pointerup', end);
-      target.removeEventListener('pointercancel', end);
+    const end = (ev) => {
+      if (ev.pointerId !== pointer) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
       this.dragging = null;
       this.onEnd();
       m.redraw();
     };
 
-    target.addEventListener('pointermove', move);
-    target.addEventListener('pointerup', end);
-    target.addEventListener('pointercancel', end);
+    // Listened for on the window, not the handle: moving a card up means the
+    // keyed redraw moves the dragged element itself in the DOM, which drops
+    // its pointer capture, so a listener on it heard nothing after the first
+    // step (a drag downwards moves the other cards and kept working).
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
     m.redraw();
   }
 }

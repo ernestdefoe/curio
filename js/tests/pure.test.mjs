@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pick, optionLabel, fieldValue } from '../src/common/labels.js';
+import { nextName, freeSlug } from '../src/admin/naming.js';
 import GridSort from '../src/common/gridSort.js';
 
 test('labels follow the reader’s language, then its base, then English', () => {
@@ -69,4 +70,15 @@ test('half-star ratings follow the pointer and read as stars', () => {
   assert.equal(ratingAt(5, 0), 0);
   assert.equal(starsLabel(9), '4.5');
   assert.equal(starsLabel(8), '4');
+});
+
+test('a duplicated type takes the next free number, never "Title 2 2"', () => {
+  assert.equal(nextName('Title', ['Title']), 'Title 2');
+  assert.equal(nextName('Title 2', ['Title', 'Title 2']), 'Title 3');
+  assert.equal(nextName('Title 3', ['Title', 'Title 2', 'Title 3']), 'Title 4');
+  assert.equal(nextName('Title', ['Title', 'Title 2', 'Title 4']), 'Title 3');
+  assert.equal(nextName('', []), '');
+  assert.equal(freeSlug('title', ['games']), 'title');
+  assert.equal(freeSlug('title-2', ['title', 'title-2']), 'title-3');
+  assert.equal(freeSlug('title', ['title', 'title-2']), 'title-3');
 });
