@@ -86,7 +86,10 @@ class TypeResource extends AbstractDatabaseResource
                 ->set(fn (Type $type, $value) => $type->names = self::labels($value, 100)),
             Schema\Str::make('icon')
                 ->writable()
-                ->rule('regex:/^fa[a-z]? fa-[a-z0-9-]{1,60}( fa-[a-z0-9-]{1,30})?$/'),
+                // Any Font Awesome class list Flarum's own icon fields take:
+                // "fas fa-x", "fa-brands fa-playstation", "fa-solid fa-x fa-fw"…
+                ->rule('max:100')
+                ->rule('regex:/^fa[a-z0-9-]*( fa[a-z0-9-]*){1,4}$/'),
             // Blank, like a tag with no colour: the forum's own colour is used.
             Schema\Str::make('color')
                 ->nullable()
