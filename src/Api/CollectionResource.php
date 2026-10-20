@@ -15,6 +15,7 @@ use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -37,7 +38,7 @@ class CollectionResource extends AbstractDatabaseResource
     /** @var array<int, list<int>> */
     private array $orders = [];
 
-    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db)
+    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db, private Cache $cache)
     {
     }
 
@@ -141,6 +142,12 @@ class CollectionResource extends AbstractDatabaseResource
     public function saving(object $model, OriginalContext $context): ?object
     {
         /** @var Collection $model */
+        // A switched-off type takes no collections moved into it either, except an admin's.
+        if ($model->exists && $model->isDirty('type_id') && ! $context->getActor()->isAdmin()
+            && ! Type::query()->whereKey($model->type_id)->where('enabled', true)->exists()) {
+            throw new ValidationException(['type' => $this->translator->trans('ernestdefoe-curio.api.type_disabled')]);
+        }
+
         if ($model->isDirty('name')) {
             $model->slug = Str::slug($model->name) ?: 'collection';
         }
@@ -154,6 +161,10 @@ class CollectionResource extends AbstractDatabaseResource
         $order = $this->orders[spl_object_id($model)] ?? null;
         unset($this->orders[spl_object_id($model)]);
 
+        if (! $model->wasRecentlyCreated && $model->wasChanged('type_id')) {
+            $this->retype($model);
+        }
+
         if ($order !== null) {
             $this->db->transaction(function () use ($model, $order) {
                 foreach ($order as $position => $id) {
@@ -164,6 +175,32 @@ class CollectionResource extends AbstractDatabaseResource
         }
 
         return $model;
+    }
+
+    /**
+     * After a change of type: each item's facet comes from the new type's
+     * first choice field (null when it has none), then the breakdown and the
+     * browse page's counts are worked out again.
+     */
+    private function retype(Collection $collection): void
+    {
+        $field = Type::query()->find($collection->type_id)?->facetField();
+        $choices = array_column($field['options'] ?? [], 'key');
+
+        $this->db->transaction(function () use ($collection, $field, $choices) {
+            Item::query()->where('collection_id', $collection->id)->select(['id', 'fields', 'facet'])
+                ->each(function (Item $item) use ($field, $choices) {
+                    $facet = $field ? ($item->fields[$field['key']] ?? null) : null;
+                    // Only a value the new field offers; anything else would show as a raw key.
+                    $facet = in_array($facet, $choices, true) ? $facet : null;
+                    if ($item->facet !== $facet) {
+                        Item::query()->whereKey($item->id)->update(['facet' => $facet]);
+                    }
+                });
+        });
+
+        resolve(CollectionStats::class)->refresh($collection);
+        $this->cache->forget(OverviewController::CACHE_KEY);
     }
 
     private function follow(Collection $collection, int $userId, bool $follow): void
@@ -250,10 +287,12 @@ class CollectionResource extends AbstractDatabaseResource
             Schema\Relationship\ToOne::make('user')
                 ->type('users')
                 ->includable(),
+            // The owner can change it later; items keep their details, and the
+            // facet is worked out again from the new type's first choice field.
             Schema\Relationship\ToOne::make('type')
                 ->type('curio-types')
                 ->includable()
-                ->writableOnCreate()
+                ->writable($owner)
                 ->requiredOnCreate(),
         ];
     }

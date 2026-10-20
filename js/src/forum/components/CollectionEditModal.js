@@ -2,6 +2,7 @@ import app from 'flarum/forum/app';
 import FormModal from 'flarum/common/components/FormModal';
 import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
+import SelectDropdown from 'flarum/common/components/SelectDropdown';
 import Icon from 'flarum/common/components/Icon';
 import Stream from 'flarum/common/utils/Stream';
 import { t, text, label, types, loadTypes, closeThen } from '../util';
@@ -9,7 +10,7 @@ import useStyles from '../styles';
 
 const VISIBILITIES = ['public', 'members', 'private'];
 
-/** Start a collection, or change one: name, type (at the start only), description, who sees it. */
+/** Start a collection, or change one: name, type, description, who sees it. */
 export default class CollectionEditModal extends FormModal {
   oninit(vnode) {
     super.oninit(vnode);
@@ -43,27 +44,11 @@ export default class CollectionEditModal extends FormModal {
     return (
       <div className="Modal-body">
         <div className="Form">
-          {c ? null : (
-            <div className="Form-group">
-              <label>{t('edit.type')}</label>
-              <div className="CurioTypePick">
-                {types().map((type) => (
-                  <button
-                    type="button"
-                    className={'CurioTypePick-option' + (this.typeId() === type.id() ? ' active' : '')}
-                    style={{ '--curio-accent': type.color() }}
-                    onclick={() => this.typeId(type.id())}
-                    aria-pressed={this.typeId() === type.id() ? 'true' : 'false'}
-                  >
-                    <Icon name={type.icon()} />
-                    <span>{label(type.names())}</span>
-                    {/* Switched off: only admins are offered it, to try it out. */}
-                    {type.enabled() === false ? <Icon name="fas fa-eye-slash" className="CurioMuted" /> : null}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="Form-group">
+            <label>{t('edit.type')}</label>
+            {this.typePicker()}
+            {c && this.typeId() !== c.type()?.id() ? <p className="helpText">{t('edit.type_change_help')}</p> : null}
+          </div>
           <div className="Form-group">
             <label for="curio-name">{t('edit.name')}</label>
             <input id="curio-name" name="name" className="FormControl" maxlength="100" bidi={this.name} placeholder={text('edit.name_placeholder')} />
@@ -112,6 +97,45 @@ export default class CollectionEditModal extends FormModal {
           </div>
         </div>
       </div>
+    );
+  }
+
+  /**
+   * The type as a compact menu, each with its icon. Switched-off types are
+   * only ever offered to admins, in their own group at the end.
+   */
+  typePicker() {
+    const all = types();
+    const selected = all.find((type) => type.id() === this.typeId()) || this.attrs.collection?.type();
+    const option = (type) => (
+      <Button
+        icon={type.icon()}
+        active={type === selected}
+        itemClassName={type === selected ? 'active' : ''}
+        style={{ '--curio-accent': type.color() }}
+        onclick={() => this.typeId(type.id())}
+      >
+        {label(type.names())}
+      </Button>
+    );
+    const off = all.filter((type) => type.enabled() === false);
+
+    return (
+      <SelectDropdown
+        className="CurioTypeMenu"
+        buttonClassName="Button"
+        menuClassName="CurioTypeMenu-menu"
+        icon={selected ? selected.icon() : 'fas fa-shapes'}
+        buttonAttrs={{ style: selected?.color() ? `--curio-accent: ${selected.color()}` : undefined }}
+        defaultLabel={text('edit.type_pick')}
+        accessibleToggleLabel={selected ? `${text('edit.type')} ${label(selected.names())}` : text('edit.type')}
+      >
+        {[
+          ...all.filter((type) => type.enabled() !== false).map(option),
+          off.length ? <div className="Dropdown-header">{t('edit.type_off_group')}</div> : null,
+          ...off.map(option),
+        ]}
+      </SelectDropdown>
     );
   }
 
@@ -166,7 +190,7 @@ export default class CollectionEditModal extends FormModal {
     };
 
     if (c && c.canFeature()) attrs.featured = this.featured();
-    if (!c) attrs.relationships = { type: app.store.getById('curio-types', this.typeId()) };
+    if (!c || this.typeId() !== c.type()?.id()) attrs.relationships = { type: app.store.getById('curio-types', this.typeId()) };
 
     this.loading = true;
     (c || app.store.createRecord('curio-collections'))

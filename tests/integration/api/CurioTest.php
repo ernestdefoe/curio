@@ -941,6 +941,47 @@ class CurioTest extends TestCase
         ]));
     }
 
+    private function retype(int $as, int $collection, string $type): ResponseInterface
+    {
+        return $this->send($this->request('PATCH', "/api/curio-collections/$collection", [
+            'authenticatedAs' => $as,
+            'json' => ['data' => [
+                'type' => 'curio-collections',
+                'id' => (string) $collection,
+                'relationships' => ['type' => ['data' => ['type' => 'curio-types', 'id' => (string) $this->typeId($type)]]],
+            ]],
+        ]));
+    }
+
+    #[Test]
+    public function the_owner_changes_a_collections_type_and_the_breakdown_follows(): void
+    {
+        $id = $this->newCollection(3);
+        $this->item(3, $id, ['title' => 'Metroid Dread', 'fields' => ['platform' => 'nintendo-switch']]);
+
+        // Nobody else can, not even a member who can see it.
+        $this->assertSame(403, $this->retype(4, $id, 'lego')->getStatusCode());
+
+        $response = $this->retype(3, $id, 'lego');
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame('lego', collect($this->json($response)['included'])->firstWhere('type', 'curio-types')['attributes']['slug']);
+        // LEGO has no choice field: no breakdown, no facet, but the details are kept.
+        $this->assertEquals([], $this->json($this->get("/api/curio-collections/$id", [], 3))['data']['attributes']['facets']);
+        $item = $this->json($this->get('/api/curio-items', ['filter' => ['collection' => $id]], 3))['data'][0]['attributes'];
+        $this->assertNull($item['facet']);
+        $this->assertSame('nintendo-switch', $item['fields']['platform']);
+
+        // Back to games, and the platform is the breakdown again.
+        $this->assertSame(200, $this->retype(3, $id, 'games')->getStatusCode());
+        $this->assertEquals(['nintendo-switch' => 1], $this->json($this->get("/api/curio-collections/$id", [], 3))['data']['attributes']['facets']);
+
+        // A switched-off type takes no collection moved into it, except an admin's.
+        $this->assertSame(200, $this->patchType($this->typeId('lego'), ['enabled' => false])->getStatusCode());
+        $this->assertSame(422, $this->retype(3, $id, 'lego')->getStatusCode());
+        $mine = $this->newCollection(1, ['name' => 'Admin shelf']);
+        $this->assertSame(200, $this->retype(1, $mine, 'lego')->getStatusCode());
+    }
+
     #[Test]
     public function a_type_colour_is_a_hex_code_or_blank(): void
     {

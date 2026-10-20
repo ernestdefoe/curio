@@ -518,11 +518,16 @@
   align-items: center;
   margin-bottom: 24px;
 
+  &-filters,
   &-right {
-    margin-left: auto;
     display: flex;
     gap: 10px;
     align-items: center;
+    min-width: 0;
+  }
+
+  &-right {
+    margin-left: auto;
   }
 
   .Button.active {
@@ -1512,35 +1517,43 @@ button.CurioChip {
 }
 
 // ── Collection settings modal ──────────────────────────────────────────
-.CurioTypePick {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+// The type: one compact menu, each type with its icon in its own colour.
+.CurioTypeMenu {
+  display: flex;
+  width: 100%;
 
-  &-option {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 6px;
-    border-radius: 10px;
-    border: 2px solid var(--control-bg);
+  // Like the fields around it: a plain Button vanishes on the modal's grey.
+  > .Dropdown-toggle {
+    flex: 1;
+    justify-content: flex-start;
+    text-align: left;
     background: var(--body-bg);
     color: var(--text-color);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    text-align: center;
 
-    .icon {
-      font-size: 20px;
+    .Button-icon {
       color: var(--curio-accent, var(--primary-color));
     }
 
-    &.active {
-      border-color: var(--curio-accent, var(--primary-color));
-      background: var(--body-bg-shaded);
+    .Button-label {
+      flex: 1;
     }
+  }
+
+  &-menu {
+    width: 100%;
+    max-height: 320px;
+    overflow-y: auto;
+
+    > li > button .Button-icon {
+      color: var(--curio-accent, var(--primary-color));
+    }
+  }
+
+  .Dropdown-header {
+    white-space: normal;
+    text-transform: none;
+    font-weight: 600;
+    color: var(--muted-color);
   }
 }
 
@@ -1830,15 +1843,46 @@ button.CurioChip {
     padding: 6px 4px;
   }
 
+  // Two tidy rows: what to show, then search, order, view and arranging.
   .CurioToolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    margin-left: -15px;
-    margin-right: -15px;
-    padding: 0 15px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
 
     &-right {
       margin-left: 0;
+    }
+
+    &-filters {
+      gap: 6px;
+    }
+
+    // Each filter takes the room its words need, sharing what is left.
+    &-filters > .Select,
+    &-right > .Select,
+    .CurioSearchField {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .Select-input,
+    &-right .CurioSearchField .FormControl {
+      width: 100%;
+      text-overflow: ellipsis;
+    }
+
+    &-filters .Select-input {
+      padding-left: 8px;
+      padding-right: 24px;
+    }
+
+    &-filters .Select-caret {
+      margin-left: -22px;
+    }
+
+    // Searching takes the order's room; it comes back when the field closes.
+    &-right.is-searching > .Select {
+      display: none;
     }
   }
 
@@ -1874,14 +1918,6 @@ button.CurioChip {
 
   .CurioDetails-cover {
     width: 110px;
-  }
-
-  .CurioTypePick {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .CurioToolbar-right .CurioSearchField .FormControl {
-    width: 160px;
   }
 
   .CurioItem {

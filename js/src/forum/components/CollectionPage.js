@@ -3,6 +3,7 @@ import Page from 'flarum/common/components/Page';
 import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import Select from 'flarum/common/components/Select';
+import Tooltip from 'flarum/common/components/Tooltip';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Placeholder from 'flarum/common/components/Placeholder';
 import { t, text, label, collectionUrl, PROGRESS } from '../util';
@@ -205,14 +206,19 @@ export default class CollectionPage extends Page {
                 <Button
                   className="Button CurioHero-ghost"
                   icon="fas fa-gear"
-                  onclick={() =>
+                  onclick={() => {
+                    const typeId = c.type()?.id();
                     app.modal.show(CollectionEditModal, {
                       collection: c,
                       onimport: () => this.refresh(),
-                      onsave: (saved) => m.route.set(collectionUrl(saved), null, { replace: true }),
+                      onsave: (saved) => {
+                        m.route.set(collectionUrl(saved), null, { replace: true });
+                        // A new type works each item's facet out again.
+                        if (saved.type()?.id() !== typeId) this.filterFacet('');
+                      },
                       ondelete: () => m.route.set(app.route('user.curio', { username: c.user().slug() })),
-                    })
-                  }
+                    });
+                  }}
                 >
                   {t('page.settings')}
                 </Button>
@@ -229,68 +235,88 @@ export default class CollectionPage extends Page {
     this.load(true);
   }
 
+  /**
+   * One row: what to show (status, the type's choice field, progress) on the
+   * left; search, order, view and arranging on the right. Search and Arrange
+   * are icon buttons; search opens into a field and closes again when empty.
+   */
   toolbar(c, facetField, facets) {
     const canArrange = c.canEdit() && this.sort === 'position' && this.status === 'all' && !this.facet && !this.progress && !this.q;
     const type = c.type();
+    const searchLabel = text('page.search', { count: c.ownedCount() + c.wishCount() });
+    const reload = (key) => (v) => {
+      this[key] = v;
+      this.load(true);
+    };
 
     return (
       <div className="CurioToolbar">
-        <div className="ButtonGroup" role="group" aria-label={text('page.filter_label')}>
-          {FILTERS.map((s) => (
-            <Button
-              className={'Button' + (this.status === s ? ' Button--primary' : '')}
-              aria-pressed={this.status === s ? 'true' : 'false'}
-              onclick={() => {
-                this.status = s;
-                this.load(true);
-              }}
-            >
-              {t('filter.' + s)}
-            </Button>
-          ))}
-        </div>
-        {facetField && Object.keys(facets).length > 1 ? (
+        <div className="CurioToolbar-filters">
           <Select
-            value={this.facet}
-            onchange={(v) => this.filterFacet(v)}
-            options={{
-              '': text('filter.any', { field: label(facetField.labels) }),
-              ...Object.fromEntries(Object.keys(facets).map((k) => [k, optionLabel(facetField, k, app.translator.getLocale())])),
-            }}
+            value={this.status}
+            onchange={reload('status')}
+            aria-label={text('page.filter_label')}
+            options={Object.fromEntries(FILTERS.map((s) => [s, text('filter.' + s)]))}
           />
-        ) : null}
-        {type?.progress() ? (
-          <Select
-            value={this.progress}
-            onchange={(v) => {
-              this.progress = v;
-              this.load(true);
-            }}
-            options={{ '': text('progress.any'), ...Object.fromEntries(PROGRESS.map((p) => [p, text('progress.' + p)])) }}
-          />
-        ) : null}
-        <div className="CurioToolbar-right">
-          <div className="Form-group CurioSearchField">
-            <Icon name="fas fa-magnifying-glass" />
-            <input
-              className="FormControl"
-              type="search"
-              value={this.q}
-              placeholder={text('page.search', { count: c.ownedCount() + c.wishCount() })}
-              aria-label={text('page.search', { count: c.ownedCount() + c.wishCount() })}
-              oninput={(e) => {
-                this.q = e.target.value;
-                clearTimeout(this.debounce);
-                this.debounce = setTimeout(() => this.load(true), 300);
+          {facetField && Object.keys(facets).length > 1 ? (
+            <Select
+              value={this.facet}
+              onchange={(v) => this.filterFacet(v)}
+              aria-label={label(facetField.labels)}
+              options={{
+                '': text('filter.any', { field: label(facetField.labels) }),
+                ...Object.fromEntries(Object.keys(facets).map((k) => [k, optionLabel(facetField, k, app.translator.getLocale())])),
               }}
             />
-          </div>
+          ) : null}
+          {type?.progress() ? (
+            <Select
+              value={this.progress}
+              onchange={reload('progress')}
+              aria-label={text('table.progress')}
+              options={{ '': text('progress.any'), ...Object.fromEntries(PROGRESS.map((p) => [p, text('progress.' + p)])) }}
+            />
+          ) : null}
+        </div>
+        <div className={'CurioToolbar-right' + (this.searching || this.q ? ' is-searching' : '')}>
+          {this.searching || this.q ? (
+            <div className="Form-group CurioSearchField">
+              <Icon name="fas fa-magnifying-glass" />
+              <input
+                className="FormControl"
+                type="search"
+                value={this.q}
+                placeholder={searchLabel}
+                aria-label={searchLabel}
+                oncreate={(vnode) => vnode.dom.focus()}
+                onblur={() => (this.searching = false)}
+                onkeydown={(e) => {
+                  if (e.key !== 'Escape') return;
+                  e.preventDefault();
+                  this.searching = false;
+                  if (this.q) reload('q')('');
+                }}
+                oninput={(e) => {
+                  this.q = e.target.value;
+                  clearTimeout(this.debounce);
+                  this.debounce = setTimeout(() => this.load(true), 300);
+                }}
+              />
+            </div>
+          ) : (
+            <Tooltip text={searchLabel}>
+              <Button
+                className="Button Button--icon"
+                icon="fas fa-magnifying-glass"
+                aria-label={searchLabel}
+                onclick={() => (this.searching = true)}
+              />
+            </Tooltip>
+          )}
           <Select
             value={this.sort}
-            onchange={(v) => {
-              this.sort = v;
-              this.load(true);
-            }}
+            onchange={reload('sort')}
+            aria-label={text('page.sort_label')}
             options={Object.fromEntries(Object.keys(SORTS).map((k) => [k, text('sort.' + k)]))}
           />
           <div className="ButtonGroup" role="group" aria-label={text('page.view_label')}>
@@ -298,31 +324,40 @@ export default class CollectionPage extends Page {
               className={'Button Button--icon' + (this.view_ === 'grid' ? ' active' : '')}
               icon="fas fa-grip"
               aria-label={text('page.view_grid')}
+              aria-pressed={this.view_ === 'grid' ? 'true' : 'false'}
               onclick={() => (this.view_ = 'grid')}
             />
             <Button
               className={'Button Button--icon' + (this.view_ === 'list' ? ' active' : '')}
               icon="fas fa-list"
               aria-label={text('page.view_list')}
+              aria-pressed={this.view_ === 'list' ? 'true' : 'false'}
               onclick={() => (this.view_ = 'list')}
             />
           </div>
-          {canArrange && this.items.length > 1 ? (
-            <Button
-              className={'Button' + (this.arranging ? ' Button--primary' : '')}
-              icon={this.arranging ? 'fas fa-check' : 'fas fa-up-down-left-right'}
-              onclick={() => {
-                this.arranging = !this.arranging;
-                this.view_ = 'grid';
-                if (this.arranging && this.more) this.load(false);
-              }}
-            >
-              {this.arranging ? t('page.arrange_done') : t('page.arrange')}
+          {this.arranging ? (
+            <Button className="Button Button--primary" icon="fas fa-check" onclick={() => this.arrange(false)}>
+              {t('page.arrange_done')}
             </Button>
+          ) : canArrange && this.items.length > 1 ? (
+            <Tooltip text={text('page.arrange')}>
+              <Button
+                className="Button Button--icon"
+                icon="fas fa-up-down-left-right"
+                aria-label={text('page.arrange')}
+                onclick={() => this.arrange(true)}
+              />
+            </Tooltip>
           ) : null}
         </div>
       </div>
     );
+  }
+
+  arrange(on) {
+    this.arranging = on;
+    this.view_ = 'grid';
+    if (on && this.more) this.load(false);
   }
 
   grid(type, facetField) {

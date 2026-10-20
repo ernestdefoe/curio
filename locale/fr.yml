@@ -31,7 +31,7 @@ ernestdefoe-curio:
       trade: "{count} à échanger"
       collections: "{count, plural, one {# collection} other {# collections}}"
     filter:
-      all: Tout
+      all: Tous les objets
       owned: Possédés
       wishlist: Liste de souhaits
       trade: Échangeables
@@ -61,6 +61,7 @@ ernestdefoe-curio:
       settings: Réglages
       search: "Chercher parmi {count} objets…"
       filter_label: Afficher
+      sort_label: Ordre
       view_label: Affichage
       view_grid: Grille
       view_list: Liste
@@ -71,6 +72,9 @@ ernestdefoe-curio:
       title_new: Nouvelle collection
       title_edit: Réglages de la collection
       type: Que collectionnez-vous ?
+      type_pick: Choisissez un type
+      type_off_group: Désactivés — seuls les admins les voient
+      type_change_help: Les objets gardent leurs détails. La répartition et les filtres suivent les champs du nouveau type.
       name: Nom
       name_placeholder: L'étagère Nintendo
       description: Description
