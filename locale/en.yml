@@ -246,7 +246,8 @@ ernestdefoe-curio:
       shortcut_menu: Account menu only
       shortcut_none: Nowhere (Profile → Collections still works)
       widget_label: Offer the "Recently added" widget
-      widget_help: Off by default. When on, the widget can be placed with Bespoke or FoF Forum Widgets (it first appears in FoF's right-hand column; move or remove it in FoF's layout editor). Reload the admin after switching it on.
+      widget_help: Off by default. When on, the widget can be placed with Bespoke or FoF Forum Widgets (it first appears in FoF's right-hand column; move or remove it in FoF's layout editor).
+      widget_title: Recently added to collections
       igdb_id_label: IGDB client ID (optional)
       igdb_secret_label: IGDB client secret
       igdb_help: "With a free Twitch developer app, game look-ups search IGDB: cover, developer, publisher, release date, platforms and genres. Register an application (any name; OAuth redirect URL http://localhost; category Application Integration), then copy its Client ID and make a New Secret. Without it, games are looked up through Marquee when it is installed."

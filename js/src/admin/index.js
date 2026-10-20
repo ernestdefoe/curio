@@ -1,5 +1,6 @@
 import app from 'flarum/admin/app';
 import { Admin } from 'flarum/common/extenders';
+import { extend as after } from 'flarum/common/extend';
 import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import Link from 'flarum/common/components/Link';
 import { registerModels } from '../common/models';
@@ -31,12 +32,29 @@ app.initializers.add('ernestdefoe-curio', () => {
   registerModels(app);
 
   // FoF Forum Widgets' layout editor only lists widgets registered on the
-  // admin side too; without this, a placed widget could not be moved or removed.
-  if (app.data.settings['ernestdefoe-curio.widget'] === '1' && app.widgets) {
-    const mod = globalThis.flarum?.reg?.get?.('fof-forum-widgets-core', 'common/extend/Widgets');
-    const Widgets = mod?.default ?? mod;
-    if (Widgets) new Widgets().add(fofWidget(null)).extend(app, 'ernestdefoe-curio');
-  }
+  // admin side too. Registered each time the editor opens, from the setting
+  // as it is now: read only at boot, switching "Offer the widget" on left the
+  // editor without it until the whole admin was reloaded.
+  const fof = (path) => {
+    const mod = globalThis.flarum?.reg?.get?.('fof-forum-widgets-core', path);
+    return mod?.default ?? mod;
+  };
+  const Widgets = fof('common/extend/Widgets');
+  const WidgetEditor = fof('admin/components/WidgetEditor');
+  if (!Widgets || !WidgetEditor) return;
+
+  after(WidgetEditor.prototype, 'oninit', () => {
+    const on = ['1', 'true', true].includes(app.data.settings['ernestdefoe-curio.widget']);
+    const id = 'ernestdefoe-curio:curioRecent';
+    const has = app.widgets.widgets.some((w) => w.id === id);
+    if (on && !has) {
+      new Widgets()
+        .add({ ...fofWidget(null), title: () => t('settings.widget_title'), icon: 'fas fa-boxes-stacked' })
+        .extend(app, 'ernestdefoe-curio');
+    } else if (!on && has) {
+      app.widgets.widgets = app.widgets.widgets.filter((w) => w.id !== id);
+    }
+  });
 });
 
 // Callbacks, not values: this module runs before the app has booted.

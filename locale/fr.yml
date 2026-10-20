@@ -246,7 +246,8 @@ ernestdefoe-curio:
       shortcut_menu: Menu du compte seulement
       shortcut_none: Nulle part (Profil → Collections reste disponible)
       widget_label: Proposer le widget « Ajouts récents »
-      widget_help: Désactivé par défaut. Une fois activé, le widget peut être placé avec Bespoke ou FoF Forum Widgets (il apparaît d'abord dans la colonne de droite de FoF ; déplacez-le ou retirez-le dans l'éditeur de FoF). Rechargez l'administration après l'avoir activé.
+      widget_help: Désactivé par défaut. Une fois activé, le widget peut être placé avec Bespoke ou FoF Forum Widgets (il apparaît d'abord dans la colonne de droite de FoF ; déplacez-le ou retirez-le dans l'éditeur de FoF).
+      widget_title: Ajouts récents aux collections
       igdb_id_label: Client ID IGDB (facultatif)
       igdb_secret_label: Client secret IGDB
       igdb_help: "Avec une application de développeur Twitch gratuite, la recherche de jeux passe par IGDB : jaquette, développeur, éditeur, date de sortie, plateformes et genres. Enregistrez une application (nom libre ; URL de redirection OAuth http://localhost ; catégorie Application Integration), puis copiez son Client ID et créez un nouveau secret. Sans cela, les jeux sont recherchés via Marquee s'il est installé."
