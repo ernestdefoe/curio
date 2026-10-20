@@ -181,8 +181,33 @@ class TypeResource extends AbstractDatabaseResource
         return $labels;
     }
 
+    private static function str(mixed $value): string
+    {
+        return is_scalar($value) ? trim((string) $value) : '';
+    }
+
     /**
-     * A type's details, cleaned: unknown kinds dropped, keys made safe and unique.
+     * A key from the one sent, else from the label (English first). A detail
+     * or choice added in the editor arrives with a blank key; one whose key is
+     * taken gets a number ("edition_2") instead of being dropped.
+     *
+     * @param array<string, string> $labels
+     * @param array<string, true> $seen
+     */
+    private static function key(mixed $sent, array $labels, string $sep, int $max, string $fallback, array &$seen): string
+    {
+        $base = mb_substr(Str::slug(self::str($sent) ?: ($labels['en'] ?? reset($labels) ?: ''), $sep) ?: $fallback, 0, $max - 3);
+        for ($key = $base, $n = 2; isset($seen[$key]); $n++) {
+            $key = $base.$sep.$n;
+        }
+        $seen[$key] = true;
+
+        return $key;
+    }
+
+    /**
+     * A type's details, cleaned: unknown kinds and unlabelled ones dropped,
+     * keys made safe and unique.
      *
      * @return list<array<string, mixed>>
      */
@@ -197,25 +222,19 @@ class TypeResource extends AbstractDatabaseResource
             }
 
             $labels = self::labels($field['labels'] ?? [], 60);
-            $key = Str::slug((string) ($field['key'] ?? ($labels['en'] ?? reset($labels) ?: 'field')), '_') ?: 'field';
-            $key = mb_substr($key, 0, 30);
-
-            if (! $labels || isset($seen[$key])) {
+            if (! $labels) {
                 continue;
             }
-            $seen[$key] = true;
 
-            $clean = ['key' => $key, 'kind' => $field['kind'], 'labels' => $labels];
+            $clean = ['key' => self::key($field['key'] ?? null, $labels, '_', 30, 'field', $seen), 'kind' => $field['kind'], 'labels' => $labels];
 
             if ($field['kind'] === 'select') {
                 $options = [];
                 $optionKeys = [];
                 foreach (array_slice((array) ($field['options'] ?? []), 0, 60) as $option) {
                     $optionLabels = is_array($option) ? self::labels($option['labels'] ?? [], 60) : [];
-                    $optionKey = Str::slug((string) ($option['key'] ?? reset($optionLabels) ?: ''), '-');
-                    if ($optionLabels && $optionKey !== '' && ! isset($optionKeys[$optionKey])) {
-                        $optionKeys[$optionKey] = true;
-                        $options[] = ['key' => mb_substr($optionKey, 0, 40), 'labels' => $optionLabels];
+                    if ($optionLabels) {
+                        $options[] = ['key' => self::key($option['key'] ?? null, $optionLabels, '-', 40, 'choice', $optionKeys), 'labels' => $optionLabels];
                     }
                 }
                 $clean['options'] = $options;

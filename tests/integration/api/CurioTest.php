@@ -1094,6 +1094,59 @@ class CurioTest extends TestCase
         $this->assertSame([$games['icon'], $games['color'], $games['shape'], $games['source']], [$copy['icon'], $copy['color'], $copy['shape'], $copy['source']]);
     }
 
+    /**
+     * What the admin editor sends for a detail added there: blank keys on the
+     * detail and its choices, labels in the language being edited only.
+     */
+    #[Test]
+    public function choices_typed_in_the_editor_are_kept(): void
+    {
+        $new = [
+            ['key' => '', 'kind' => 'select', 'labels' => ['fr' => 'Format'], 'options' => [
+                ['key' => '', 'labels' => ['fr' => 'Physique']],
+                ['key' => '', 'labels' => ['fr' => 'Numérique']],
+            ]],
+            ['key' => '', 'kind' => 'text', 'labels' => ['fr' => 'Édition']],
+        ];
+        $expected = [
+            ['key' => 'format', 'kind' => 'select', 'labels' => ['fr' => 'Format'], 'options' => [
+                ['key' => 'physique', 'labels' => ['fr' => 'Physique']],
+                ['key' => 'numerique', 'labels' => ['fr' => 'Numérique']],
+            ]],
+            ['key' => 'edition', 'kind' => 'text', 'labels' => ['fr' => 'Édition']],
+        ];
+
+        // Added to an existing type, after the details it already has. Games
+        // has an "edition" already: the new one is numbered, not dropped.
+        $id = $this->typeId('games');
+        $before = $this->json($this->get("/api/curio-types/$id"))['data']['attributes']['fields'];
+        $response = $this->patchType($id, ['fields' => [...$before, ...$new]]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $added = $expected;
+        $added[1]['key'] = 'edition_2';
+        $this->assertSame([...$before, ...$added], $this->json($this->get("/api/curio-types/$id"))['data']['attributes']['fields']);
+
+        // On a brand new type.
+        $response = $this->send($this->request('POST', '/api/curio-types', [
+            'authenticatedAs' => 1,
+            'json' => ['data' => ['type' => 'curio-types', 'attributes' => [
+                'slug' => 'jeux', 'names' => ['fr' => 'Jeux'], 'icon' => 'fas fa-gamepad', 'shape' => 'box', 'source' => 'none', 'fields' => $new,
+            ]]],
+        ]));
+        $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame($expected, $this->json($response)['data']['attributes']['fields']);
+
+        // A choice added later to a saved detail keeps the ones before it.
+        $jeux = (int) $this->json($response)['data']['id'];
+        $fields = $expected;
+        $fields[0]['options'][] = ['key' => '', 'labels' => ['fr' => 'Collector']];
+        $this->assertSame(200, $this->patchType($jeux, ['fields' => $fields])->getStatusCode());
+        $this->assertSame(
+            ['physique', 'numerique', 'collector'],
+            array_column($this->json($this->get("/api/curio-types/$jeux"))['data']['attributes']['fields'][0]['options'], 'key')
+        );
+    }
+
     #[Test]
     public function any_font_awesome_class_list_is_an_icon(): void
     {

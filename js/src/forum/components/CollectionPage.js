@@ -378,7 +378,6 @@ export default class CollectionPage extends Page {
             >
               <button type="button" className="CurioItemCard-art" tabindex={this.arranging ? -1 : 0} aria-label={item.displayTitle()}>
                 {cover(item.coverUrl(), shape, wanted)}
-                <span className="CurioItemCard-tags">{statusPill(item.status())}</span>
                 {item.favourite() ? <Icon name="fas fa-star" className="CurioItemCard-fav" /> : null}
                 {(item.photos() || []).length > 1 ? (
                   <span className="CurioItemCard-photos">
@@ -391,12 +390,24 @@ export default class CollectionPage extends Page {
               <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>
               {facet ? <span className="CurioItemCard-field">{facet}</span> : null}
               {item.rating() ? <Stars value={item.rating()} small /> : null}
-              {progressPill(item, type)}
+              {this.state(item, type)}
             </li>
           );
         })}
       </ul>
     );
+  }
+
+  /** Wishlist or open to trade, and progress: one quiet line under the cover. */
+  state(item, type) {
+    const status = statusPill(item.status());
+    const progress = progressPill(item, type);
+    return status || progress ? (
+      <div className="CurioItemCard-state">
+        {progress}
+        {status}
+      </div>
+    ) : null;
   }
 
   list(type) {
@@ -410,36 +421,54 @@ export default class CollectionPage extends Page {
             <tr>
               <th colSpan="2">{t('table.title')}</th>
               {fields.map((f) => (
-                <th>{label(f.labels)}</th>
+                <th className="CurioTable-more">{label(f.labels)}</th>
               ))}
-              <th>{t('item.condition')}</th>
-              <th>{t('table.rating')}</th>
-              {type?.progress() ? <th>{t('table.progress')}</th> : null}
-              <th>{t('table.status')}</th>
+              <th className="CurioTable-more">{t('item.condition')}</th>
+              <th className="CurioTable-more">{t('table.rating')}</th>
+              {type?.progress() ? <th className="CurioTable-more">{t('table.progress')}</th> : null}
+              <th className="CurioTable-more">{t('table.status')}</th>
             </tr>
           </thead>
           <tbody>
-            {this.items.map((item) => (
-              <tr key={item.id()} onclick={() => this.open(item.id())}>
-                <td className="CurioTable-thumb">{cover(item.coverUrl(), shape, item.status() === 'wishlist')}</td>
-                <td>
-                  <button type="button" className="CurioTable-title" onclick={(e) => (e.stopPropagation(), this.open(item.id()))}>
-                    {item.displayTitle()}
-                  </button>
-                  <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>
-                </td>
-                {fields.map((f) => {
-                  const v = (item.fields() || {})[f.key];
-                  return <td>{v === undefined ? '—' : f.kind === 'select' ? optionLabel(f, v, app.translator.getLocale()) : v}</td>;
-                })}
-                <td>
-                  {item.condition() ? <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span> : '—'}
-                </td>
-                <td>{item.rating() ? <Stars value={item.rating()} small /> : '—'}</td>
-                {type?.progress() ? <td>{progressPill(item, type) || '—'}</td> : null}
-                <td>{statusPill(item.status()) || <span className="CurioStatus CurioStatus--owned">{t('status.owned')}</span>}</td>
-              </tr>
-            ))}
+            {this.items.map((item) => {
+              const values = fields.map((f) => {
+                const v = (item.fields() || {})[f.key];
+                return v === undefined || v === '' ? null : f.kind === 'select' ? optionLabel(f, v, app.translator.getLocale()) : v;
+              });
+              // Each is drawn twice (column and phone stack): Mithril needs a fresh vnode per place.
+              const condition = () =>
+                item.condition() ? <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span> : null;
+              const stars = () => (item.rating() ? <Stars value={item.rating()} small /> : null);
+              const progress = () => (type?.progress() ? progressPill(item, type) : null);
+              const status = () => statusPill(item.status());
+              const pills = [condition(), stars(), progress(), status()].filter(Boolean);
+
+              return (
+                <tr key={item.id()} onclick={() => this.open(item.id())}>
+                  <td className="CurioTable-thumb">{cover(item.coverUrl(), shape, item.status() === 'wishlist')}</td>
+                  <td className="CurioTable-main">
+                    <button type="button" className="CurioTable-title" onclick={(e) => (e.stopPropagation(), this.open(item.id()))}>
+                      {item.displayTitle()}
+                    </button>
+                    <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>
+                    {/* On a phone the other columns fold in here. */}
+                    <div className="CurioTable-stack">
+                      {values.some((v) => v !== null) ? (
+                        <div className="CurioTable-values">{values.filter((v) => v !== null).join(' · ')}</div>
+                      ) : null}
+                      {pills.length ? <div className="CurioTable-pills">{pills}</div> : null}
+                    </div>
+                  </td>
+                  {values.map((v) => (
+                    <td className="CurioTable-more">{v === null ? '—' : v}</td>
+                  ))}
+                  <td className="CurioTable-more">{condition() || '—'}</td>
+                  <td className="CurioTable-more">{stars() || '—'}</td>
+                  {type?.progress() ? <td className="CurioTable-more">{progress() || '—'}</td> : null}
+                  <td className="CurioTable-more">{status() || <span className="CurioStatus CurioStatus--owned">{t('status.owned')}</span>}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

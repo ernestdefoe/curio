@@ -57,6 +57,8 @@ export default class TypesEditor {
   edit(type) {
     this.open = type;
     this.error = null;
+    // Choices typed but not yet added, per detail; Save adds them too.
+    this.pending = new Map();
     this.draft = type
       ? {
           names: clone(type.names() || {}),
@@ -88,6 +90,7 @@ export default class TypesEditor {
     );
     this.open = null;
     this.error = null;
+    this.pending = new Map();
     this.draft = copy;
   }
 
@@ -126,9 +129,11 @@ export default class TypesEditor {
                   <Icon name={type.icon()} />
                 </span>
                 <span className="CurioAdmin-name">{pick(type.names(), this.lang)}</span>
-                <span className="CurioAdmin-meta">
-                  {type.enabled() === false ? <span className="CurioAdmin-off">{t('types.off')}</span> : t('shape.' + type.shape())}
-                </span>
+                {type.enabled() === false ? (
+                  <span className="CurioAdmin-meta CurioAdmin-off">{t('types.off')}</span>
+                ) : (
+                  <span className="CurioAdmin-meta">{t('types.on')}</span>
+                )}
               </li>
             ))}
             <li className={'CurioAdmin-add' + (this.open === null && this.draft ? ' active' : '')} onclick={() => this.edit(null)}>
@@ -310,19 +315,31 @@ export default class TypesEditor {
         <input
           className="CurioAdmin-newOption"
           placeholder={text('types.add_choice')}
+          value={this.pending.get(field) || ''}
+          oninput={(e) => this.pending.set(field, e.target.value)}
+          onblur={(e) => this.addChoice(field, e.target)}
           onkeydown={(e) => {
-            if (e.key !== 'Enter' || !e.target.value.trim()) return;
+            if (e.key !== 'Enter') return;
             e.preventDefault();
-            field.options.push({ key: '', labels: { [this.lang]: e.target.value.trim() } });
-            e.target.value = '';
+            this.addChoice(field, e.target);
           }}
         />
       </div>
     );
   }
 
+  /** Adds the choice typed for a detail (Enter, leaving the box, or Save). */
+  addChoice(field, input) {
+    const label = (input ? input.value : this.pending.get(field) || '').trim();
+    this.pending.delete(field);
+    // Cleared now, not at the next redraw, so fast typing never joins two choices.
+    if (input) input.value = '';
+    if (label) (field.options ||= []).push({ key: '', labels: { [this.lang]: label } });
+  }
+
   save() {
     const d = this.draft;
+    d.fields.forEach((field) => field.kind === 'select' && this.addChoice(field));
     const attrs = { ...d, color: d.color.trim() || null, names: Object.fromEntries(Object.entries(d.names).filter(([, v]) => v && v.trim())) };
     if (!this.open) {
       const base =

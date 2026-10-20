@@ -293,7 +293,7 @@ ernestdefoe-curio:
       field_label: "Libellé ({language})"
       field_kind: Type
       field_choices: Choix
-      add_choice: Ajouter un choix, puis Entrée
+      add_choice: Ajouter un choix…
       remove_choice: Retirer le choix
       remove_field: Retirer le détail
       add_field: Ajouter un détail
@@ -307,6 +307,7 @@ ernestdefoe-curio:
       save_failed: Le type n'a pas pu être enregistré.
       enabled: Activé
       enabled_help: "Désactivé, les membres ne voient pas ce type et ne peuvent pas créer de collection avec. Les collections déjà créées restent, visibles seulement par leurs propriétaires et les modérateurs. Les administrateurs peuvent toujours l'essayer."
+      "on": Activé
       "off": Désactivé
       progress: Suivre l'avancement
       progress_help: "Chaque objet peut être marqué Pas commencé, En cours ou Terminé : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
