@@ -35,9 +35,12 @@ export function progressPill(item, type) {
   );
 }
 
+/** The image itself, blurred, fills whatever the whole picture leaves of its frame. */
+export const backdrop = (url) => (url ? { '--curio-cover': `url("${url.replace(/["\\\n]/g, encodeURIComponent)}")` } : undefined);
+
 export function cover(url, shape, wanted, alt = '') {
   return (
-    <div className={'CurioCover CurioCover--' + (shape || 'portrait') + (wanted ? ' CurioCover--wanted' : '')}>
+    <div className={'CurioCover CurioCover--' + (shape || 'portrait') + (wanted ? ' CurioCover--wanted' : '')} style={backdrop(url)}>
       {url ? <img src={url} alt={alt} loading="lazy" /> : <Icon name="fas fa-image" className="CurioCover-empty" />}
     </div>
   );

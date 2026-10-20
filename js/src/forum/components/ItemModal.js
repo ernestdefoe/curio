@@ -5,7 +5,7 @@ import Icon from 'flarum/common/components/Icon';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t, text, label, locale } from '../util';
 import { fieldValue } from '../../common/labels';
-import { typeBadge, statusPill, progressPill, owner } from './bits';
+import { typeBadge, statusPill, progressPill, owner, backdrop } from './bits';
 import ItemEditModal from './ItemEditModal';
 import Link from 'flarum/common/components/Link';
 import { startShowOff } from '../showOff';
@@ -65,13 +65,12 @@ export default class ItemModal extends Modal {
     const work = item.work();
     const photos = item.photos() || [];
     const pictures = photos.length ? photos.map((p) => p.url) : work && work.coverUrl() ? [work.coverUrl()] : [];
-    const description = work && work.description();
     const mine = app.session.user && collection && collection.user() === app.session.user;
 
     return (
       <div className="Modal-body CurioItem">
         <div className={'CurioItem-gallery CurioItem-gallery--' + (type ? type.shape() : 'portrait')}>
-          <div className="CurioItem-photo">
+          <div className="CurioItem-photo" style={backdrop(pictures[this.photo] || pictures[0])}>
             {pictures.length ? (
               <img src={pictures[this.photo] || pictures[0]} alt={item.displayTitle()} />
             ) : (
@@ -129,25 +128,7 @@ export default class ItemModal extends Modal {
             </blockquote>
           ) : null}
 
-          {description ? (
-            <section className="CurioItem-about">
-              <h4>{t('item.about')}</h4>
-              <p>{description.length > LONG && !this.expanded ? description.slice(0, description.lastIndexOf(' ', LONG)) + ' …' : description}</p>
-              {description.length > LONG ? (
-                <Button className="Button Button--link CurioMore" onclick={() => (this.expanded = !this.expanded)}>
-                  {this.expanded ? t('item.less') : t('item.more')}
-                </Button>
-              ) : null}
-              <div className="CurioItem-source">
-                {this.credit(work)}
-                {work.languages() > 1 ? (
-                  <span className="CurioItem-langs">
-                    <Icon name="fas fa-language" /> {t('item.languages', { count: work.languages() })}
-                  </span>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
+          {work ? this.about(work) : null}
 
           {this.offers(item)}
           {this.actions(item, collection, mine)}
@@ -201,11 +182,62 @@ export default class ItemModal extends Modal {
     );
   }
 
-  credit(work) {
-    const source = work.descriptionSource();
+  /**
+   * What the forum knows about the title, in the reader's language only. When
+   * that is missing (or just Wikidata's one-liner), the English text waits
+   * behind a toggle.
+   */
+  about(work) {
+    const own = work.description();
+    const other = work.fallback();
+    const language = other && new Intl.DisplayNames([locale()], { type: 'language' }).of(other.locale);
+
+    return (
+      <section className="CurioItem-about">
+        <h4>{t('item.about')}</h4>
+        {own ? this.paragraph(own) : <p className="CurioMuted">{t('item.no_description')}</p>}
+        {own ? (
+          <div className="CurioItem-source">
+            {this.credit(work.descriptionSource(), work.sourceUrl())}
+            {work.languages() > 1 ? (
+              <span className="CurioItem-langs">
+                <Icon name="fas fa-language" /> {t('item.languages', { count: work.languages() })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {other ? (
+          <Button className="Button Button--link CurioMore" aria-expanded={this.showOther ? 'true' : 'false'} onclick={() => (this.showOther = !this.showOther)}>
+            {t(this.showOther ? 'item.hide_other' : 'item.show_other', { language })}
+          </Button>
+        ) : null}
+        {other && this.showOther ? (
+          <div className="CurioItem-other" lang={other.locale}>
+            {this.paragraph(other.description)}
+            <div className="CurioItem-source">{this.credit(other.source, other.url)}</div>
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
+  paragraph(text) {
+    const long = text.length > LONG;
+
+    return [
+      <p>{long && !this.expanded ? text.slice(0, text.lastIndexOf(' ', LONG)) + ' …' : text}</p>,
+      long ? (
+        <Button className="Button Button--link CurioMore" onclick={() => (this.expanded = !this.expanded)}>
+          {this.expanded ? t('item.less') : t('item.more')}
+        </Button>
+      ) : null,
+    ];
+  }
+
+  credit(source, url) {
     if (source === 'wikipedia')
       return (
-        <a href={work.sourceUrl()} target="_blank" rel="noopener noreferrer">
+        <a href={url} target="_blank" rel="noopener noreferrer">
           <Icon name="fab fa-wikipedia-w" /> {t('item.from_wikipedia')}
         </a>
       );

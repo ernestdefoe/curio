@@ -6,7 +6,7 @@ import Link from 'flarum/common/components/Link';
 import listItems from 'flarum/common/helpers/listItems';
 import { t, label, locale, collectionUrl } from '../util';
 import { fieldValue } from '../../common/labels';
-import { typeBadge } from './bits';
+import { typeBadge, backdrop } from './bits';
 import ItemModal from './ItemModal';
 import addToMyCollection from '../copyItem';
 import useStyles from '../styles';
@@ -46,6 +46,7 @@ export default class ItemHero extends Component {
             className={'CurioItemHero-cover CurioItemHero-cover--' + (type?.shape() || 'portrait')}
             onclick={() => app.modal.show(ItemModal, { itemId: item.id() })}
             aria-label={t('hero.open_item')}
+            style={backdrop(cover)}
           >
             {cover ? <img src={cover} alt={item.displayTitle()} /> : <Icon name={type?.icon() || 'fas fa-box-open'} />}
             {(item.photos() || []).length > 1 ? (

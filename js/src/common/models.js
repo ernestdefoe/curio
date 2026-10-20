@@ -82,6 +82,7 @@ Object.assign(CurioWork.prototype, {
   description: Model.attribute('description'),
   descriptionSource: Model.attribute('descriptionSource'),
   descriptionLocale: Model.attribute('descriptionLocale'),
+  fallback: Model.attribute('fallback'),
   sourceUrl: Model.attribute('sourceUrl'),
   languages: Model.attribute('languages'),
   source: Model.attribute('source'),

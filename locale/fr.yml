@@ -141,6 +141,9 @@ ernestdefoe-curio:
       from_wikipedia: Description issue de Wikipédia
       from_wikidata: Description issue de Wikidata
       translated_deepl: Traduit par DeepL
+      no_description: Aucune description disponible.
+      show_other: "Afficher la description en {language}"
+      hide_other: "Masquer la description en {language}"
       languages: "{count, plural, one {# langue} other {# langues}}"
       offers: "{count, plural, one {# membre le propose à l’échange} other {# membres le proposent à l’échange}}"
       edit: Modifier
