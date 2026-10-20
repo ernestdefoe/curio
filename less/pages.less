@@ -414,8 +414,9 @@
 
   &-meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
+    gap: 6px 16px;
     font-size: 14px;
     color: rgba(255, 255, 255, 0.75);
 
@@ -431,6 +432,7 @@
     color: rgba(255, 255, 255, 0.85);
   }
 
+  // Its own gap: with no description, the chips sat on the owner's avatar.
   &-breakdown {
     display: flex;
     flex-wrap: wrap;
@@ -447,6 +449,7 @@
   &-buttons {
     display: flex;
     gap: 8px;
+    margin-top: 16px;
   }
 
 }
