@@ -29,7 +29,11 @@ class RefreshTexts extends AbstractCommand
         $query = Work::query()->orderBy('refreshed_at');
 
         if (! $this->input->getOption('all')) {
-            $query->where('refreshed_at', '<', Carbon::now()->subDays(30))->limit(max(1, (int) $this->input->getOption('limit')));
+            // Monthly, and daily in its first month for a work Wikidata did not match yet
+            // (Wikidata was busy at look-up, or its article came later).
+            $query->where(fn ($q) => $q->where('refreshed_at', '<', Carbon::now()->subDays(30))
+                ->orWhere(fn ($q) => $q->whereNull('wikidata_id')->where('refreshed_at', '<', Carbon::now()->subDay())->where('created_at', '>', Carbon::now()->subDays(30))))
+                ->limit(max(1, (int) $this->input->getOption('limit')));
         }
 
         $count = 0;

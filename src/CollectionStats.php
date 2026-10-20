@@ -3,14 +3,21 @@
 namespace Ernestdefoe\Curio;
 
 use Carbon\Carbon;
+use Ernestdefoe\Curio\Api\OverviewController;
+use Illuminate\Contracts\Cache\Repository as Cache;
 
 /**
  * Keeps a collection's counts, its four-cover preview and its facet breakdown
  * on the collection itself, so cards, profiles and the browse page never count
- * rows. Runs after every item write: three small indexed queries.
+ * rows. Runs after every item write: three small indexed queries, and the
+ * browse page counts again.
  */
 class CollectionStats
 {
+    public function __construct(private Cache $cache)
+    {
+    }
+
     public function refresh(Collection $collection): void
     {
         $items = Item::query()->where('collection_id', $collection->id);
@@ -46,5 +53,6 @@ class CollectionStats
 
         $collection->updated_at = Carbon::now();
         $collection->saveQuietly();
+        OverviewController::forget($this->cache);
     }
 }

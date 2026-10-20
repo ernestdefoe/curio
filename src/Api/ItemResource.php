@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Curio\Api;
 
+use Carbon\Carbon;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\CollectionStats;
 use Ernestdefoe\Curio\Item;
@@ -451,19 +452,22 @@ class ItemResource extends AbstractDatabaseResource
     }
 
     /**
-     * A language installed after the work was looked up has no text yet: fetch
-     * it the first time someone opens the item in it (once a day at most).
+     * The reader's language has no text yet (installed after the look-up), or
+     * the work never matched Wikidata (busy at look-up): fetch it the first
+     * time someone opens the item, once a day at most.
      */
     private function ensureTexts(Item $item): void
     {
         $work = $item->work;
         $locale = WorkTexts::base($this->translator->getLocale());
 
-        if (! $work?->wikidata_id || $work->texts()->where('locale', $locale)->exists()) {
+        if (! $work) {
             return;
         }
 
-        if ($this->cache->add("curio.texts.$work->id.$locale", true, 86400)) {
+        $unmatched = ! $work->wikidata_id && $work->created_at > Carbon::now()->subDays(30);
+
+        if (($unmatched || ! $work->texts()->where('locale', $locale)->exists()) && $this->cache->add("curio.texts.$work->id.$locale", true, 86400)) {
             $this->texts->fill($work, null, null, [$locale]);
         }
     }

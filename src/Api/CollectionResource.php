@@ -15,7 +15,6 @@ use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\TranslatorInterface;
-use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -38,7 +37,7 @@ class CollectionResource extends AbstractDatabaseResource
     /** @var array<int, list<int>> */
     private array $orders = [];
 
-    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db, private Cache $cache)
+    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db)
     {
     }
 
@@ -200,7 +199,6 @@ class CollectionResource extends AbstractDatabaseResource
         });
 
         resolve(CollectionStats::class)->refresh($collection);
-        $this->cache->forget(OverviewController::CACHE_KEY);
     }
 
     private function follow(Collection $collection, int $userId, bool $follow): void

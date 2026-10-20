@@ -23,7 +23,7 @@ class WorkTexts
     /** The Wikidata class each source's titles belong to, for finding one by title. */
     private const CLASSES = [
         'deezer' => 'Q482994', 'musicbrainz' => 'Q482994', 'openlibrary' => 'Q7725634',
-        'marquee-movie' => 'Q11424', 'marquee-tv' => 'Q5398426', 'marquee-game' => 'Q7889',
+        'marquee-movie' => 'Q11424', 'marquee-tv' => 'Q5398426', 'marquee-game' => 'Q7889', 'igdb' => 'Q7889',
     ];
 
     /** Never spend longer than this on one work's languages. */
@@ -62,6 +62,7 @@ class WorkTexts
     {
         $languages ??= $this->languages();
         $started = microtime(true);
+        $stored = $work->texts()->get()->keyBy('locale');
 
         try {
             $item = $work->wikidata_id ?? ($link ? $this->wikidata->item($link[0], $link[1]) : null);
@@ -103,6 +104,13 @@ class WorkTexts
             if ($text['description'] === null && $language === 'en' && $sourceDescription) {
                 $text = ['description' => $sourceDescription, 'source' => 'source'] + $text;
             }
+
+            // A fetch that failed this time never wipes an earlier find, and DeepL is paid once.
+            $kept = $stored->get($language);
+            if ($text['description'] === null && $kept?->description && $kept->description_source !== 'wikidata') {
+                $text = ['description' => $kept->description, 'source' => $kept->description_source, 'url' => $kept->source_url] + $text;
+            }
+            $text['title'] ??= $kept?->title;
 
             if ($text['description'] === null && $language !== 'en' && $english && microtime(true) - $started < self::BUDGET_SECONDS) {
                 $translated = $this->deepl->translate($english, $language);

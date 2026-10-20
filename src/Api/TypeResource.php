@@ -82,7 +82,7 @@ class TypeResource extends AbstractDatabaseResource
     public function saved(object $model, OriginalContext $context): ?object
     {
         if ($model->wasChanged('enabled') || $model->wasRecentlyCreated) {
-            $this->cache->forget(OverviewController::CACHE_KEY);
+            OverviewController::forget($this->cache);
         }
 
         return $model;

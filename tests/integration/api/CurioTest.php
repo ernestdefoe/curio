@@ -35,7 +35,7 @@ class CurioTest extends TestCase
                 ['user_id' => 4, 'group_id' => 3],
             ],
             'curio_works' => [
-                ['id' => 1, 'source' => 'deezer', 'source_id' => '302127', 'title' => 'Discovery (orig)', 'creator' => 'Daft Punk', 'year' => 2001, 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 30],
+                ['id' => 1, 'source' => 'deezer', 'source_id' => '302127', 'title' => 'Discovery (orig)', 'creator' => 'Daft Punk', 'year' => 2001, 'wikidata_id' => 'Q206912', 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 30],
             ],
             'curio_work_texts' => [
                 ['work_id' => 1, 'locale' => 'en', 'title' => 'Discovery', 'description' => 'The second album.', 'description_source' => 'wikipedia', 'source_url' => 'https://en.wikipedia.org/wiki/Discovery_(album)', 'fetched_at' => $now],
@@ -849,17 +849,35 @@ class CurioTest extends TestCase
     }
 
     #[Test]
-    public function the_overview_counts_public_collections_only(): void
+    public function the_overview_counts_what_the_reader_may_open(): void
     {
         $public = $this->newCollection(3);
-        $private = $this->newCollection(3, ['visibility' => 'private']);
+        $members = $this->newCollection(3, ['name' => 'Members shelf', 'visibility' => 'members']);
+        $private = $this->newCollection(3, ['name' => 'Private shelf', 'visibility' => 'private']);
         $this->item(3, $public, ['title' => 'Seen']);
+        $this->item(3, $members, ['title' => 'Members see it']);
         $this->item(3, $private, ['title' => 'Unseen']);
         $this->item(3, $private, ['title' => 'Unseen too']);
+        $theirs = $this->newCollection(4, ['name' => 'Their private shelf', 'visibility' => 'private']);
+        $this->item(4, $theirs, ['title' => 'Only theirs']);
 
-        $body = $this->json($this->get('/api/curio/overview'));
-        $this->assertSame(1, $body['items']);
-        $this->assertSame(1, $body['types'][(string) $this->typeId('games')]['items']);
+        $games = (string) $this->typeId('games');
+        $count = function (?int $as) use ($games) {
+            $body = $this->json($this->get('/api/curio/overview', [], $as));
+
+            return [$body['items'], $body['types'][$games]['collections'], $body['members']];
+        };
+
+        // Guests: public only. Members: members-only too, and their own private ones (nobody else's).
+        $this->assertSame([1, 1, 1], $count(null));
+        $this->assertSame([4, 3, 1], $count(3));
+        $this->assertSame([3, 3, 2], $count(4));
+        // Moderators open everything.
+        $this->assertSame([5, 4, 2], $count(1));
+        // The counts follow a new item at once.
+        $this->item(3, $members, ['title' => 'Another']);
+        $this->assertSame([1, 1, 1], $count(null));
+        $this->assertSame([4, 3, 2], $count(4));
     }
 
     #[Test]
@@ -1126,5 +1144,90 @@ class CurioTest extends TestCase
 
         $rows = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->get(['title', 'status', 'progress']);
         $this->assertSame([['Dune', 'owned', 'completed'], ['Hyperion', 'owned', 'in_progress'], ['Foundation', 'wishlist', null]], $rows->map(fn ($r) => [$r->title, $r->status, $r->progress])->all());
+    }
+
+    /** Wikidata and Wikipedia answered by a fake, and French installed. */
+    private function fakeWikidata(): void
+    {
+        $container = $this->app()->getContainer();
+        $container->make(\Flarum\Locale\LocaleManager::class)->addLocale('fr', 'Français');
+        $container->instance(\Ernestdefoe\Curio\Translation\Wikidata::class, new class extends \Ernestdefoe\Curio\Translation\Wikidata {
+            public function __construct()
+            {
+            }
+
+            public function item(string $property, string $value): ?string
+            {
+                return null;
+            }
+
+            public function find(string $title, ?string $creator, ?int $year, string $class): ?string
+            {
+                return $title === 'Gran Turismo 7' && $class === 'Q7889' ? 'Q18345763' : null;
+            }
+
+            public function entity(string $item, array $languages): array
+            {
+                return $item === 'Q18345763'
+                    ? ['labels' => ['mul' => 'Gran Turismo 7'], 'descriptions' => ['fr' => 'jeu vidéo de 2022'], 'wikis' => ['en' => 'Gran Turismo 7', 'fr' => 'Gran Turismo 7']]
+                    : ['labels' => [], 'descriptions' => [], 'wikis' => []];
+            }
+
+            public function summary(string $wiki, string $title): ?array
+            {
+                // English Wikipedia is down this time; French answers.
+                return $wiki === 'fr' ? ['extract' => 'Un jeu de course.', 'url' => 'https://fr.wikipedia.org/wiki/Gran_Turismo_7'] : null;
+            }
+        });
+    }
+
+    private function frenchWork(int $item, string $locale = 'fr'): array
+    {
+        $response = $this->send($this->request('GET', "/api/curio-items/$item")->withCookieParams(['locale' => $locale]));
+
+        return collect($this->json($response)['included'])->firstWhere('type', 'curio-works')['attributes'];
+    }
+
+    #[Test]
+    public function an_igdb_game_wikidata_missed_is_matched_when_opened(): void
+    {
+        $this->fakeWikidata();
+        $now = Carbon::now();
+        $this->database()->table('curio_works')->insert(['id' => 2, 'source' => 'igdb', 'source_id' => '101006', 'title' => 'Gran Turismo 7', 'year' => 2022, 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 0]);
+        $this->database()->table('curio_work_texts')->insert(['work_id' => 2, 'locale' => 'en', 'description' => 'IGDB summary.', 'description_source' => 'source', 'fetched_at' => $now]);
+        $item = (int) $this->json($this->item(3, $this->newCollection(3), ['title' => 'Gran Turismo 7'], 2))['data']['id'];
+
+        $work = $this->frenchWork($item);
+        $this->assertSame(['Un jeu de course.', 'wikipedia', 'fr', null], [$work['description'], $work['descriptionSource'], $work['descriptionLocale'], $work['fallback']]);
+        $this->assertSame('Q18345763', $this->database()->table('curio_works')->where('id', 2)->value('wikidata_id'));
+        // A failed English fetch kept IGDB's summary.
+        $this->assertSame('IGDB summary.', $this->database()->table('curio_work_texts')->where(['work_id' => 2, 'locale' => 'en'])->value('description'));
+    }
+
+    #[Test]
+    public function without_a_description_in_the_readers_language_the_english_one_waits_aside(): void
+    {
+        $this->fakeWikidata();
+        $now = Carbon::now();
+        $this->database()->table('curio_works')->insert(['id' => 2, 'source' => 'igdb', 'source_id' => '191761', 'title' => "Minishoot' Adventures", 'wikidata_id' => 'Q126695337', 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 1]);
+        $this->database()->table('curio_work_texts')->insert([
+            ['work_id' => 2, 'locale' => 'en', 'title' => null, 'description' => 'A twin-stick shooter.', 'description_source' => 'wikipedia', 'source_url' => 'https://en.wikipedia.org/wiki/Minishoot', 'fetched_at' => $now],
+            ['work_id' => 2, 'locale' => 'fr', 'title' => null, 'description' => 'jeu vidéo de 2024', 'description_source' => 'wikidata', 'source_url' => null, 'fetched_at' => $now],
+        ]);
+        $item = (int) $this->json($this->item(3, $this->newCollection(3), ['title' => 'Minishoot'], 2))['data']['id'];
+        $english = ['description' => 'A twin-stick shooter.', 'source' => 'wikipedia', 'url' => 'https://en.wikipedia.org/wiki/Minishoot', 'locale' => 'en'];
+
+        // Only Wikidata's one-liner in French: shown, with the English article aside.
+        $work = $this->frenchWork($item);
+        $this->assertSame(['jeu vidéo de 2024', $english], [$work['description'], $work['fallback']]);
+
+        // Nothing in French at all: no description, the English one aside, never in its place.
+        $this->database()->table('curio_work_texts')->where(['work_id' => 2, 'locale' => 'fr'])->delete();
+        $work = $this->frenchWork($item);
+        $this->assertSame([null, $english], [$work['description'], $work['fallback']]);
+
+        // An English reader gets it as the description.
+        $work = $this->frenchWork($item, 'en');
+        $this->assertSame(['A twin-stick shooter.', null], [$work['description'], $work['fallback']]);
     }
 }
