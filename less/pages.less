@@ -2274,6 +2274,35 @@ button.CurioChip {
   margin-top: 10px;
 }
 
+.CurioChooseList-group + .CurioChooseList-group {
+  margin-top: 16px;
+}
+
+.CurioChooseList-item .Button-label,
+.CurioChooseList-item .Button-labelText {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.CurioChooseList-type {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.CurioChooseList-empty {
+  margin: 0 0 12px;
+  color: var(--muted-color);
+}
+
+.CurioResults-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+}
+
 .CurioTagTiles {
   list-style-type: none;
   padding: 0;
@@ -2611,7 +2640,7 @@ button.CurioChip--more {
   border: 1px solid var(--muted-more-color);
 
   &:hover,
-  &.active {
+  &.CurioChip--on {
     background: var(--primary-color);
     color: var(--button-primary-color, #fff);
   }

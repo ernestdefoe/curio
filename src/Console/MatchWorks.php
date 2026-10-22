@@ -24,6 +24,11 @@ use Symfony\Component\Console\Input\InputOption;
  */
 class MatchWorks extends AbstractCommand
 {
+    /** Works refreshed before this date are cards waiting for their artist (see migration 2026_10_22_000005). */
+    public const CARD_MARK = '2001-01-01 00:00:00';
+
+    private const CARDS_PER_RUN = 20;
+
     public function __construct(private Queue $queue)
     {
         parent::__construct();
@@ -61,14 +66,17 @@ class MatchWorks extends AbstractCommand
 
                 $source = $type ? $sources->forType($type) : null;
                 if (! $hit && $source) {
-                    $query = trim($item->title.' '.$item->subtitle);
+                    // A card's number finds its printing among hundreds of the same name.
+                    $number = in_array($source->key(), ['tcgdex', 'scryfall', 'ygoprodeck', 'cards'], true) && is_string($item->fields['number'] ?? null) ? $item->fields['number'] : '';
+                    $query = trim($item->title.' '.($number !== '' ? $number : $item->subtitle));
                     foreach (array_slice($source->search($query), 0, 5) as $result) {
                         // A card is printed many times: only the printing with the item's own number is taken.
                         if (isset($result['number']) && ! self::sameNumber($result['number'], $item->fields['number'] ?? null)) {
                             continue;
                         }
                         if (self::same($result['title'], $item->title) && (! $item->subtitle || ! $result['creator'] || self::same($result['creator'], $item->subtitle, true))) {
-                            $hit = ['source' => $source->key()] + $result;
+                            // Mixed card results name their own source.
+                            $hit = $result + ['source' => $source->key()];
                             break;
                         }
                     }
@@ -100,7 +108,18 @@ class MatchWorks extends AbstractCommand
             resolve(CollectionStats::class)->refresh($collection);
         }
 
-        $this->info("Matched $matched of $tried.");
+        // Cards stored before 1.9 (marked by its migration): their artist and finishes, a few a run.
+        $cards = 0;
+        foreach (Work::query()->whereIn('source', WorkResolver::CARD_SOURCES)->where('refreshed_at', '<', self::CARD_MARK)->limit(self::CARDS_PER_RUN)->get() as $work) {
+            try {
+                $works->refreshCard($work);
+                $cards++;
+            } catch (LookupException $e) {
+                break;
+            }
+        }
+
+        $this->info("Matched $matched of $tried.".($cards ? " Refreshed $cards cards." : ''));
 
         return 0;
     }

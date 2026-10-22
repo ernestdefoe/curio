@@ -3,6 +3,8 @@
 namespace Ernestdefoe\Curio\Console;
 
 use Carbon\Carbon;
+use Ernestdefoe\Curio\Lookup\LookupException;
+use Ernestdefoe\Curio\Lookup\WorkResolver;
 use Ernestdefoe\Curio\Translation\WorkTexts;
 use Ernestdefoe\Curio\Work;
 use Flarum\Console\AbstractCommand;
@@ -36,8 +38,16 @@ class RefreshTexts extends AbstractCommand
                 ->limit(max(1, (int) $this->input->getOption('limit')));
         }
 
+        $works = resolve(WorkResolver::class);
         $count = 0;
-        $query->each(function (Work $work) use ($texts, &$count) {
+        $query->each(function (Work $work) use ($texts, $works, &$count) {
+            if (in_array($work->source, WorkResolver::CARD_SOURCES, true)) {
+                try {
+                    $works->refreshCard($work);
+                } catch (LookupException $e) {
+                    // Down for now: next time.
+                }
+            }
             $texts->fill($work, null);
             $count++;
         });

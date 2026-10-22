@@ -3,6 +3,7 @@
 namespace Ernestdefoe\Curio\Lookup\Sources;
 
 use Ernestdefoe\Curio\Lookup\LookupException;
+use Ernestdefoe\Curio\Lookup\Paged;
 use Ernestdefoe\Curio\Lookup\Source;
 
 /**
@@ -10,9 +11,9 @@ use Ernestdefoe\Curio\Lookup\Source;
  * each answers (from its cache when it can) and the results take turns, each
  * naming the source it came from.
  */
-class CardGames implements Source
+class CardGames implements Source, Paged
 {
-    /** @var array<string, Source> */
+    /** @var array<string, Source&Paged> */
     private array $games;
 
     public function __construct(TcgDex $pokemon, Scryfall $magic, YgoProDeck $yugioh)
@@ -27,12 +28,20 @@ class CardGames implements Source
 
     public function search(string $query): array
     {
+        return $this->page($query, 1)[0];
+    }
+
+    public function page(string $query, int $page): array
+    {
         $lists = [];
+        $more = false;
         $failed = 0;
 
         foreach ($this->games as $game => $source) {
             try {
-                $lists[] = array_map(fn ($r) => ['source' => $source->key(), 'creator' => implode(' · ', array_filter([$game, $r['creator'] ?? null]))] + $r, $source->search($query));
+                [$results, $next] = $source->page($query, $page);
+                $more = $more || $next;
+                $lists[] = array_map(fn ($r) => ['source' => $source->key(), 'set' => implode(' · ', array_filter([$game, $r['set'] ?? null]))] + $r, $results);
             } catch (LookupException $e) {
                 $failed++;
             }
@@ -42,8 +51,9 @@ class CardGames implements Source
             throw new LookupException('No card source answered', true);
         }
 
+        // Pokémon, Magic and Yu-Gi-Oh! take turns.
         $merged = [];
-        for ($i = 0; count($merged) < 9 && $lists && $i < 8; $i++) {
+        for ($i = 0; $i < self::PER_PAGE; $i++) {
             foreach ($lists as $list) {
                 if (isset($list[$i])) {
                     $merged[] = $list[$i];
@@ -51,7 +61,7 @@ class CardGames implements Source
             }
         }
 
-        return array_slice($merged, 0, 9);
+        return [$merged, $more];
     }
 
     public function details(string $id): array

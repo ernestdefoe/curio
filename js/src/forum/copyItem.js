@@ -7,12 +7,13 @@ const onAdded = (item) => {
 };
 
 /**
- * "I have this too" / "Add to my wishlist" / "Add to collection": open the
- * add window in one of the member's collections whose type takes this kind of
- * thing, asking which when there are several and offering a new one when none.
- * `prefill` is an item to copy, or `work` a looked-up title. Without
- * `typeIds` it is the quick "Add an item": any of the member's collections,
- * or a new one.
+ * "I have this too" / "Add to my wishlist" / "Add to collection": ask which
+ * of the member's collections it goes in (any of them: a PlayStation copy of
+ * a game seen in someone's Xbox collection), the ones of the same type
+ * first, or a new one of that type, then open the add window there.
+ * `prefill` is an item to copy, or `work` a looked-up title; `typeIds` are
+ * the types it came from, first one first. Without them it is the quick
+ * "Add an item".
  */
 export default function addToMyCollection({ prefill, work, status = 'owned', typeIds = null }) {
   return Promise.all([
@@ -21,13 +22,11 @@ export default function addToMyCollection({ prefill, work, status = 'owned', typ
     import('./components/ChooseCollectionModal'),
   ]).then(([{ default: ItemEditModal }, { default: CollectionEditModal }, { default: ChooseCollectionModal }]) =>
     app.store.find('curio-collections', { filter: { user: app.session.user.id() }, page: { limit: 50 } }).then((mine) => {
-      const fitting = typeIds ? mine.filter((c) => typeIds.includes(c.type()?.id())) : mine;
       const open = (collection) => app.modal.show(ItemEditModal, { collection, prefill, work, status, onsave: typeIds ? undefined : onAdded });
       const create = () => app.modal.show(CollectionEditModal, { typeId: typeIds?.[0], onsave: open });
 
-      if (fitting.length === 1 && typeIds) return open(fitting[0]);
-      if (fitting.length) return app.modal.show(ChooseCollectionModal, { collections: fitting, onchoose: open, onnew: typeIds ? null : create });
-      create();
+      if (!typeIds && !mine.length) return create();
+      app.modal.show(ChooseCollectionModal, { collections: mine.slice(), typeIds: typeIds || [], onchoose: open, onnew: create });
     })
   );
 }

@@ -3,8 +3,10 @@
 namespace Ernestdefoe\Curio\Lookup\Sources;
 
 use Ernestdefoe\Curio\Lookup\Budget;
+use Ernestdefoe\Curio\Lookup\CardQuery;
 use Ernestdefoe\Curio\Lookup\Http;
 use Ernestdefoe\Curio\Lookup\LookupException;
+use Ernestdefoe\Curio\Lookup\Paged;
 use Ernestdefoe\Curio\Lookup\Source;
 use Illuminate\Contracts\Cache\Repository as Cache;
 
@@ -14,7 +16,7 @@ use Illuminate\Contracts\Cache\Repository as Cache;
  * second (8 here), and for answers to be kept at least a day (they are).
  * Each result is one printing.
  */
-class Scryfall implements Source
+class Scryfall implements Source, Paged
 {
     private const BASE = 'https://api.scryfall.com/';
 
@@ -31,15 +33,46 @@ class Scryfall implements Source
 
     public function search(string $query): array
     {
-        $query = trim($query);
+        return $this->page($query, 1)[0];
+    }
 
-        if ($query === '') {
-            return [];
+    /**
+     * "Lightning Bolt", "Lightning Bolt 117", "Lightning Bolt 2x2 117": a
+     * name, then optionally the set code and the collector number, which
+     * become Scryfall's own `set:` and `cn:`. A query already written in
+     * Scryfall's syntax ("t:goblin set:m21") is passed as it is. Each
+     * reading's printings (up to Scryfall's first 175) are kept a day and
+     * paged here.
+     */
+    public function page(string $query, int $page): array
+    {
+        $query = trim($query);
+        $cards = [];
+
+        if (str_contains($query, ':')) {
+            $cards = $this->found($query);
+        } else {
+            foreach (array_slice(CardQuery::parse($query)->attempts(), 0, 4) as [$name, $set, $number]) {
+                // A set code is one word.
+                if ($set !== null && (str_contains($set, ' ') || ! preg_match('/^[a-z0-9]{2,6}$/i', $set))) {
+                    continue;
+                }
+                $cards = $this->found(implode(' ', array_filter([$name, $set !== null ? "set:$set" : null, $number !== null ? "cn:$number" : null])));
+                if ($cards) {
+                    break;
+                }
+            }
         }
 
-        return $this->cache->remember('curio.scryfall.search.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return [array_slice($cards, ($page - 1) * self::PER_PAGE, self::PER_PAGE), count($cards) > $page * self::PER_PAGE];
+    }
+
+    /** @return list<array<string, mixed>> the printings Scryfall finds for this query, newest first */
+    private function found(string $q): array
+    {
+        return $this->cache->remember('curio.scryfall.found.'.md5(mb_strtolower($q)), 86400, function () use ($q) {
             try {
-                $cards = $this->get('cards/search', ['q' => $query, 'unique' => 'prints', 'order' => 'released'])['data'] ?? [];
+                $cards = $this->get('cards/search', ['q' => $q, 'unique' => 'prints', 'order' => 'released'])['data'] ?? [];
             } catch (LookupException $e) {
                 // A query Scryfall cannot read (400) finds nothing; an outage is still an outage.
                 if ($e->outage) {
@@ -53,14 +86,15 @@ class Scryfall implements Source
             $cards = array_filter((array) $cards, fn ($c) => is_array($c) && is_string($c['id'] ?? null) && preg_match(self::UUID, $c['id']) && is_string($c['name'] ?? null)
                 && (string) ($c['released_at'] ?? '') <= $today);
 
-            return array_map(fn (array $c) => [
+            return array_values(array_map(fn (array $c) => [
                 'id' => $c['id'],
                 'title' => $c['name'],
-                'creator' => is_string($c['set_name'] ?? null) ? $c['set_name'] : null,
+                'creator' => null,
                 'year' => self::year($c),
                 'cover' => self::image($c, 'small'),
+                'set' => is_string($c['set_name'] ?? null) ? $c['set_name'].(is_string($c['set'] ?? null) ? ' ('.strtoupper($c['set']).')' : '') : null,
                 'number' => is_string($c['collector_number'] ?? null) ? $c['collector_number'] : null,
-            ], array_slice(array_values($cards), 0, 8));
+            ], $cards));
         });
     }
 
@@ -80,7 +114,8 @@ class Scryfall implements Source
 
         return [
             'title' => $c['name'],
-            'creator' => $set,
+            // The card's artist; its set is a detail of its own.
+            'creator' => is_string($c['artist'] ?? null) && trim($c['artist']) !== '' ? $c['artist'] : null,
             'year' => self::year($c),
             'cover' => self::image($c, 'large'),
             'wikidata' => null,
@@ -89,6 +124,8 @@ class Scryfall implements Source
                 'number' => is_string($c['collector_number'] ?? null) ? $c['collector_number'] : null,
                 'rarity' => is_string($c['rarity'] ?? null) ? ucfirst($c['rarity']) : null,
                 'language' => is_string($c['lang'] ?? null) ? $c['lang'] : null,
+                // Its finishes as Variant choices: non-foil is the normal card.
+                'variants' => array_values(array_intersect_key(['nonfoil' => 'normal', 'foil' => 'foil', 'etched' => 'etched'], array_flip(array_filter((array) ($c['finishes'] ?? []), 'is_string')))),
             ]],
         ];
     }

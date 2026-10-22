@@ -99,6 +99,8 @@ ernestdefoe-curio:
       barcode_found: "Code-barres {code} reconnu."
       barcode_unknown: "Personne ne connaît encore le code-barres {code}. Ajoutez-le à la main : la prochaine personne qui le scannera retrouvera votre fiche."
       no_results: Aucun résultat. Essayez avec moins de mots, ou ajoutez-le à la main.
+      more_results: Plus de résultats
+      card_hint: "Précisez l'extension et le numéro de la carte : Goomy 195, Goomy 195/264, Goomy fst 195, Lightning Bolt 2x2 117, ou un code d'impression comme LOB-FR001."
       find_hint: Choisir un résultat remplit la jaquette et les détails, et son titre et sa description s'affichent dans toutes les langues du forum.
       by_hand: L'ajouter à la main
       lookup_failed: Ce titre n'a pas pu être récupéré pour l'instant. Réessayez, ou ajoutez-le à la main.
@@ -151,6 +153,8 @@ ernestdefoe-curio:
       have_too: Je l'ai aussi
       want_it: Ajouter à ma liste de souhaits
       choose_collection: Dans quelle collection ?
+      choose_none: "Vous n'avez pas encore de collection. Créez-en une et l'objet y sera ajouté directement."
+      choose_new: Nouvelle collection…
       show_off: Le montrer
       discussed: Discussion
       cancel: Annuler

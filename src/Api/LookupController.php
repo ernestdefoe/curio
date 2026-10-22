@@ -5,6 +5,7 @@ namespace Ernestdefoe\Curio\Api;
 use Ernestdefoe\Curio\Lookup\Barcode;
 use Ernestdefoe\Curio\Lookup\BarcodeLookup;
 use Ernestdefoe\Curio\Lookup\LookupException;
+use Ernestdefoe\Curio\Lookup\Paged;
 use Ernestdefoe\Curio\Lookup\Sources;
 use Ernestdefoe\Curio\Lookup\WorkResolver;
 use Ernestdefoe\Curio\Type;
@@ -18,7 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * POST /api/curio/lookup
- *   {type, q}         → title search, or a barcode/ISBN when q is one
+ *   {type, q, page?}  → title search ({results, more}), or a barcode/ISBN when q is one
  *   {source, id}      → {workId}: the stored work for a result (fetched once, shared)
  *
  * POST so it carries the CSRF token; each call can cost the forum outbound
@@ -27,6 +28,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 class LookupController implements RequestHandlerInterface
 {
     use Throttle;
+
+    /** "More results" goes this deep (a dozen at a time). */
+    private const MAX_PAGE = 30;
 
     public function __construct(
         private Sources $sources,
@@ -76,10 +80,11 @@ class LookupController implements RequestHandlerInterface
         }
 
         $source = $this->sources->forType($type);
-        $results = $source ? $source->search($q) : [];
+        $page = max(1, min(self::MAX_PAGE, (int) Arr::get($body, 'page', 1)));
+        [$results, $more] = $source instanceof Paged ? $source->page($q, $page) : [$source && $page === 1 ? $source->search($q) : [], false];
 
         // A result names its source when one search asks several (trading cards).
-        return new JsonResponse(['results' => array_map(fn ($r) => $r + ['source' => $source?->key()], $results)]);
+        return new JsonResponse(['results' => array_map(fn ($r) => $r + ['source' => $source?->key()], $results), 'more' => $more && $page < self::MAX_PAGE]);
     }
 
     private function resolve(array $body): ResponseInterface

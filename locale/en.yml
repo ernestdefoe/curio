@@ -99,6 +99,8 @@ ernestdefoe-curio:
       barcode_found: "Barcode {code} recognised."
       barcode_unknown: "Nobody knows barcode {code} yet. Add it by hand and the next person who scans it will get your entry."
       no_results: Nothing found. Try fewer words, or add it by hand.
+      more_results: More results
+      card_hint: "Narrow it down with the set and the card number: Goomy 195, Goomy 195/264, Goomy fst 195, Lightning Bolt 2x2 117, or a printing code like LOB-EN001."
       find_hint: Picking a result fills in the cover and details, and its title and description show in every language this forum speaks.
       by_hand: Add it by hand
       lookup_failed: That title could not be looked up just now. Try again, or add it by hand.
@@ -151,6 +153,8 @@ ernestdefoe-curio:
       have_too: I have this too
       want_it: Add to my wishlist
       choose_collection: Which collection?
+      choose_none: "You have no collections yet. Start one and this goes straight in."
+      choose_new: New collection…
       show_off: Show it off
       discussed: Discussed here
       cancel: Cancel

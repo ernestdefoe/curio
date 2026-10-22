@@ -320,7 +320,7 @@ export default class ItemModal extends Modal {
     );
   }
 
-  /** "I have this too" / "Add to my wishlist": into one of my collections of the same type. */
+  /** "I have this too" / "Add to my wishlist": into any of my collections, those of the same type first. */
   copy(item, status) {
     addToMyCollection({ prefill: item, status, typeIds: [item.collection().type().id()] });
   }

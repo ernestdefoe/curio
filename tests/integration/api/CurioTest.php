@@ -1481,7 +1481,8 @@ class CurioTest extends TestCase
                         ['id' => 'x', 'name' => 'no local id'],
                     ],
                     (bool) preg_match('#/[a-z]{2}/sets$#', $url) => [['id' => 'swsh3', 'name' => 'Ténèbres Embrasées', 'cardCount' => ['official' => 189]]],
-                    str_ends_with($url, '/fr/cards/swsh3-135') => ['id' => 'swsh3-135', 'localId' => '135', 'name' => 'Fouinar', 'rarity' => 'Peu Commune',
+                    str_ends_with($url, '/fr/cards/swsh3-135') => ['id' => 'swsh3-135', 'localId' => '135', 'name' => 'Fouinar', 'rarity' => 'Peu Commune', 'illustrator' => 'Kouki Saitou',
+                        'variants' => ['normal' => true, 'reverse' => true, 'holo' => false, 'firstEdition' => false, 'wPromo' => false],
                         'image' => 'https://evil.example/x', 'set' => ['name' => 'Ténèbres Embrasées', 'cardCount' => ['official' => 189]]],
                     str_contains($url, 'scryfall.com/cards/search') => ['data' => [['id' => '0852f9f3-d7ef-4d31-93e3-93bc7c5a4ec9', 'name' => 'Lightning Bolt', 'set_name' => 'Foundations',
                         'collector_number' => '163', 'released_at' => '2024-11-15', 'image_uris' => ['small' => 'https://cards.scryfall.io/small/x.jpg']]]],
@@ -1511,7 +1512,7 @@ class CurioTest extends TestCase
     {
         $fake = $this->fakeCards();
         $cards = $this->typeId('cards');
-        $this->assertSame(['set', 'number', 'grade', 'rarity', 'language'], array_column(json_decode((string) $this->database()->table('curio_types')->where('id', $cards)->value('fields'), true), 'key'));
+        $this->assertSame(['set', 'number', 'variant', 'grade', 'rarity', 'language'], array_column(json_decode((string) $this->database()->table('curio_types')->where('id', $cards)->value('fields'), true), 'key'));
 
         // None until the admin picks one.
         $this->assertSame([], $this->lookup(['type' => $cards, 'q' => 'fouinar'])['results']);
@@ -1521,7 +1522,7 @@ class CurioTest extends TestCase
 
         // Each result names its own source; Pokémon, Magic and Yu-Gi-Oh! take turns.
         $this->assertSame(['tcgdex', 'scryfall', 'ygoprodeck', 'tcgdex'], array_column($results, 'source'));
-        $this->assertSame(['en/swsh3-135', 'Fouinar', 'Pokémon · Ténèbres Embrasées', '135/189'], [$results[0]['id'], $results[0]['title'], $results[0]['creator'], $results[0]['number']]);
+        $this->assertSame(['en/swsh3-135', 'Fouinar', null, 'Pokémon · Ténèbres Embrasées', '135/189'], [$results[0]['id'], $results[0]['title'], $results[0]['creator'], $results[0]['set'], $results[0]['number']]);
         $this->assertSame('https://assets.tcgdex.net/fr/swsh/swsh3/135/low.webp', $results[0]['cover']);
         // YGOPRODeck asks not to be hotlinked: no picture until it is added; its printings are choices.
         $this->assertNull($results[2]['cover']);
@@ -1543,7 +1544,9 @@ class CurioTest extends TestCase
 
         $workId = $this->lookup(['source' => 'tcgdex', 'id' => 'fr/swsh3-135'])['workId'];
         $work = $this->json($this->get("/api/curio-works/$workId", [], 3))['data']['attributes'];
-        $this->assertSame(['set' => 'Ténèbres Embrasées', 'number' => '135/189', 'rarity' => 'Peu Commune', 'language' => 'fr'], $work['facts']['card']);
+        $this->assertSame(['set' => 'Ténèbres Embrasées', 'number' => '135/189', 'rarity' => 'Peu Commune', 'language' => 'fr', 'variants' => ['normal', 'reverse']], $work['facts']['card']);
+        // The creator line is the card's artist, not its set.
+        $this->assertSame('Kouki Saitou', $work['creator']);
         // A picture from anywhere but TCGdex's own host is never fetched.
         $this->assertNull($work['coverUrl']);
 
@@ -1593,5 +1596,137 @@ class CurioTest extends TestCase
         $this->assertFalse($same->invoke(null, '136/189', '135'));
         $this->assertFalse($same->invoke(null, '136', null));
     }
-}
 
+    #[Test]
+    public function a_card_search_reads_the_set_and_number_after_the_name(): void
+    {
+        $q = \Ernestdefoe\Curio\Lookup\CardQuery::parse('Goomy fst 195/264');
+        $this->assertSame([['Goomy fst', null, '195'], ['Goomy', 'fst', '195'], ['Goomy fst 195/264', null, null], ['Goomy fst', '195/264', null], ['Goomy', 'fst 195/264', null]], $q->attempts());
+        $this->assertSame('264', $q->total);
+        $this->assertSame([['Goomy', null, null]], \Ernestdefoe\Curio\Lookup\CardQuery::parse('Goomy')->attempts());
+        $this->assertSame('LOB-EN001', \Ernestdefoe\Curio\Lookup\CardQuery::parse('lob-en001')->code);
+        $this->assertTrue(\Ernestdefoe\Curio\Lookup\CardQuery::sameNumber('066', '66'));
+        $this->assertTrue(\Ernestdefoe\Curio\Lookup\CardQuery::sameNumber('TG05', 'tg5'));
+        $this->assertFalse(\Ernestdefoe\Curio\Lookup\CardQuery::sameNumber('195', '19'));
+    }
+
+    /** Pokémon, Magic and Yu-Gi-Oh! answered by a fake with sets, codes and a name printed 30 times. */
+    private function fakeCardCatalogue(): object
+    {
+        $container = $this->app()->getContainer();
+        $fake = new class($container->make(\Illuminate\Contracts\Cache\Repository::class), $container->make(\Flarum\Http\UrlGenerator::class)) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $calls = [];
+
+            public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
+            {
+                $this->calls[] = $url.($query ? '?'.http_build_query($query) : '');
+                $card = fn (string $set, string $n, string $name) => ['id' => "$set-$n", 'localId' => $n, 'name' => $name, 'image' => "https://assets.tcgdex.net/en/x/$set/$n"];
+
+                return match (true) {
+                    str_ends_with($url, '/en/cards') => match ($query['name'] ?? '') {
+                        'Goomy' => [$card('xy7', '58', 'Goomy'), $card('swsh8', '195', 'Goomy'), $card('sm6', '091', 'Goomy')],
+                        'Pikachu' => array_map(fn ($i) => $card('base1', (string) $i, 'Pikachu'), range(1, 30)),
+                        default => [],
+                    },
+                    str_ends_with($url, '/en/sets') => [
+                        ['id' => 'xy7', 'name' => 'Ancient Origins', 'cardCount' => ['official' => 98]], ['id' => 'swsh8', 'name' => 'Fusion Strike', 'cardCount' => ['official' => 264]],
+                        ['id' => 'sm6', 'name' => 'Forbidden Light', 'cardCount' => ['official' => 131]], ['id' => 'base1', 'name' => 'Base Set', 'cardCount' => ['official' => 102]],
+                    ],
+                    str_ends_with($url, '/en/sets/swsh8') => ['id' => 'swsh8', 'abbreviation' => ['official' => 'FST']],
+                    str_contains($url, 'scryfall.com/cards/search') => str_contains($query['q'], 'set:2x2') ? ['data' => [['id' => '0852f9f3-d7ef-4d31-93e3-93bc7c5a4ec9', 'name' => 'Lightning Bolt',
+                        'set' => '2x2', 'set_name' => 'Double Masters 2022', 'collector_number' => '117', 'released_at' => '2022-07-08']]] : [],
+                    str_contains($url, 'cardsetsinfo.php') => $query['setcode'] === 'LOB-EN001' ? ['id' => 89631139, 'name' => 'Blue-Eyes White Dragon'] : [],
+                    str_contains($url, 'cardinfo.php') => ['data' => [['id' => 89631139, 'name' => 'Blue-Eyes White Dragon', 'card_sets' => [
+                        ['set_name' => 'Legend of Blue Eyes White Dragon', 'set_code' => 'LOB-EN001', 'set_rarity' => 'Ultra Rare'], ['set_name' => 'Starter Deck: Kaiba', 'set_code' => 'SDK-001', 'set_rarity' => 'Ultra Rare'],
+                    ]]]],
+                    default => [],
+                };
+            }
+
+            public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+            {
+                $this->calls[] = "POST $url";
+
+                return ['data' => ['sets' => [['id' => 'xy7', 'tcgOnline' => 'AOR'], ['id' => 'swsh8', 'tcgOnline' => null]]]];
+            }
+        };
+        $container->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        return $fake;
+    }
+
+    #[Test]
+    public function cards_are_found_by_set_and_number_and_a_page_at_a_time(): void
+    {
+        $fake = $this->fakeCardCatalogue();
+        $cards = $this->typeId('cards');
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'pokemon']);
+        $ids = fn (string $q, int $page = 1) => array_column($this->lookup(['type' => $cards, 'q' => $q, 'page' => $page], 'en')['results'], 'id');
+
+        $found = $this->lookup(['type' => $cards, 'q' => 'Goomy 195/264'], 'en');
+        $this->assertSame(['en/swsh8-195'], array_column($found['results'], 'id'));
+        $this->assertSame(['Fusion Strike', '195/264', false], [$found['results'][0]['set'], $found['results'][0]['number'], $found['more']]);
+        $this->assertSame(['en/swsh8-195'], $ids('Goomy 195'));
+        $this->assertSame(['en/sm6-091'], $ids('Goomy 91'));
+        $this->assertSame([], $ids('Goomy 195/98'));
+        // The set by the code on the card (from GraphQL, or the set's own page), its id or its name.
+        $this->assertSame(['en/xy7-58'], $ids('Goomy aor'));
+        $this->assertSame(['en/swsh8-195'], $ids('Goomy fst 195'));
+        $this->assertSame(['en/swsh8-195'], $ids('Goomy Fusion Strike'));
+        $this->assertSame(['en/sm6-091'], $ids('Goomy sm6'));
+        $this->assertCount(3, $ids('Goomy'));
+
+        // Thirty Pikachu, a dozen at a time, from one request kept a day.
+        $before = count(array_filter($fake->calls, fn ($c) => str_contains($c, 'name=Pikachu')));
+        $first = $this->lookup(['type' => $cards, 'q' => 'Pikachu'], 'en');
+        $this->assertSame([12, true], [count($first['results']), $first['more']]);
+        $last = $this->lookup(['type' => $cards, 'q' => 'Pikachu', 'page' => 3], 'en');
+        $this->assertSame([6, false, 'en/base1-25'], [count($last['results']), $last['more'], $last['results'][0]['id']]);
+        $this->assertSame($before + 1, count(array_filter($fake->calls, fn ($c) => str_contains($c, 'name=Pikachu'))));
+        // The set codes: one GraphQL answer, and one set page for a set it leaves out.
+        $this->assertSame(1, count(array_filter($fake->calls, fn ($c) => str_starts_with($c, 'POST'))));
+        $this->assertSame(1, count(array_filter($fake->calls, fn ($c) => str_ends_with($c, '/en/sets/swsh8'))));
+
+        // Magic: the set code and collector number become Scryfall's own.
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'magic']);
+        $found = $this->lookup(['type' => $cards, 'q' => 'Lightning Bolt 2x2 117'], 'en')['results'];
+        $this->assertSame(['Double Masters 2022 (2X2)', '117'], [$found[0]['set'], $found[0]['number']]);
+        $this->assertContains('https://api.scryfall.com/cards/search?q=Lightning+Bolt+set%3A2x2+cn%3A117&unique=prints&order=released', $fake->calls);
+
+        // Yu-Gi-Oh!: a printing code finds that printing.
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'yugioh']);
+        $found = $this->lookup(['type' => $cards, 'q' => 'LOB-EN001'], 'en')['results'];
+        $this->assertSame(['Blue-Eyes White Dragon', 'LOB-EN001', ['LOB-EN001']], [$found[0]['title'], $found[0]['number'], array_column($found[0]['variants'], 'label')]);
+    }
+
+    #[Test]
+    public function a_card_stored_with_its_set_as_creator_gets_its_artist_back(): void
+    {
+        $this->fakeCards();
+        $now = Carbon::now()->toDateTimeString();
+        $this->database()->table('curio_works')->insert(['id' => 7, 'source' => 'tcgdex', 'source_id' => 'fr/swsh3-135', 'title' => 'Fouinar', 'creator' => null,
+            'facts' => json_encode(['card' => ['set' => 'Ténèbres Embrasées']]), 'refreshed_at' => '2000-01-01 00:00:00', 'created_at' => $now, 'languages' => 0]);
+        $id = $this->newCollection(3, [], 'cards');
+        $item = (int) $this->json($this->item(3, $id, ['title' => 'Fouinar'], 7))['data']['id'];
+
+        $this->app()->getContainer()->make(\Ernestdefoe\Curio\Lookup\WorkResolver::class)->refreshCard(\Ernestdefoe\Curio\Work::query()->findOrFail(7));
+
+        $work = $this->database()->table('curio_works')->where('id', 7)->first();
+        $this->assertSame('Kouki Saitou', $work->creator);
+        $this->assertSame(['normal', 'reverse'], json_decode($work->facts, true)['card']['variants']);
+        $this->assertGreaterThan(\Ernestdefoe\Curio\Console\MatchWorks::CARD_MARK, (string) $work->refreshed_at);
+        $this->assertSame('Kouki Saitou', $this->database()->table('curio_items')->where('id', $item)->value('subtitle'));
+    }
+
+    #[Test]
+    public function a_copy_into_a_collection_of_another_type_keeps_only_details_that_type_has(): void
+    {
+        $xbox = $this->newCollection(3, ['name' => 'Xbox']);
+        $books = $this->newCollection(4, ['name' => 'Books'], 'books');
+
+        // The details of a game (platform) mean nothing on a bookshelf, and nobody adds to a shelf that is not theirs.
+        $response = $this->item(4, $books, ['title' => 'Halo', 'fields' => ['platform' => 'xbox-one', 'format' => 'hardback']]);
+        $this->assertEquals(['format' => 'hardback'], $this->json($response)['data']['attributes']['fields']);
+        $this->assertSame(403, $this->item(4, $xbox, ['title' => 'Halo'])->getStatusCode());
+    }
+}

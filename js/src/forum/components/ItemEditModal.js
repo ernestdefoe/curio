@@ -13,6 +13,9 @@ import { canScan, scan } from '../scanner';
 import useStyles from '../styles';
 
 const MAX_PHOTOS = 6;
+const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
+/** Details that describe one member's own copy: never copied from someone else's. */
+const OWN_DETAILS = ['grade', 'cib'];
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'BRL', 'MXN', 'INR'];
 
 /** "fr" → "Français", in the reader's language. */
@@ -56,14 +59,15 @@ export default class ItemEditModal extends FormModal {
     this.work = item ? item.work() : from ? from.work() : this.attrs.work || null;
 
     const src = item || from;
-    const work = !src && this.work;
+    // A copy fills what the other member left empty from the looked-up title.
+    const work = !item && this.work;
     this.itemTitle = Stream(src ? src.title() : work ? work.originalTitle() : '');
-    this.subtitle = Stream(src ? src.subtitle() || '' : work ? work.creator() || '' : '');
+    this.subtitle = Stream((src && src.subtitle()) || (work && work.creator()) || '');
     this.year = Stream(src && src.year() ? String(src.year()) : work && work.year() ? String(work.year()) : '');
     this.status = Stream(item ? item.status() : this.attrs.status || 'owned');
     this.condition = Stream(item ? item.condition() || '' : '');
     this.acquiredOn = Stream(item ? item.acquiredOn() || '' : '');
-    this.fields = Object.assign({}, src ? src.fields() || {} : {});
+    this.fields = item ? Object.assign({}, item.fields() || {}) : from ? this.copiedFields(from) : {};
     this.notes = Stream(item ? item.notes() || '' : '');
     this.favourite = Stream(item ? !!item.favourite() : false);
     this.rating = Stream(item ? item.rating() || null : null);
@@ -72,7 +76,26 @@ export default class ItemEditModal extends FormModal {
     this.priceCurrency = Stream(item ? item.priceCurrency() || defaultCurrency() : defaultCurrency());
     this.code = null;
     this.queued = [];
-    if (work) this.prefillFromFacts(work.facts());
+    if (!item && this.work) this.prefillFromFacts(this.work.facts());
+  }
+
+  /**
+   * Another member's details that fit this collection: the same detail (and,
+   * for a choice, an option this type has), never their copy's own state,
+   * and not the platform or variant when the title lists its own to choose
+   * from (their Xbox copy says nothing about yours).
+   */
+  copiedFields(from) {
+    const facts = from.work()?.facts() || {};
+    const offered = { platform: facts.platforms, variant: facts.card?.variants };
+    const copied = {};
+    Object.entries(from.fields() || {}).forEach(([key, value]) => {
+      const f = (this.type.fields() || []).find((field) => field.key === key);
+      if (!f || OWN_DETAILS.includes(key) || (offered[key] || []).length) return;
+      if (f.kind === 'select' && !(f.options || []).some((o) => o.key === value)) return;
+      copied[key] = value;
+    });
+    return copied;
   }
 
   onremove(vnode) {
@@ -174,6 +197,11 @@ export default class ItemEditModal extends FormModal {
 
         {this.resolving ? <LoadingIndicator display="block" /> : null}
 
+        {CARD_SOURCES.includes(this.type.source()) ? (
+          <p className="CurioHint">
+            <Icon name="fas fa-hashtag" /> {t('item_edit.card_hint')}
+          </p>
+        ) : null}
         <p className="CurioHint">
           <Icon name="fas fa-language" /> {t('item_edit.find_hint')}
         </p>
@@ -202,7 +230,9 @@ export default class ItemEditModal extends FormModal {
                 <strong>
                   {r.title} {r.year ? <span className="CurioMuted">({r.year})</span> : null}
                 </strong>
-                {r.creator || r.number ? <span className="CurioMuted">{[r.creator, r.number].filter(Boolean).join(' · ')}</span> : null}
+                {r.creator || r.set || r.number ? (
+                  <span className="CurioMuted">{[r.creator, r.set, r.number].filter(Boolean).join(' · ')}</span>
+                ) : null}
                 {this.barcode && Object.keys(this.barcode.fields || {}).length ? (
                   <span className="CurioResult-chips">
                     {this.type
@@ -219,6 +249,13 @@ export default class ItemEditModal extends FormModal {
             {this.variants(r)}
           </li>
         ))}
+        {this.more ? (
+          <li className="CurioResults-more">
+            <Button type="button" className="Button" loading={this.loadingMore} onclick={() => this.search(this.page + 1)}>
+              {t('item_edit.more_results')}
+            </Button>
+          </li>
+        ) : null}
       </ul>
     );
   }
@@ -231,24 +268,33 @@ export default class ItemEditModal extends FormModal {
     this.debounce = setTimeout(() => this.search(), 350);
   }
 
-  search() {
+  /** A search, or (page > 1) the next page of the same one: "More results". */
+  search(page = 1) {
     const q = this.query().trim();
     if (!q) return;
 
-    this.searching = true;
-    this.barcode = null;
+    if (page > 1) this.loadingMore = true;
+    else {
+      this.searching = true;
+      this.barcode = null;
+    }
     const asked = q;
 
-    lookup({ type: this.type.id(), q })
+    lookup({ type: this.type.id(), q, page })
       .then((response) => {
         if (this.query().trim() !== asked) return;
-        this.results = response.results || [];
-        this.barcode = response.barcode || null;
-        this.code = response.barcode ? response.barcode.code : null;
+        const found = response.results || [];
+        this.results = page > 1 ? [...(this.results || []), ...found] : found;
+        this.page = page;
+        this.more = !!response.more;
+        if (page === 1) {
+          this.barcode = response.barcode || null;
+          this.code = response.barcode ? response.barcode.code : null;
+        }
       })
-      .catch(() => (this.results = []))
+      .catch(() => page === 1 && (this.results = []))
       .finally(() => {
-        this.searching = false;
+        this.searching = this.loadingMore = false;
         m.redraw();
       });
   }
@@ -374,20 +420,40 @@ export default class ItemEditModal extends FormModal {
           if (key) this.fields[f.key] = key;
         });
     }
-    if (facts.card) this.applyFields(facts.card, null, false);
+    if (facts.card) {
+      this.applyFields(facts.card, null, false);
+      // Printed in one finish only: that one.
+      const variants = facts.card.variants || [];
+      (this.type.fields() || [])
+        .filter((f) => f.kind === 'select' && f.key === 'variant' && !this.fields.variant && variants.length === 1)
+        .forEach((f) => (f.options || []).some((o) => o.key === variants[0]) && (this.fields.variant = variants[0]));
+    }
   }
 
-  /** "Out on": the looked-up platforms this type offers, one click to choose. */
-  platformChoices(f) {
-    // Only while none is chosen: after that, the menu above says which.
-    const names = (f.key === 'platform' && !this.fields[f.key] && this.work?.facts()?.platforms) || [];
-    const choices = names.map((name) => [name, onlyOption(f, [name])]).filter(([, key]) => key);
+  /**
+   * The versions this title really comes in, one click to choose: a game's
+   * platforms ("Out on"), a card's finishes (normal, reverse holo…). Only
+   * the ones this type offers; the chosen one is marked.
+   */
+  versionChoices(f) {
+    const facts = this.work?.facts() || {};
+    let choices = [];
+    if (f.key === 'platform') {
+      choices = (facts.platforms || []).map((name) => [name, onlyOption(f, [name])]).filter(([, key]) => key);
+    } else if (f.key === 'variant') {
+      choices = (f.options || []).filter((o) => (facts.card?.variants || []).includes(o.key)).map((o) => [pick(o.labels, locale()), o.key]);
+    }
     if (choices.length < 2) return null;
 
     return (
-      <div className="CurioResult-variants">
+      <div className="CurioResult-variants" role="group" aria-label={label(f.labels)}>
         {choices.map(([name, key]) => (
-          <button type="button" className="CurioChip CurioChip--pick" onclick={() => (this.fields[f.key] = key)}>
+          <button
+            type="button"
+            className={'CurioChip CurioChip--pick' + (this.fields[f.key] === key ? ' CurioChip--on' : '')}
+            aria-pressed={this.fields[f.key] === key ? 'true' : 'false'}
+            onclick={() => (this.fields[f.key] = key)}
+          >
             {name}
           </button>
         ))}
@@ -646,7 +712,7 @@ export default class ItemEditModal extends FormModal {
               )}
             </div>,
             // Full width, under the menu's row.
-            f.kind === 'select' ? this.platformChoices(f) : null,
+            f.kind === 'select' ? this.versionChoices(f) : null,
           ];
         })}
       </div>

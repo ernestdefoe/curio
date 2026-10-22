@@ -5,6 +5,7 @@ namespace Ernestdefoe\Curio\Lookup;
 use Carbon\Carbon;
 use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Storage\RemoteImage;
+use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Translation\WorkTexts;
 use Ernestdefoe\Curio\Work;
 use Illuminate\Database\QueryException;
@@ -18,6 +19,12 @@ use Throwable;
  */
 class WorkResolver
 {
+    /** A card's Variant choices, in the order they are offered. */
+    /** Sources whose works are trading cards with an artist and finishes. */
+    public const CARD_SOURCES = ['tcgdex', 'scryfall'];
+
+    public const VARIANTS = ['normal', 'reverse', 'holo', 'first_edition', 'w_promo', 'foil', 'etched'];
+
     public function __construct(
         private Sources $sources,
         private RemoteImage $remote,
@@ -71,6 +78,39 @@ class WorkResolver
     }
 
     /**
+     * A card's artist and finishes, read again from its source (cards stored
+     * before 1.9 named their set as the creator and had no Variant choices).
+     * An item whose creator line was left empty gets the artist.
+     *
+     * @throws LookupException when the source is down (try again later)
+     */
+    public function refreshCard(Work $work): void
+    {
+        $source = in_array($work->source, self::CARD_SOURCES, true) ? $this->sources->byKey($work->source) : null;
+
+        try {
+            $details = $source?->details($work->source_id);
+        } catch (LookupException $e) {
+            if ($e->outage) {
+                throw $e;
+            }
+            $details = null;
+        }
+
+        $before = $work->creator;
+        if ($details) {
+            $work->creator = $details['creator'] ? mb_substr($details['creator'], 0, 255) : null;
+            $work->facts = self::facts($details['facts'] ?? null) ?? $work->facts;
+        }
+        $work->refreshed_at = Carbon::now();
+        $work->save();
+
+        if ($work->creator && $work->creator !== $before) {
+            Item::query()->where('work_id', $work->id)->whereNull('subtitle')->update(['subtitle' => $work->creator]);
+        }
+    }
+
+    /**
      * Developer, publisher, release date, platforms and genres, when the source
      * knows them: short lists of short names, nothing else.
      */
@@ -102,6 +142,11 @@ class WorkResolver
             if (is_string($value) && ($value = mb_substr(trim($value), 0, 80)) !== '') {
                 $card[$key] = $value;
             }
+        }
+        // The finishes it was printed in, as Variant choices.
+        $variants = array_values(array_intersect(self::VARIANTS, is_array($facts['card']['variants'] ?? null) ? $facts['card']['variants'] : []));
+        if ($variants) {
+            $card['variants'] = $variants;
         }
         if ($card) {
             $clean['card'] = $card;
