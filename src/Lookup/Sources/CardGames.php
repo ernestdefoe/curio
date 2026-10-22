@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Curio\Lookup\Sources;
 
+use Ernestdefoe\Curio\Lookup\CardLanguages;
 use Ernestdefoe\Curio\Lookup\LookupException;
 use Ernestdefoe\Curio\Lookup\Paged;
 use Ernestdefoe\Curio\Lookup\Source;
@@ -9,9 +10,11 @@ use Ernestdefoe\Curio\Lookup\Source;
 /**
  * Pokémon, Magic and Yu-Gi-Oh! at once, for a type that holds all three:
  * each answers (from its cache when it can) and the results take turns, each
- * naming the source it came from.
+ * naming the source it came from. A card language goes to Pokémon and
+ * Magic; YGOPRODeck's names are English (its few translated ones are not
+ * searchable by printing), so Yu-Gi-Oh! answers as before.
  */
-class CardGames implements Source, Paged
+class CardGames implements Source, Paged, CardLanguages
 {
     /** @var array<string, Source&Paged> */
     private array $games;
@@ -24,6 +27,14 @@ class CardGames implements Source, Paged
     public function key(): string
     {
         return 'cards';
+    }
+
+    public function inLanguage(?string $lang): static
+    {
+        $source = clone $this;
+        $source->games = array_map(fn (Source $game) => $game instanceof CardLanguages ? $game->inLanguage($lang) : $game, $this->games);
+
+        return $source;
     }
 
     public function search(string $query): array

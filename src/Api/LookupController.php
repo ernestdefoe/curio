@@ -4,6 +4,7 @@ namespace Ernestdefoe\Curio\Api;
 
 use Ernestdefoe\Curio\Lookup\Barcode;
 use Ernestdefoe\Curio\Lookup\BarcodeLookup;
+use Ernestdefoe\Curio\Lookup\CardLanguages;
 use Ernestdefoe\Curio\Lookup\LookupException;
 use Ernestdefoe\Curio\Lookup\Paged;
 use Ernestdefoe\Curio\Lookup\Sources;
@@ -19,7 +20,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * POST /api/curio/lookup
- *   {type, q, page?}  → title search ({results, more}), or a barcode/ISBN when q is one
+ *   {type, q, page?, lang?} → title search ({results, more}), or a barcode/ISBN when q is one;
+ *                       lang = the card language picked ("ja"), for card sources
  *   {source, id}      → {workId}: the stored work for a result (fetched once, shared)
  *
  * POST so it carries the CSRF token; each call can cost the forum outbound
@@ -80,6 +82,10 @@ class LookupController implements RequestHandlerInterface
         }
 
         $source = $this->sources->forType($type);
+        $lang = Arr::get($body, 'lang');
+        if ($source instanceof CardLanguages && is_string($lang)) {
+            $source = $source->inLanguage(substr($lang, 0, 8));
+        }
         $page = max(1, min(self::MAX_PAGE, (int) Arr::get($body, 'page', 1)));
         [$results, $more] = $source instanceof Paged ? $source->page($q, $page) : [$source && $page === 1 ? $source->search($q) : [], false];
 

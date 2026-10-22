@@ -16,13 +16,21 @@ const MAX_PHOTOS = 6;
 const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
 /** Details that describe one member's own copy: never copied from someone else's. */
 const OWN_DETAILS = ['grade', 'cib'];
+/** The languages each card source has printings in (TCGdex's codes; the server maps them to Scryfall's). */
+const POKEMON_LANGUAGES = ['en', 'fr', 'es', 'es-mx', 'it', 'pt', 'pt-br', 'pt-pt', 'de', 'nl', 'pl', 'ru', 'ja', 'ko', 'zh-tw', 'zh-cn', 'id', 'th'];
+const CARD_LANGUAGES = {
+  pokemon: POKEMON_LANGUAGES,
+  cards: POKEMON_LANGUAGES,
+  magic: ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'ru', 'zh-cn', 'zh-tw'],
+};
+const LANGUAGE_KEY = 'curio.cardLanguage';
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'BRL', 'MXN', 'INR'];
 
-/** "fr" → "Français", in the reader's language. */
-const languageName = (code) => {
+/** "fr" → "Français", in the reader's language ("français" mid-sentence). */
+const languageName = (code, capital = true) => {
   try {
-    const name = new Intl.DisplayNames([locale()], { type: 'language' }).of(code);
-    return name ? name.charAt(0).toLocaleUpperCase(locale()) + name.slice(1) : code;
+    const name = new Intl.DisplayNames([locale()], { type: 'language' }).of({ zhs: 'zh-Hans', zht: 'zh-Hant' }[code] || code);
+    return name ? (capital ? name.charAt(0).toLocaleUpperCase(locale()) : name.charAt(0)) + name.slice(1) : code;
   } catch (e) {
     return code;
   }
@@ -32,6 +40,18 @@ const defaultCurrency = () => {
   const l = locale();
   if (l === 'en-GB') return 'GBP';
   return ['fr', 'de', 'es', 'it', 'nl', 'pt', 'fi', 'el'].includes(l.split(/[-_]/)[0]) ? 'EUR' : 'USD';
+};
+
+/** The card language last picked here, else the reader's own (or English) if this source has it. */
+const cardLanguage = (list) => {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(LANGUAGE_KEY);
+  } catch (e) {
+    // Storage blocked: the reader's language it is.
+  }
+  const own = locale().toLowerCase().replace('_', '-');
+  return [saved, own, own.split('-')[0]].find((code) => list.includes(code)) || 'en';
 };
 
 /**
@@ -76,6 +96,10 @@ export default class ItemEditModal extends FormModal {
     this.priceCurrency = Stream(item ? item.priceCurrency() || defaultCurrency() : defaultCurrency());
     this.code = null;
     this.queued = [];
+    // A choice detail opened past its chips ("Other…").
+    this.otherShown = {};
+    this.cardLanguages = CARD_LANGUAGES[this.type.source()] || null;
+    this.cardLang = this.cardLanguages ? cardLanguage(this.cardLanguages) : null;
     if (!item && this.work) this.prefillFromFacts(this.work.facts());
   }
 
@@ -165,6 +189,17 @@ export default class ItemEditModal extends FormModal {
               }}
             />
           </div>
+          {this.cardLanguages ? (
+            <Select
+              className="CurioCardLang"
+              wrapperAttrs={{ className: 'CurioCardLang-wrap' }}
+              aria-label={text('item_edit.card_language')}
+              title={text('item_edit.card_language')}
+              value={this.cardLang}
+              onchange={(code) => this.pickLanguage(code)}
+              options={Object.fromEntries(this.cardLanguages.map((code) => [code, languageName(code)]))}
+            />
+          ) : null}
           {canScan() ? (
             <Button
               type="button"
@@ -216,7 +251,13 @@ export default class ItemEditModal extends FormModal {
 
   resultList() {
     if (!this.results) return null;
-    if (!this.results.length) return <p className="CurioEmpty">{t('item_edit.no_results')}</p>;
+    if (!this.results.length) {
+      return (
+        <p className="CurioEmpty">
+          {this.cardLanguages ? t('item_edit.no_cards_in', { language: languageName(this.cardLang, false) }) : t('item_edit.no_results')}
+        </p>
+      );
+    }
 
     return (
       <ul className="CurioResults">
@@ -231,7 +272,9 @@ export default class ItemEditModal extends FormModal {
                   {r.title} {r.year ? <span className="CurioMuted">({r.year})</span> : null}
                 </strong>
                 {r.creator || r.set || r.number ? (
-                  <span className="CurioMuted">{[r.creator, r.set, r.number].filter(Boolean).join(' · ')}</span>
+                  <span className="CurioMuted">
+                    {[r.name && r.name !== r.title ? r.name : null, r.creator, r.set, r.number].filter(Boolean).join(' · ')}
+                  </span>
                 ) : null}
                 {this.barcode && Object.keys(this.barcode.fields || {}).length ? (
                   <span className="CurioResult-chips">
@@ -280,7 +323,7 @@ export default class ItemEditModal extends FormModal {
     }
     const asked = q;
 
-    lookup({ type: this.type.id(), q, page })
+    lookup({ type: this.type.id(), q, page, ...(this.cardLang ? { lang: this.cardLang } : {}) })
       .then((response) => {
         if (this.query().trim() !== asked) return;
         const found = response.results || [];
@@ -297,6 +340,17 @@ export default class ItemEditModal extends FormModal {
         this.searching = this.loadingMore = false;
         m.redraw();
       });
+  }
+
+  /** Another card language: remembered on this device, and the search asked again. */
+  pickLanguage(code) {
+    this.cardLang = code;
+    try {
+      localStorage.setItem(LANGUAGE_KEY, code);
+    } catch (e) {
+      // Kept for this window only.
+    }
+    if (this.query().trim() && !/^[\d\s-]*$/.test(this.query())) this.search();
   }
 
   toggleScan() {
@@ -431,32 +485,75 @@ export default class ItemEditModal extends FormModal {
   }
 
   /**
-   * The versions this title really comes in, one click to choose: a game's
+   * The versions this title really comes in, as [name, option key]: a game's
    * platforms ("Out on"), a card's finishes (normal, reverse holo…). Only
-   * the ones this type offers; the chosen one is marked.
+   * the ones this type offers.
    */
   versionChoices(f) {
     const facts = this.work?.facts() || {};
-    let choices = [];
     if (f.key === 'platform') {
-      choices = (facts.platforms || []).map((name) => [name, onlyOption(f, [name])]).filter(([, key]) => key);
-    } else if (f.key === 'variant') {
-      choices = (f.options || []).filter((o) => (facts.card?.variants || []).includes(o.key)).map((o) => [pick(o.labels, locale()), o.key]);
+      return (facts.platforms || []).map((name) => [name, onlyOption(f, [name])]).filter(([, key]) => key);
     }
-    if (choices.length < 2) return null;
+    if (f.key === 'variant') {
+      return (f.options || []).filter((o) => (facts.card?.variants || []).includes(o.key)).map((o) => [pick(o.labels, locale()), o.key]);
+    }
+    return [];
+  }
+
+  /**
+   * A choice the title narrows down: its versions as chips, one click to
+   * choose (again to clear), and "Other…" for one it doesn't list, which
+   * opens the full menu. The chosen one is marked.
+   */
+  chipField(f, id, value, set, choices) {
+    const listed = choices.some(([, key]) => key === value);
+    const other = this.otherShown[f.key] || (!!value && !listed);
+    const labelId = id + '-label';
 
     return (
-      <div className="CurioResult-variants" role="group" aria-label={label(f.labels)}>
-        {choices.map(([name, key]) => (
+      <div className="Form-group CurioFieldGrid-wide">
+        <label id={labelId} for={other ? id : undefined}>
+          {label(f.labels)}
+        </label>
+        <div className="CurioChips" role="group" aria-labelledby={labelId}>
+          {choices.map(([name, key]) => (
+            <button
+              type="button"
+              className={'CurioChip CurioChip--pick' + (value === key ? ' CurioChip--on' : '')}
+              aria-pressed={value === key ? 'true' : 'false'}
+              onclick={() => {
+                set(value === key ? '' : key);
+                this.otherShown[f.key] = false;
+              }}
+            >
+              {name}
+            </button>
+          ))}
           <button
             type="button"
-            className={'CurioChip CurioChip--pick' + (this.fields[f.key] === key ? ' CurioChip--on' : '')}
-            aria-pressed={this.fields[f.key] === key ? 'true' : 'false'}
-            onclick={() => (this.fields[f.key] = key)}
+            className={'CurioChip CurioChip--more' + (other ? ' CurioChip--on' : '')}
+            aria-expanded={other ? 'true' : 'false'}
+            aria-controls={other ? id : undefined}
+            onclick={() => {
+              if (other && value && !listed) set('');
+              this.otherShown[f.key] = !other;
+              if (!other) {
+                m.redraw.sync();
+                document.getElementById(id)?.focus();
+              }
+            }}
           >
-            {name}
+            {t('item_edit.other_choice')}
           </button>
-        ))}
+        </div>
+        {other ? (
+          <Select
+            id={id}
+            value={value || ''}
+            onchange={set}
+            options={{ '': text('item_edit.choose'), ...Object.fromEntries((f.options || []).map((o) => [o.key, pick(o.labels, locale())])) }}
+          />
+        ) : null}
       </div>
     );
   }
@@ -690,7 +787,10 @@ export default class ItemEditModal extends FormModal {
             );
           }
 
-          return [
+          const choices = f.kind === 'select' ? this.versionChoices(f) : [];
+          if (choices.length >= 2) return this.chipField(f, id, value, set, choices);
+
+          return (
             <div className="Form-group">
               <label for={id}>{label(f.labels)}</label>
               {f.kind === 'select' ? (
@@ -710,10 +810,8 @@ export default class ItemEditModal extends FormModal {
                   oninput={(e) => set(e.target.value)}
                 />
               )}
-            </div>,
-            // Full width, under the menu's row.
-            f.kind === 'select' ? this.versionChoices(f) : null,
-          ];
+            </div>
+          );
         })}
       </div>
     );

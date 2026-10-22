@@ -1298,6 +1298,16 @@ button.CurioChip {
   height: 44px;
 }
 
+// The card language: compact, beside the search.
+.CurioCardLang-wrap {
+  flex: none;
+
+  .CurioCardLang {
+    height: 44px;
+    max-width: 11em;
+  }
+}
+
 .CurioScanner {
   position: relative;
   margin-top: 12px;
@@ -2624,10 +2634,27 @@ button.CurioChip {
   flex-wrap: wrap;
   gap: 6px;
   margin: 2px 10px 10px 72px;
+}
 
-  .CurioFieldGrid & {
-    grid-column: 1 / -1;
-    margin: -6px 0 14px;
+// A choice the looked-up title narrows down: its versions as chips, the menu behind "Other…".
+.CurioFieldGrid-wide {
+  grid-column: 1 / -1;
+}
+
+// "Other…" open is a menu shown, not a choice made: outlined, not filled.
+.CurioChips button.CurioChip--more.CurioChip--on {
+  background: var(--control-bg);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.CurioChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  + .Select {
+    margin-top: 8px;
   }
 }
 
@@ -2677,5 +2704,23 @@ button.CurioChip--more {
 
   .CurioResult-variants {
     margin-left: 10px;
+  }
+
+  // Search on its own row; the card language and the scanner under it.
+  .CurioFind-row:has(.CurioCardLang-wrap) {
+    flex-wrap: wrap;
+
+    .CurioSearchField {
+      flex-basis: 100%;
+    }
+
+    .CurioCardLang-wrap {
+      flex: 1;
+
+      .CurioCardLang {
+        max-width: none;
+        width: 100%;
+      }
+    }
   }
 }

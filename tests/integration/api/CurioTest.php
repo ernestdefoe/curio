@@ -1601,10 +1601,16 @@ class CurioTest extends TestCase
     public function a_card_search_reads_the_set_and_number_after_the_name(): void
     {
         $q = \Ernestdefoe\Curio\Lookup\CardQuery::parse('Goomy fst 195/264');
-        $this->assertSame([['Goomy fst', null, '195'], ['Goomy', 'fst', '195'], ['Goomy fst 195/264', null, null], ['Goomy fst', '195/264', null], ['Goomy', 'fst 195/264', null]], $q->attempts());
+        $this->assertSame([['Goomy fst', null, '195'], ['Goomy', 'fst', '195'], ['', 'Goomy fst', '195'], ['Goomy fst 195/264', null, null], ['Goomy fst', '195/264', null], ['Goomy', 'fst 195/264', null]], $q->attempts());
         $this->assertSame('264', $q->total);
         $this->assertSame([['Goomy', null, null]], \Ernestdefoe\Curio\Lookup\CardQuery::parse('Goomy')->attempts());
         $this->assertSame('LOB-EN001', \Ernestdefoe\Curio\Lookup\CardQuery::parse('lob-en001')->code);
+        // Japanese-style promos: the set code after the slash, or before the number with no name.
+        $this->assertSame([['', 'SV-P', '201']], \Ernestdefoe\Curio\Lookup\CardQuery::parse('201/SV-P')->attempts());
+        $this->assertSame([['シャリタツ', 'SV-P', '201']], \Ernestdefoe\Curio\Lookup\CardQuery::parse('シャリタツ 201/SV-P')->attempts());
+        $this->assertSame(['', 'SV-P', '201'], \Ernestdefoe\Curio\Lookup\CardQuery::parse('SV-P 201')->attempts()[1]);
+        $this->assertSame(['TG30', null], [\Ernestdefoe\Curio\Lookup\CardQuery::parse('Pikachu TG05/TG30')->total, \Ernestdefoe\Curio\Lookup\CardQuery::parse('Pikachu TG05/TG30')->set]);
+        $this->assertSame([['201', null, null]], \Ernestdefoe\Curio\Lookup\CardQuery::parse('201')->attempts());
         $this->assertTrue(\Ernestdefoe\Curio\Lookup\CardQuery::sameNumber('066', '66'));
         $this->assertTrue(\Ernestdefoe\Curio\Lookup\CardQuery::sameNumber('TG05', 'tg5'));
         $this->assertFalse(\Ernestdefoe\Curio\Lookup\CardQuery::sameNumber('195', '19'));
@@ -1626,6 +1632,7 @@ class CurioTest extends TestCase
                     str_ends_with($url, '/en/cards') => match ($query['name'] ?? '') {
                         'Goomy' => [$card('xy7', '58', 'Goomy'), $card('swsh8', '195', 'Goomy'), $card('sm6', '091', 'Goomy')],
                         'Pikachu' => array_map(fn ($i) => $card('base1', (string) $i, 'Pikachu'), range(1, 30)),
+                        'Tatsugiri' => [$card('sv08', '142', 'Tatsugiri')],
                         default => [],
                     },
                     str_ends_with($url, '/en/sets') => [
@@ -1633,6 +1640,18 @@ class CurioTest extends TestCase
                         ['id' => 'sm6', 'name' => 'Forbidden Light', 'cardCount' => ['official' => 131]], ['id' => 'base1', 'name' => 'Base Set', 'cardCount' => ['official' => 102]],
                     ],
                     str_ends_with($url, '/en/sets/swsh8') => ['id' => 'swsh8', 'abbreviation' => ['official' => 'FST']],
+                    // Japanese: its own sets; a Pokémon's English name leads to its Pokédex number.
+                    str_ends_with($url, '/ja/cards') => match ($query['name'] ?? $query['dexId'] ?? '') {
+                        'シャリタツ', 'eq:978' => [['id' => 'SV1S-022', 'localId' => '022', 'name' => 'シャリタツ'], ['id' => 'SV-P-201', 'localId' => '201', 'name' => 'シャリタツ']],
+                        default => [],
+                    },
+                    str_ends_with($url, '/ja/sets') => [['id' => 'SV-P', 'name' => 'スカーレット&バイオレット プロモカード', 'cardCount' => ['official' => 0]], ['id' => 'SV1S', 'name' => 'スカーレットex', 'cardCount' => ['official' => 78]]],
+                    str_ends_with($url, '/ja/sets/SV-P') => ['id' => 'SV-P', 'cards' => [['id' => 'SV-P-201', 'localId' => '201', 'name' => 'シャリタツ'], ['id' => 'SV-P-202', 'localId' => '202', 'name' => 'ピカチュウ']]],
+                    str_ends_with($url, '/en/cards/sv08-142') => ['id' => 'sv08-142', 'name' => 'Tatsugiri', 'dexId' => [978]],
+                    str_contains($url, 'scryfall.com/cards/search') && str_contains($query['q'], 'lang:ja') => ['data' => [
+                        ['id' => '623d1113-17c5-429d-8f91-978726aeb19d', 'lang' => 'ja', 'name' => 'Arc Lightning', 'printed_name' => '弧状の稲妻', 'set' => 'ktk', 'set_name' => 'Khans of Tarkir', 'collector_number' => '97', 'released_at' => '2014-09-26'],
+                        ['id' => '89ea9a01-a4e9-43c5-bdd7-3a0e4dcec0f3', 'lang' => 'ja', 'name' => 'Lightning Bolt', 'printed_name' => '稲妻', 'set' => 'sta', 'set_name' => 'Strixhaven Mystical Archive', 'collector_number' => '42', 'released_at' => '2021-04-23'],
+                    ]],
                     str_contains($url, 'scryfall.com/cards/search') => str_contains($query['q'], 'set:2x2') ? ['data' => [['id' => '0852f9f3-d7ef-4d31-93e3-93bc7c5a4ec9', 'name' => 'Lightning Bolt',
                         'set' => '2x2', 'set_name' => 'Double Masters 2022', 'collector_number' => '117', 'released_at' => '2022-07-08']]] : [],
                     str_contains($url, 'cardsetsinfo.php') => $query['setcode'] === 'LOB-EN001' ? ['id' => 89631139, 'name' => 'Blue-Eyes White Dragon'] : [],
@@ -1697,6 +1716,39 @@ class CurioTest extends TestCase
         $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'yugioh']);
         $found = $this->lookup(['type' => $cards, 'q' => 'LOB-EN001'], 'en')['results'];
         $this->assertSame(['Blue-Eyes White Dragon', 'LOB-EN001', ['LOB-EN001']], [$found[0]['title'], $found[0]['number'], array_column($found[0]['variants'], 'label')]);
+    }
+
+    #[Test]
+    public function cards_are_found_in_the_card_language_picked(): void
+    {
+        $fake = $this->fakeCardCatalogue();
+        $cards = $this->typeId('cards');
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'pokemon']);
+        $find = fn (string $q, string $lang) => $this->lookup(['type' => $cards, 'q' => $q, 'lang' => $lang], 'en')['results'];
+
+        // Its own name, the English one (through the Pokédex number), or just the set and number.
+        foreach (['シャリタツ 201', 'Tatsugiri 201', 'Tatsugiri 201/SV-P', '201/SV-P', 'SV-P 201'] as $q) {
+            $found = $find($q, 'ja');
+            $this->assertSame([['ja/SV-P-201', 'シャリタツ', '201/SV-P']], array_map(fn ($r) => [$r['id'], $r['title'], $r['number']], $found), $q);
+        }
+        $this->assertSame(['ja/SV1S-022', 'ja/SV-P-201'], array_column($find('Tatsugiri', 'ja'), 'id'));
+        // The species is looked up once, then kept.
+        $this->assertSame(1, count(array_filter($fake->calls, fn ($c) => str_ends_with($c, '/en/cards/sv08-142'))));
+        // A language TCGdex does not have is the reader's own, as before.
+        $this->assertSame(['en/swsh8-195'], array_column($find('Goomy 195', 'xx'), 'id'));
+
+        $workId = $this->lookup(['source' => 'tcgdex', 'id' => 'zh-tw/SV1S-022'])['workId'] ?? null;
+        $this->assertNull($workId, 'a card TCGdex does not have is not stored');
+
+        // Magic: Scryfall's own lang:, the printed name first when it is the one asked for.
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'magic']);
+        $found = $find('稲妻', 'ja');
+        $this->assertSame([['稲妻', 'Lightning Bolt'], ['弧状の稲妻', 'Arc Lightning']], array_map(fn ($r) => [$r['title'], $r['name']], $found));
+        $this->assertContains('https://api.scryfall.com/cards/search?q=%E7%A8%B2%E5%A6%BB+lang%3Aja&unique=prints&order=released', $fake->calls);
+        // Magic was never printed in Thai: nothing, and nothing asked.
+        $before = count($fake->calls);
+        $this->assertSame([], $find('Lightning Bolt', 'th'));
+        $this->assertSame($before, count($fake->calls));
     }
 
     #[Test]
