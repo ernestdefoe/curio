@@ -208,7 +208,7 @@ export default class ItemModal extends Modal {
         ) : null}
         {other ? (
           <Button
-            className="Button Button--link CurioMore"
+            className="Button Button--link CurioToggle"
             aria-expanded={this.showOther ? 'true' : 'false'}
             onclick={() => (this.showOther = !this.showOther)}
           >
@@ -231,7 +231,7 @@ export default class ItemModal extends Modal {
     return [
       <p>{long && !this.expanded ? text.slice(0, text.lastIndexOf(' ', LONG)) + ' …' : text}</p>,
       long ? (
-        <Button className="Button Button--link CurioMore" onclick={() => (this.expanded = !this.expanded)}>
+        <Button className="Button Button--link CurioToggle" onclick={() => (this.expanded = !this.expanded)}>
           {this.expanded ? t('item.less') : t('item.more')}
         </Button>
       ) : null,

@@ -170,6 +170,7 @@
     z-index: -1;
     background: var(--curio-cover) center / cover no-repeat;
     filter: blur(12px) brightness(0.9);
+    .curio-gpu-filter();
   }
 
   img {
@@ -188,6 +189,15 @@
   [data-curio-fit='crop'] & img {
     object-fit: cover;
   }
+}
+
+// iOS Safari (before WebKit 315329@main) paints a black box in the top-left
+// corner of the screen when it repaints a CSS-filtered element that is off
+// screen (bug 314999): a strip's covers scrolled out of view, rows below the
+// fold. On its own layer the filter is applied by the GPU and never takes
+// that path.
+.curio-gpu-filter() {
+  transform: translateZ(0);
 }
 
 .CurioCover {
@@ -232,6 +242,7 @@
     img {
       opacity: 0.55;
       filter: grayscale(0.6);
+      .curio-gpu-filter();
     }
   }
 }
@@ -272,6 +283,7 @@
     background-size: cover;
     background-position: center;
     filter: blur(22px) saturate(1.3) brightness(0.7);
+    .curio-gpu-filter();
   }
 
   &-fan {
@@ -399,7 +411,8 @@
 .CurioStrip {
   list-style: none;
   margin: 0 0 32px;
-  padding: 0 0 6px;
+  // Room under the last line for the scrollbar, including ones drawn over the content.
+  padding: 0 0 16px;
   display: flex;
   gap: 16px;
   overflow-x: auto;
@@ -477,7 +490,7 @@
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 6px;
-    transform: rotate(-4deg) scale(1.15);
+    transform: rotate(-4deg) scale(1.15) translateZ(0); // see .curio-gpu-filter()
     filter: blur(2px) saturate(1.3);
     opacity: 0.75;
 
@@ -678,7 +691,7 @@
     right: 8px;
     color: #fbbf24;
     font-size: 15px;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   }
 
   &-photos {
@@ -1139,7 +1152,7 @@ button.CurioChip {
     right: 10px;
     color: #fbbf24;
     font-size: 16px;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   }
 
   &-private {
@@ -1716,8 +1729,27 @@ button.CurioChip {
   }
 }
 
-.CurioMore {
-  padding-left: 0;
+// A text toggle in the item window ("Read more", "Show the English description"): a link, on its own line.
+.CurioToggle.Button {
+  display: block;
+  height: auto;
+  margin: 6px 0 0;
+  padding: 0;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--link-color);
+  white-space: normal;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--link-color);
+    text-decoration: underline;
+  }
+}
+
+.CurioItem-other {
+  margin-top: 8px;
 }
 
 // A scrolling strip must not widen the page.
@@ -1743,6 +1775,7 @@ button.CurioChip {
     background-position: center 30%;
     filter: blur(28px) saturate(1.4);
     opacity: 0.55;
+    .curio-gpu-filter();
   }
 
   &::before {
@@ -2435,7 +2468,7 @@ button.CurioChip {
   }
 }
 
-.CurioMore {
+.CurioBrowse-more {
   margin: -18px 0 32px;
 }
 
@@ -2463,7 +2496,7 @@ button.CurioChip {
   &:hover,
   &:focus-visible {
     text-decoration: none;
-    filter: brightness(0.96);
+    box-shadow: inset 0 0 0 100px rgba(0, 0, 0, 0.04);
   }
 
   &-name {
@@ -2547,17 +2580,6 @@ button.CurioChip {
     flex-wrap: wrap;
     align-items: center;
     gap: 4px 6px;
-  }
-
-  &-notes {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin-top: 4px;
-    color: var(--muted-color);
-    font-style: italic;
-    overflow-wrap: anywhere;
   }
 
   &-time {
