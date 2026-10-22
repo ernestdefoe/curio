@@ -2610,6 +2610,16 @@ button.CurioChip--more {
     width: 128px;
   }
 
+  // The search gives way, so "Add an item" is never pushed off the screen.
+  .CurioBrowse-tools .CurioSearchField {
+    flex: 1;
+    min-width: 0;
+
+    .FormControl {
+      width: 100%;
+    }
+  }
+
   .CurioChanges {
     grid-template-columns: 1fr;
   }
