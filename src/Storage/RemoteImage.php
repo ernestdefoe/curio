@@ -19,6 +19,7 @@ class RemoteImage
     public const HOSTS = [
         'covers.openlibrary.org', 'archive.org', 'cdn-images.dzcdn.net', 'e-cdns-images.dzcdn.net',
         'coverartarchive.org', 'image.tmdb.org', 'images.igdb.com',
+        'assets.tcgdex.net', 'cards.scryfall.io', 'images.ygoprodeck.com',
     ];
 
     private const MAX_BYTES = 8 * 1024 * 1024;
@@ -63,7 +64,8 @@ class RemoteImage
         ]]);
 
         try {
-            $response = $this->http->get($url, ['stream' => true, 'headers' => ['Accept' => 'image/*']]);
+            // Scryfall (and others) refuse a request that does not say who it is from.
+            $response = $this->http->get($url, ['stream' => true, 'headers' => ['Accept' => 'image/*', 'User-Agent' => 'Curio for Flarum (+https://github.com/ernestdefoe/curio)']]);
         } catch (GuzzleException|RuntimeException) {
             return null;
         }

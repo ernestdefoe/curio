@@ -63,6 +63,10 @@ class MatchWorks extends AbstractCommand
                 if (! $hit && $source) {
                     $query = trim($item->title.' '.$item->subtitle);
                     foreach (array_slice($source->search($query), 0, 5) as $result) {
+                        // A card is printed many times: only the printing with the item's own number is taken.
+                        if (isset($result['number']) && ! self::sameNumber($result['number'], $item->fields['number'] ?? null)) {
+                            continue;
+                        }
                         if (self::same($result['title'], $item->title) && (! $item->subtitle || ! $result['creator'] || self::same($result['creator'], $item->subtitle, true))) {
                             $hit = ['source' => $source->key()] + $result;
                             break;
@@ -108,5 +112,13 @@ class MatchWorks extends AbstractCommand
         [$a, $b] = [$n($a), $n($b)];
 
         return $a !== '' && ($a === $b || ($partial && (str_contains($a, $b) || str_contains($b, $a))));
+    }
+
+    /** "136/189", "136" and "0136" are one card number; no number on the item matches nothing. */
+    private static function sameNumber(string $found, mixed $own): bool
+    {
+        $n = fn (string $s) => ltrim(strtolower(trim(explode('/', $s)[0])), '0');
+
+        return is_scalar($own) && trim((string) $own) !== '' && $n($found) === $n((string) $own);
     }
 }

@@ -11,15 +11,31 @@ import Link from 'flarum/common/components/Link';
 import username from 'flarum/common/helpers/username';
 import humanTime from 'flarum/common/helpers/humanTime';
 import textContrastClass from 'flarum/common/helpers/textContrastClass';
-import { t, text, label, types, loadTypes, collectionUrl } from '../util';
+import { t, text, label, locale, types, loadTypes, collectionUrl } from '../util';
+import { optionLabel } from '../../common/labels';
 import addToMyCollection from '../copyItem';
-import { collectionCard, cover } from './bits';
+import { collectionCard, cover, progressPill } from './bits';
 import ItemModal from './ItemModal';
 import useStyles from '../styles';
 
+/** What each list on the page asks for; each loads the first time its tab is opened, 12 at a time. */
+const LISTS = {
+  owned: { filter: { status: 'owned' }, sort: '-createdAt' },
+  wishlist: { filter: { status: 'wishlist' }, sort: '-createdAt' },
+  trade: { filter: { status: 'trade' }, sort: '-createdAt' },
+  progress: { filter: { changed: 'progress' }, sort: '-progressChangedAt' },
+  notes: { filter: { changed: 'notes' }, sort: '-notesUpdatedAt' },
+};
+const PAGE = 12;
+
+/** 1,600 → "1.6K" / "1,6 k", in the reader's language. */
+const compact = (n) => new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
 /**
- * /collections: what this forum collects. Two looks, the admin's choice: the
- * types as Flarum's own tags page tiles (the default), or as cover tiles.
+ * /collections: what this forum collects. Three looks for the types, the
+ * admin's choice: Flarum's own tags page tiles (the default), cover tiles, or
+ * a row of small tabs. Then what was added lately (owned, wishlists, open to
+ * trade), what changed lately (progress, notes) and the featured collections.
  */
 export default class BrowsePage extends Page {
   oninit(vnode) {
@@ -27,7 +43,9 @@ export default class BrowsePage extends Page {
     useStyles();
     this.bodyClass = 'App--curio';
     this.overview = null;
-    this.recent = null;
+    this.lists = {};
+    this.recentTab = 'owned';
+    this.latestTab = 'progress';
     this.collections = null;
     this.typeId = m.route.param('type') || null;
     this.q = '';
@@ -39,15 +57,53 @@ export default class BrowsePage extends Page {
     loadTypes();
     app.request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/curio/overview` }).then((o) => {
       this.overview = o;
+      if (o.latest && !this.typeId) this.list(this.latestTab);
       m.redraw();
     });
+    if (!this.typeId) this.list(this.recentTab);
+    this.loadCollections();
+  }
+
+  /** A list's state, loading its first page the first time it is asked for. */
+  list(key) {
+    if (!this.lists[key]) {
+      this.lists[key] = { items: [], more: false, loading: false };
+      this.loadMore(key);
+    }
+    return this.lists[key];
+  }
+
+  loadMore(key) {
+    const list = this.lists[key];
+    list.loading = true;
     app.store
-      .find('curio-items', { filter: { status: 'owned' }, include: 'collection.user,collection.type', sort: '-createdAt', page: { limit: 12 } })
+      .find('curio-items', { ...LISTS[key], include: 'collection.user,collection.type', page: { limit: PAGE, offset: list.items.length } })
       .then((items) => {
-        this.recent = items;
+        list.items = list.items.concat(items);
+        list.more = !!items.payload?.links?.next;
+      })
+      .finally(() => {
+        list.loading = false;
         m.redraw();
       });
-    this.loadCollections();
+  }
+
+  /** A row of standard buttons switching between lists. */
+  tabs(keys, current, choose) {
+    return (
+      <div className="CurioListTabs" role="tablist">
+        {keys.map((key) => (
+          <Button
+            className={'Button Button--small' + (key === current ? ' Button--primary active' : '')}
+            role="tab"
+            aria-selected={key === current ? 'true' : 'false'}
+            onclick={() => choose(key)}
+          >
+            {t('browse.tab_' + key)}
+          </Button>
+        ))}
+      </div>
+    );
   }
 
   loadCollections() {
@@ -135,14 +191,25 @@ export default class BrowsePage extends Page {
 
     return (
       <>
-        {!this.overview ? <LoadingIndicator display="block" /> : this.overview.layout === 'covers' ? this.coverTiles(counts) : this.tagTiles(counts)}
+        {!this.overview ? <LoadingIndicator display="block" /> : this.typeLayout(counts)}
 
-        {!chosen && this.recent && this.recent.length ? (
+        {chosen ? null : (
           <>
             <div className="CurioSection-heading">
               <h2>{t('browse.recent')}</h2>
+              {this.tabs(['owned', 'wishlist', 'trade'], this.recentTab, (key) => this.list((this.recentTab = key)))}
             </div>
-            {this.strip(this.recent)}
+            {this.shown(this.recentTab, (items) => this.strip(items))}
+          </>
+        )}
+
+        {!chosen && this.overview?.latest ? (
+          <>
+            <div className="CurioSection-heading">
+              <h2>{t('browse.latest')}</h2>
+              {this.tabs(['progress', 'notes'], this.latestTab, (key) => this.list((this.latestTab = key)))}
+            </div>
+            {this.shown(this.latestTab, (items) => this.changes(items))}
           </>
         ) : null}
 
@@ -169,6 +236,59 @@ export default class BrowsePage extends Page {
           <Placeholder text={t('browse.none')} />
         )}
       </>
+    );
+  }
+
+  typeLayout(counts) {
+    const layout = this.overview.layout;
+    return layout === 'covers' ? this.coverTiles(counts) : layout === 'compact' ? this.typeTabs(counts) : this.tagTiles(counts);
+  }
+
+  /** A list as it loads: the items, a "More" button while there are more, or a line when there are none. */
+  shown(key, render) {
+    const list = this.list(key);
+    if (!list.items.length) return list.loading ? <LoadingIndicator display="block" /> : <Placeholder text={t('browse.none_' + key)} />;
+    return (
+      <>
+        {render(list.items)}
+        {list.more ? (
+          <div className="CurioMore">
+            <Button className="Button" loading={list.loading} onclick={() => this.loadMore(key)}>
+              {t('browse.more')}
+            </Button>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  /**
+   * The types as small tabs, about a button's size: icon, name, a short count
+   * ("1.6K items"). Coloured like the type, either filled or on the icon and
+   * name only. They wrap on wide screens and scroll sideways on a phone.
+   */
+  typeTabs(counts) {
+    const filled = this.overview.typeColor !== 'text';
+    return (
+      <nav className={'CurioTypeTabs CurioTypeTabs--' + (filled ? 'filled' : 'text')} aria-label={text('browse.types')}>
+        {this.shownTypes(counts).map((type) => {
+          const items = counts[type.id()]?.items || 0;
+          const active = this.typeId === type.id();
+          const color = type.color();
+          return (
+            <Link
+              className={'CurioTypeTab' + (color ? ' colored' + (filled ? ' ' + textContrastClass(color) : '') : '') + (active ? ' active' : '')}
+              style={{ '--curio-accent': color || undefined }}
+              href={active ? app.route('curio.browse') : app.route('curio.browse', { type: type.id() })}
+              aria-current={active ? 'true' : undefined}
+            >
+              <Icon name={type.icon()} />
+              <span className="CurioTypeTab-name">{label(type.names())}</span>
+              <span className="CurioTypeTab-count">{t('count.items_short', { count: items, short: compact(items) })}</span>
+            </Link>
+          );
+        })}
+      </nav>
     );
   }
 
@@ -264,21 +384,62 @@ export default class BrowsePage extends Page {
     return used.length ? used : all;
   }
 
+  /** The type's first choice (a game's platform, a record's format) as the reader reads it. */
+  facet(item) {
+    const field = (item.collection()?.type()?.fields() || []).find((f) => f.kind === 'select');
+    return field && item.facet() ? optionLabel(field, item.facet(), locale()) : null;
+  }
+
   strip(items) {
     return (
       <ul className="CurioStrip">
         {items.map((item) => {
           const user = item.collection()?.user();
+          const facet = this.facet(item);
           return (
             <li>
               <button type="button" onclick={() => app.modal.show(ItemModal, { itemId: item.id() })}>
                 {cover(item.coverUrl(), item.collection()?.type()?.shape(), false, item.displayTitle())}
                 <span className="CurioItemCard-title">{item.displayTitle()}</span>
+                {facet ? <span className="CurioStrip-facet">{facet}</span> : null}
                 {user ? (
                   <span className="CurioStrip-owner">
                     <Avatar user={user} /> {username(user)}
                   </span>
                 ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  /** Latest changes: who marked what as completed (or started it), or wrote about it. */
+  changes(items) {
+    const notes = this.latestTab === 'notes';
+    return (
+      <ul className="CurioChanges">
+        {items.map((item) => {
+          const user = item.collection()?.user();
+          const title = <strong>{item.displayTitle()}</strong>;
+          const when = notes ? item.notesUpdatedAt() : item.progressChangedAt();
+          return (
+            <li>
+              <button type="button" className="CurioChange" onclick={() => app.modal.show(ItemModal, { itemId: item.id() })}>
+                {cover(item.coverUrl(), item.collection()?.type()?.shape(), false)}
+                <span className="CurioChange-body">
+                  <span className="CurioChange-line">
+                    <span>
+                      {notes
+                        ? t('browse.change_notes', { name: <strong>{username(user)}</strong>, title })
+                        : t('browse.change_progress', { name: <strong>{username(user)}</strong>, title })}
+                    </span>
+                    {notes ? null : progressPill(item, item.collection()?.type())}
+                  </span>
+                  {notes ? <span className="CurioChange-notes">{item.notes()}</span> : null}
+                </span>
+                {when ? <span className="CurioChange-time">{humanTime(when)}</span> : null}
               </button>
             </li>
           );

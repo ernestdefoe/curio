@@ -55,9 +55,13 @@ class OverviewController implements RequestHandlerInterface
         $overview['types'] = (object) $overview['types'];
 
         // The layout is read fresh; only the counting is cached.
+        $layout = $this->settings->get(Settings::BROWSE_LAYOUT);
+
         return new JsonResponse([
-            'layout' => $this->settings->get(Settings::BROWSE_LAYOUT) === 'covers' ? 'covers' : 'tags',
+            'layout' => in_array($layout, Settings::BROWSE_LAYOUTS, true) ? $layout : 'tags',
+            'typeColor' => $this->settings->get(Settings::TYPE_COLOR) === 'text' ? 'text' : 'background',
             'hideEmpty' => (bool) $this->settings->get(Settings::HIDE_EMPTY),
+            'latest' => (bool) $this->settings->get(Settings::LATEST_CHANGES),
         ] + $overview);
     }
 

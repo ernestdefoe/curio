@@ -17,8 +17,16 @@ final class Settings
     /** Offer the "Recently added" widget to Bespoke and FoF Forum Widgets. Off until an admin turns it on. */
     public const WIDGET = 'ernestdefoe-curio.widget';
 
-    /** The /collections page: "tags" (Flarum's tags page look) or "covers" (cover tiles). */
+    /** The /collections page: "tags" (Flarum's tags page look), "covers" (cover tiles) or "compact" (a row of small tabs). */
     public const BROWSE_LAYOUT = 'ernestdefoe-curio.browse_layout';
+
+    public const BROWSE_LAYOUTS = ['tags', 'covers', 'compact'];
+
+    /** Compact tabs: the type's colour as the tab's "background", or on its icon and name ("text"). */
+    public const TYPE_COLOR = 'ernestdefoe-curio.type_color';
+
+    /** The Collections page's "Latest changes" row (progress and notes). On by default. */
+    public const LATEST_CHANGES = 'ernestdefoe-curio.latest_changes';
 
     /** Where "My collections" appears: "both", "sidebar" (index sidebar), "menu" (account menu) or "none". */
     public const SHORTCUT = 'ernestdefoe-curio.shortcut';

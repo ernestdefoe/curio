@@ -27,6 +27,7 @@ ernestdefoe-curio:
       private_help: Personne d'autre, pas même les autres membres.
     count:
       items: "{count, plural, one {# objet} other {# objets}}"
+      items_short: "{count, plural, one {{short} objet} other {{short} objets}}"
       wanted: "{count, plural, one {# souhait} other {# souhaits}}"
       trade: "{count} à échanger"
       collections: "{count, plural, one {# collection} other {# collections}}"
@@ -181,6 +182,21 @@ ernestdefoe-curio:
       largest: Les plus grandes collections
       none: Aucune collection ici pour l'instant.
       add: Ajouter un objet
+      types: Types de collection
+      tab_owned: Possédés
+      tab_wishlist: Liste de souhaits
+      tab_trade: Échangeables
+      none_owned: Rien d'ajouté pour l'instant.
+      none_wishlist: Aucun souhait à afficher pour l'instant.
+      none_trade: Rien d'échangeable pour l'instant.
+      latest: Derniers changements
+      tab_progress: Statut
+      tab_notes: Notes
+      none_progress: Aucun avancement indiqué pour l'instant.
+      none_notes: Aucune note écrite pour l'instant.
+      change_progress: "{name} a marqué {title} comme"
+      change_notes: "{name} sur {title}"
+      more: Plus
     nav:
       mine: Mes collections
     genre:
@@ -254,6 +270,13 @@ ernestdefoe-curio:
       layout_help: Comment la page Collections montre chaque type.
       layout_tags: Comme la page des étiquettes (par défaut de Flarum)
       layout_covers: Tuiles de couvertures
+      layout_compact: Onglets compacts (une rangée de petits boutons)
+      type_color_label: Couleur des onglets compacts
+      type_color_help: Avec les onglets compacts, la couleur de chaque type peut remplir son onglet ou seulement colorer son icône et son nom.
+      type_color_background: En fond de l'onglet
+      type_color_text: Sur l'icône et le nom seulement
+      latest_label: Afficher « Derniers changements »
+      latest_help: Une rangée sur la page Collections avec les derniers avancements indiqués par les membres (terminé, en cours…) et leurs dernières notes, dans les collections que le lecteur peut voir.
       hide_empty_label: Masquer les types sans rien dedans
       hide_empty_help: Désactivé par défaut, la page Collections montre donc chaque type activé, comme la page des étiquettes montre chaque étiquette ; un type vide invite à lancer une première collection. Une fois activé, seuls les types qui contiennent quelque chose sont montrés (tous, tant que le forum n'a encore rien).
       cover_fit_label: Jaquettes qui ne remplissent pas le cadre
@@ -288,6 +311,7 @@ ernestdefoe-curio:
       shape: Forme des jaquettes
       source: Recherches
       needs_marquee: La recherche de films et séries vient de Marquee, celle de jeux d'IGDB (à configurer dans les réglages ci-dessus) ou de Marquee. Tant qu'il n'est pas installé, les membres peuvent scanner des codes-barres ou ajouter des objets à la main.
+      cards_help: "Gratuit, sans clé : Pokémon via TCGdex (dans la langue du lecteur quand il l'a), Magic via Scryfall, Yu-Gi-Oh! via YGOPRODeck. L'extension, le numéro, la rareté et la langue remplissent les détails de ces noms (set, number, rarity, language) quand le type les a."
       fields: Détails
       fields_help: Ce que les membres remplissent pour chaque objet. Le premier champ à choix sert à la répartition et au filtre des pages de collection (plateforme, format…).
       field_label: "Libellé ({language})"
@@ -329,6 +353,10 @@ ernestdefoe-curio:
       movies: Films (via Marquee)
       tv: Séries (via Marquee)
       games: Jeux (IGDB, ou via Marquee)
+      pokemon: Cartes Pokémon (TCGdex)
+      magic: Cartes Magic (Scryfall)
+      yugioh: Cartes Yu-Gi-Oh! (YGOPRODeck)
+      cards: Les trois jeux de cartes (Pokémon, Magic, Yu-Gi-Oh!)
     kind:
       select: Choix
       text: Texte
@@ -338,6 +366,8 @@ ernestdefoe-curio:
     permissions:
       view: Voir les collections
       create: Créer des collections, ajouter des objets et des photos
+      import: Importer des tableurs dans leurs collections
+      export: Exporter leurs collections en tableur
       moderate: Retirer les collections des autres et les mettre à la une
   email:
     match:

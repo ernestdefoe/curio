@@ -2,11 +2,15 @@
 
 namespace Ernestdefoe\Curio\Lookup;
 
+use Ernestdefoe\Curio\Lookup\Sources\CardGames;
 use Ernestdefoe\Curio\Lookup\Sources\Deezer;
 use Ernestdefoe\Curio\Lookup\Sources\Igdb;
 use Ernestdefoe\Curio\Lookup\Sources\Marquee;
 use Ernestdefoe\Curio\Lookup\Sources\MusicBrainz;
 use Ernestdefoe\Curio\Lookup\Sources\OpenLibrary;
+use Ernestdefoe\Curio\Lookup\Sources\Scryfall;
+use Ernestdefoe\Curio\Lookup\Sources\TcgDex;
+use Ernestdefoe\Curio\Lookup\Sources\YgoProDeck;
 use Ernestdefoe\Curio\Type;
 use Flarum\Extension\ExtensionManager;
 use Illuminate\Contracts\Container\Container;
@@ -16,6 +20,8 @@ use Illuminate\Contracts\Container\Container;
  * Books and music are built in (no keys). Games come from IGDB when the forum
  * has a Twitch app set up in Curio's settings. Films, TV and (without IGDB)
  * games come through Marquee's own sources when Marquee is enabled and set up.
+ * Trading cards (free, no keys): Pokémon from TCGdex, Magic from Scryfall,
+ * Yu-Gi-Oh! from YGOPRODeck, or all three; the admin picks per type.
  */
 class Sources
 {
@@ -28,7 +34,10 @@ class Sources
         private OpenLibrary $openLibrary,
         private Deezer $deezer,
         private MusicBrainz $musicBrainz,
-        private Igdb $igdb
+        private Igdb $igdb,
+        private TcgDex $tcgdex,
+        private Scryfall $scryfall,
+        private YgoProDeck $ygoprodeck
     ) {
     }
 
@@ -40,6 +49,10 @@ class Sources
             'music' => $this->deezer,
             'games' => $this->igdb->configured() ? $this->igdb : $this->marquee('game'),
             'movies', 'tv' => $this->marquee(self::MARQUEE_KINDS[$type->source]),
+            'pokemon' => $this->tcgdex,
+            'magic' => $this->scryfall,
+            'yugioh' => $this->ygoprodeck,
+            'cards' => new CardGames($this->tcgdex, $this->scryfall, $this->ygoprodeck),
             default => null,
         };
     }
@@ -52,6 +65,9 @@ class Sources
             $key === 'deezer' => $this->deezer,
             $key === 'musicbrainz' => $this->musicBrainz,
             $key === 'igdb' => $this->igdb->configured() ? $this->igdb : null,
+            $key === 'tcgdex' => $this->tcgdex,
+            $key === 'scryfall' => $this->scryfall,
+            $key === 'ygoprodeck' => $this->ygoprodeck,
             str_starts_with($key, 'marquee-') && in_array(substr($key, 8), self::MARQUEE_KINDS, true) => $this->marquee(substr($key, 8)),
             default => null,
         };

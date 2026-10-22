@@ -141,18 +141,25 @@ export default class CollectionEditModal extends FormModal {
 
   /** Bring a spreadsheet in, or take the collection out as one. */
   transfer(c) {
+    // Each needs its permission (Members by default); without either, nothing shows.
+    if (!c.canImport() && !c.canExport()) return null;
+
     return (
       <div className="Form-group CurioTransfer">
         <label>{t('transfer.heading')}</label>
         <p className="helpText">{t('transfer.help')}</p>
         <div className="CurioTransfer-buttons">
-          <label className={'Button' + (this.importing ? ' disabled' : '')}>
-            <Icon name={this.importing ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'} /> {t('transfer.import')}
-            <input type="file" accept=".csv,text/csv" hidden disabled={this.importing} onchange={(e) => this.importFile(c, e.target.files[0])} />
-          </label>
-          <a className="Button" href={`${app.forum.attribute('apiUrl')}/curio-collections/${c.id()}/export`} download>
-            <Icon name="fas fa-file-export" /> {t('transfer.export')}
-          </a>
+          {c.canImport() ? (
+            <label className={'Button' + (this.importing ? ' disabled' : '')}>
+              <Icon name={this.importing ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'} /> {t('transfer.import')}
+              <input type="file" accept=".csv,text/csv" hidden disabled={this.importing} onchange={(e) => this.importFile(c, e.target.files[0])} />
+            </label>
+          ) : null}
+          {c.canExport() ? (
+            <a className="Button" href={`${app.forum.attribute('apiUrl')}/curio-collections/${c.id()}/export`} download>
+              <Icon name="fas fa-file-export" /> {t('transfer.export')}
+            </a>
+          ) : null}
         </div>
         {this.imported ? <p className="CurioTransfer-result">{t('transfer.done', this.imported)}</p> : null}
       </div>

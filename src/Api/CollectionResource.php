@@ -97,17 +97,22 @@ class CollectionResource extends AbstractDatabaseResource
                 ->route('POST', '/{id}/import')
                 ->authenticated()
                 ->can('update')
-                ->action(fn (Context $context) => resolve(Importer::class)->import(
-                    $context->model,
-                    Arr::get($context->request->getUploadedFiles(), 'file'),
-                    $context->getActor()
-                ))
+                ->action(function (Context $context) {
+                    // The owner, and only while their groups may import (one ability per endpoint, so checked here).
+                    $context->getActor()->assertCan('ernestdefoe-curio.import');
+
+                    return resolve(Importer::class)->import($context->model, Arr::get($context->request->getUploadedFiles(), 'file'), $context->getActor());
+                })
                 ->response(fn (Context $context, array $result) => new JsonResponse($result)),
             Endpoint\Endpoint::make('curio.collections.export')
                 ->route('GET', '/{id}/export')
                 ->authenticated()
                 ->can('update')
-                ->action(fn (Context $context) => resolve(Exporter::class)->csv($context->model))
+                ->action(function (Context $context) {
+                    $context->getActor()->assertCan('ernestdefoe-curio.export');
+
+                    return resolve(Exporter::class)->csv($context->model);
+                })
                 ->response(fn (Context $context, string $csv) => new TextResponse($csv, 200, [
                     'Content-Type' => 'text/csv; charset=utf-8',
                     'Content-Disposition' => 'attachment; filename="'.($context->model->slug ?: 'collection').'.csv"',
@@ -272,6 +277,13 @@ class CollectionResource extends AbstractDatabaseResource
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('update', $c)),
             Schema\Boolean::make('canDelete')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('delete', $c)),
+            // Whether the owner may bring a spreadsheet in or take one out (two permissions).
+            Schema\Boolean::make('canImport')
+                ->visible(fn (Collection $c, Context $context) => $c->isOwnedBy($context->getActor()))
+                ->get(fn (Collection $c, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.import')),
+            Schema\Boolean::make('canExport')
+                ->visible(fn (Collection $c, Context $context) => $c->isOwnedBy($context->getActor()))
+                ->get(fn (Collection $c, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.export')),
             Schema\Boolean::make('canFeature')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('feature', $c)),
 

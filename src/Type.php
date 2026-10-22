@@ -28,7 +28,7 @@ class Type extends AbstractModel
     /** portrait = 2:3 (books, films), box = 3:4 (game boxes), square, landscape = 4:3. */
     public const SHAPES = ['portrait', 'box', 'square', 'landscape'];
 
-    public const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games'];
+    public const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games', 'pokemon', 'magic', 'yugioh', 'cards'];
 
     public const FIELD_KINDS = ['text', 'number', 'select', 'date', 'bool'];
 

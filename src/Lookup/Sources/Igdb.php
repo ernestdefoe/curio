@@ -50,10 +50,11 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return $this->cache->remember('curio.igdb.search.2.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
             // IGDB ranks hits by text alone: take 30 and put the well-known ones first.
             $games = $this->query('games', 'search "'.$query.'"; fields name,first_release_date,total_rating_count,cover.image_id,'
-                .'involved_companies.company.name,involved_companies.developer; where game_type = '.self::GAME_TYPES.' & version_parent = null; limit 30;');
+                .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer; '
+                .'where game_type = '.self::GAME_TYPES.' & version_parent = null; limit 30;');
 
             $exact = mb_strtolower($query);
             usort($games, fn ($a, $b) => [mb_strtolower((string) ($a['name'] ?? '')) !== $exact, -($a['total_rating_count'] ?? 0)]
@@ -65,6 +66,8 @@ class Igdb implements Source
                 'creator' => self::companies($g, 'developer')[0] ?? null,
                 'year' => isset($g['first_release_date']) ? (int) gmdate('Y', (int) $g['first_release_date']) : null,
                 'cover' => self::cover($g['cover']['image_id'] ?? null),
+                // Which machines it came out on, so the right copy can be picked.
+                'variants' => self::platforms($g),
             ], array_slice(array_values(array_filter($games, fn ($g) => is_array($g) && isset($g['id'], $g['name']))), 0, 8));
         });
     }
@@ -112,6 +115,28 @@ class Igdb implements Source
             ],
         ];
     }
+
+    /**
+     * Current machines first (IGDB lists them by id: Linux before PC), each as
+     * a choice: its short name on the chip, its full name to match the type's
+     * platform options.
+     *
+     * @return list<array{label: string, fields: array{platform: string}}>
+     */
+    public static function platforms(array $g): array
+    {
+        $platforms = array_values(array_filter((array) ($g['platforms'] ?? []), fn ($p) => is_array($p) && is_string($p['name'] ?? null)));
+        $rank = fn (array $p) => ($r = array_search($p['id'] ?? null, self::PLATFORM_ORDER, true)) === false ? 100 : $r;
+        usort($platforms, fn ($a, $b) => $rank($a) <=> $rank($b));
+
+        return array_map(fn (array $p) => [
+            'label' => mb_strlen($p['name']) > 18 && is_string($p['abbreviation'] ?? null) ? $p['abbreviation'] : $p['name'],
+            'fields' => ['platform' => $p['name']],
+        ], array_slice($platforms, 0, 30));
+    }
+
+    /** PC, PS5, PS4, Xbox Series, Xbox One, Switch 2, Switch, Mac, iOS, Android. */
+    private const PLATFORM_ORDER = [6, 167, 48, 169, 49, 508, 130, 14, 39, 34];
 
     /** @return list<string> */
     private static function companies(array $g, string $role): array

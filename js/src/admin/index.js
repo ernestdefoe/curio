@@ -66,8 +66,22 @@ export const extend = [
       type: 'select',
       label: t('settings.layout_label'),
       help: t('settings.layout_help'),
-      options: { tags: t('settings.layout_tags'), covers: t('settings.layout_covers') },
+      options: { tags: t('settings.layout_tags'), covers: t('settings.layout_covers'), compact: t('settings.layout_compact') },
       default: 'tags',
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.type_color',
+      type: 'select',
+      label: t('settings.type_color_label'),
+      help: t('settings.type_color_help'),
+      options: { background: t('settings.type_color_background'), text: t('settings.type_color_text') },
+      default: 'background',
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.latest_changes',
+      type: 'boolean',
+      label: t('settings.latest_label'),
+      help: t('settings.latest_help'),
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.hide_empty_types',
@@ -163,5 +177,7 @@ export const extend = [
       90
     )
     .permission(() => ({ icon: 'fas fa-plus', label: t('permissions.create'), permission: 'ernestdefoe-curio.create' }), 'start', 90)
+    .permission(() => ({ icon: 'fas fa-file-import', label: t('permissions.import'), permission: 'ernestdefoe-curio.import' }), 'start', 89)
+    .permission(() => ({ icon: 'fas fa-file-export', label: t('permissions.export'), permission: 'ernestdefoe-curio.export' }), 'start', 88)
     .permission(() => ({ icon: 'fas fa-boxes-stacked', label: t('permissions.moderate'), permission: 'ernestdefoe-curio.moderate' }), 'moderate', 90),
 ];

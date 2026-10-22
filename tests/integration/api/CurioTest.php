@@ -1333,4 +1333,263 @@ class CurioTest extends TestCase
         $work = $this->frenchWork($item, 'en');
         $this->assertSame(['A twin-stick shooter.', null], [$work['description'], $work['fallback']]);
     }
+
+    private function patchItem(int $as, int $id, array $attributes): ResponseInterface
+    {
+        return $this->send($this->request('PATCH', "/api/curio-items/$id", [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'curio-items', 'id' => (string) $id, 'attributes' => $attributes]],
+        ]));
+    }
+
+    private function titles(ResponseInterface $response): array
+    {
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+
+        return array_column(array_column($this->json($response)['data'], 'attributes'), 'title');
+    }
+
+    #[Test]
+    public function latest_changes_list_progress_and_notes_newest_first_and_only_what_the_reader_may_see(): void
+    {
+        $public = $this->newCollection(3);
+        $private = $this->newCollection(3, ['name' => 'Private', 'visibility' => 'private']);
+        $music = $this->newCollection(3, ['name' => 'Records'], 'music');
+
+        Carbon::setTestNow('2026-10-01 10:00:00');
+        $old = (int) $this->json($this->item(3, $public, ['title' => 'Old game', 'progress' => 'completed', 'notes' => 'Loved it']))['data']['id'];
+        Carbon::setTestNow('2026-10-02 10:00:00');
+        $new = (int) $this->json($this->item(3, $public, ['title' => 'New game']))['data']['id'];
+        $this->item(3, $private, ['title' => 'Secret game', 'progress' => 'in_progress', 'notes' => 'Nobody reads this']);
+        // Wanted, or of a type that does not track progress: never "marked as".
+        $this->item(3, $public, ['title' => 'Wanted game', 'status' => 'wishlist', 'progress' => 'pending']);
+        $this->item(3, $music, ['title' => 'A record', 'progress' => 'completed']);
+        Carbon::setTestNow('2026-10-03 10:00:00');
+        $this->patchItem(3, $new, ['progress' => 'in_progress', 'notes' => 'Halfway']);
+        Carbon::setTestNow();
+
+        $progress = ['filter' => ['changed' => 'progress'], 'sort' => '-progressChangedAt', 'include' => 'collection.user,collection.type'];
+        $notes = ['filter' => ['changed' => 'notes'], 'sort' => '-notesUpdatedAt'];
+
+        $this->assertSame(['New game', 'Old game'], $this->titles($this->get('/api/curio-items', $progress)));
+        $this->assertSame(['New game', 'Old game'], $this->titles($this->get('/api/curio-items', $notes, 4)));
+        // The owner sees their private one too.
+        $this->assertSame(['New game', 'Secret game', 'Old game'], $this->titles($this->get('/api/curio-items', $notes, 3)));
+
+        $first = $this->json($this->get('/api/curio-items', $progress))['data'][0]['attributes'];
+        $this->assertStringStartsWith('2026-10-03', $first['progressChangedAt']);
+
+        // Clearing notes takes the item off the list; a later edit of something else leaves the time alone.
+        $this->patchItem(3, $old, ['notes' => null]);
+        $this->patchItem(3, $new, ['title' => 'New game (GOTY)']);
+        $this->assertSame(['New game (GOTY)'], $this->titles($this->get('/api/curio-items', $notes)));
+        $this->assertStringStartsWith('2026-10-03', $this->json($this->get('/api/curio-items', $progress))['data'][0]['attributes']['progressChangedAt']);
+    }
+
+    #[Test]
+    public function recently_added_wishlists_show_only_where_their_owners_show_them(): void
+    {
+        $shown = $this->newCollection(3);
+        $hidden = $this->newCollection(3, ['name' => 'Hidden wishes', 'wishlistPublic' => false]);
+        $this->item(3, $shown, ['title' => 'Wanted openly', 'status' => 'wishlist']);
+        $this->item(3, $hidden, ['title' => 'Wanted quietly', 'status' => 'wishlist']);
+        $this->item(3, $shown, ['title' => 'Up for trade', 'status' => 'trade']);
+        $this->item(3, $shown, ['title' => 'On the shelf']);
+
+        $list = fn (string $status, ?int $as = null) => $this->titles($this->get('/api/curio-items', ['filter' => ['status' => $status], 'sort' => '-createdAt'], $as));
+
+        $this->assertSame(['Wanted openly'], $list('wishlist'));
+        $this->assertSame(['Wanted openly'], $list('wishlist', 4));
+        $this->assertSame(['Wanted quietly', 'Wanted openly'], $list('wishlist', 3));
+        $this->assertSame(['Up for trade'], $list('trade'));
+        $this->assertSame(['On the shelf', 'Up for trade'], $list('owned'));
+    }
+
+    #[Test]
+    public function import_and_export_each_need_their_permission(): void
+    {
+        $id = $this->newCollection(3);
+        $export = fn () => $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]));
+
+        // Members have both by default.
+        $this->assertSame(200, $export()->getStatusCode());
+        $this->assertSame(200, $this->upload(3, $id, "title\nOne\n")->getStatusCode());
+        $attributes = $this->json($this->get("/api/curio-collections/$id", [], 3))['data']['attributes'];
+        $this->assertSame([true, true], [$attributes['canImport'], $attributes['canExport']]);
+        // Nobody else is told either way.
+        $this->assertArrayNotHasKey('canImport', $this->json($this->get("/api/curio-collections/$id", [], 4))['data']['attributes']);
+
+        $this->database()->table('group_permission')->whereIn('permission', ['ernestdefoe-curio.import', 'ernestdefoe-curio.export'])->delete();
+        $this->app()->getContainer()->make(\Flarum\Group\PermissionCache::class)->flush();
+
+        $this->assertSame(403, $export()->getStatusCode());
+        $this->assertSame(403, $this->upload(3, $id, "title\nTwo\n")->getStatusCode());
+        $attributes = $this->json($this->get("/api/curio-collections/$id", [], 3))['data']['attributes'];
+        $this->assertSame([false, false], [$attributes['canImport'], $attributes['canExport']]);
+        $this->assertSame(1, $this->database()->table('curio_items')->where('collection_id', $id)->count());
+    }
+
+    #[Test]
+    public function the_collections_page_offers_compact_tabs_their_colour_and_the_latest_changes_row(): void
+    {
+        $body = $this->json($this->get('/api/curio/overview'));
+        $this->assertSame(['tags', 'background', true], [$body['layout'], $body['typeColor'], $body['latest']]);
+
+        $this->put('ernestdefoe-curio.browse_layout', 'compact');
+        $this->put('ernestdefoe-curio.type_color', 'text');
+        $this->put('ernestdefoe-curio.latest_changes', '0');
+        $body = $this->json($this->get('/api/curio/overview'));
+        $this->assertSame(['compact', 'text', false], [$body['layout'], $body['typeColor'], $body['latest']]);
+
+        $this->put('ernestdefoe-curio.browse_layout', 'nonsense');
+        $this->put('ernestdefoe-curio.type_color', 'nonsense');
+        $body = $this->json($this->get('/api/curio/overview'));
+        $this->assertSame(['tags', 'background'], [$body['layout'], $body['typeColor']]);
+    }
+
+    #[Test]
+    public function the_new_lists_cost_a_fixed_number_of_queries(): void
+    {
+        $id = $this->newCollection(3);
+        for ($i = 0; $i < 12; $i++) {
+            $this->item(3, $id, ['title' => "Game $i", 'status' => ['owned', 'wishlist', 'trade'][$i % 3], 'progress' => 'completed', 'notes' => "Note $i"], $i % 2 ? 1 : null);
+        }
+
+        // The repeated-query detector fails these if anything is fetched per row.
+        foreach ([['status' => 'wishlist'], ['status' => 'trade'], ['changed' => 'progress'], ['changed' => 'notes']] as $filter) {
+            $this->assertSame(200, $this->get('/api/curio-items', ['filter' => $filter, 'include' => 'collection.user,collection.type', 'sort' => '-createdAt', 'page' => ['limit' => 12]], 4)->getStatusCode());
+        }
+    }
+
+    /** Card look-ups answered by a fake, by URL. */
+    private function fakeCards(): object
+    {
+        $container = $this->app()->getContainer();
+        $fake = new class($container->make(\Illuminate\Contracts\Cache\Repository::class), $container->make(\Flarum\Http\UrlGenerator::class)) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $calls = [];
+
+            public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
+            {
+                $this->calls[] = $url.($query ? '?'.http_build_query($query) : '');
+
+                return match (true) {
+                    (bool) preg_match('#/[a-z]{2}/cards$#', $url) => [
+                        ['id' => 'swsh3-136', 'localId' => '136', 'name' => 'Fouinar ex'],
+                        ['id' => 'swsh3-135', 'localId' => '135', 'name' => 'Fouinar', 'image' => 'https://assets.tcgdex.net/fr/swsh/swsh3/135'],
+                        ['id' => 'x', 'name' => 'no local id'],
+                    ],
+                    (bool) preg_match('#/[a-z]{2}/sets$#', $url) => [['id' => 'swsh3', 'name' => 'Ténèbres Embrasées', 'cardCount' => ['official' => 189]]],
+                    str_ends_with($url, '/fr/cards/swsh3-135') => ['id' => 'swsh3-135', 'localId' => '135', 'name' => 'Fouinar', 'rarity' => 'Peu Commune',
+                        'image' => 'https://evil.example/x', 'set' => ['name' => 'Ténèbres Embrasées', 'cardCount' => ['official' => 189]]],
+                    str_contains($url, 'scryfall.com/cards/search') => ['data' => [['id' => '0852f9f3-d7ef-4d31-93e3-93bc7c5a4ec9', 'name' => 'Lightning Bolt', 'set_name' => 'Foundations',
+                        'collector_number' => '163', 'released_at' => '2024-11-15', 'image_uris' => ['small' => 'https://cards.scryfall.io/small/x.jpg']]]],
+                    str_contains($url, 'ygoprodeck.com') => isset($query['id']) ? ['data' => [['id' => 46986414, 'name' => 'Magicien Sombre', 'card_sets' => [['set_name' => 'Legend of Blue Eyes', 'set_code' => 'LOB-005', 'set_rarity' => 'Ultra Rare']],
+                        'card_images' => [['image_url' => 'https://images.ygoprodeck.com/images/cards/46986414.jpg']]]]]
+                        : ['data' => [['id' => 46986414, 'name' => 'Magicien Sombre', 'humanReadableCardType' => 'Normal Monster', 'card_sets' => [
+                            ['set_name' => 'Legend of Blue Eyes', 'set_code' => 'LOB-005', 'set_rarity' => 'Ultra Rare'], ['set_name' => 'Dark Legends', 'set_code' => 'DLG1-EN004', 'set_rarity' => 'Rare'],
+                        ], 'card_images' => [['image_url' => 'https://images.ygoprodeck.com/images/cards/46986414.jpg']]]]],
+                    default => [],
+                };
+            }
+        };
+        $container->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        return $fake;
+    }
+
+    private function lookup(array $body, string $locale = 'fr'): array
+    {
+        $request = $this->request('POST', '/api/curio/lookup', ['authenticatedAs' => 3, 'json' => $body]);
+
+        return $this->json($this->send($request->withHeader('Accept-Language', $locale)));
+    }
+
+    #[Test]
+    public function trading_cards_are_looked_up_on_the_source_the_admin_picked(): void
+    {
+        $fake = $this->fakeCards();
+        $cards = $this->typeId('cards');
+        $this->assertSame(['set', 'number', 'grade', 'rarity', 'language'], array_column(json_decode((string) $this->database()->table('curio_types')->where('id', $cards)->value('fields'), true), 'key'));
+
+        // None until the admin picks one.
+        $this->assertSame([], $this->lookup(['type' => $cards, 'q' => 'fouinar'])['results']);
+
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'cards']);
+        $results = $this->lookup(['type' => $cards, 'q' => 'Fouinar'])['results'];
+
+        // Each result names its own source; Pokémon, Magic and Yu-Gi-Oh! take turns.
+        $this->assertSame(['tcgdex', 'scryfall', 'ygoprodeck', 'tcgdex'], array_column($results, 'source'));
+        $this->assertSame(['en/swsh3-135', 'Fouinar', 'Pokémon · Ténèbres Embrasées', '135/189'], [$results[0]['id'], $results[0]['title'], $results[0]['creator'], $results[0]['number']]);
+        $this->assertSame('https://assets.tcgdex.net/fr/swsh/swsh3/135/low.webp', $results[0]['cover']);
+        // YGOPRODeck asks not to be hotlinked: no picture until it is added; its printings are choices.
+        $this->assertNull($results[2]['cover']);
+        $this->assertSame(['LOB-005', 'DLG1-EN004'], array_column($results[2]['variants'], 'label'));
+        $this->assertSame(['set' => 'Legend of Blue Eyes', 'number' => 'LOB-005', 'rarity' => 'Ultra Rare', 'language' => null], $results[2]['variants'][0]['fields']);
+        $this->assertSame('en', $results[2]['variants'][1]['fields']['language']);
+        $this->assertSame('Legend of Blue Eyes · Ultra Rare', $results[2]['variants'][0]['title']);
+
+        // Kept a day: the same search again asks nobody.
+        $before = count($fake->calls);
+        $this->lookup(['type' => $cards, 'q' => 'fouinar']);
+        $this->assertSame($before, count($fake->calls));
+    }
+
+    #[Test]
+    public function a_picked_card_brings_its_set_number_rarity_and_language(): void
+    {
+        $this->fakeCards();
+
+        $workId = $this->lookup(['source' => 'tcgdex', 'id' => 'fr/swsh3-135'])['workId'];
+        $work = $this->json($this->get("/api/curio-works/$workId", [], 3))['data']['attributes'];
+        $this->assertSame(['set' => 'Ténèbres Embrasées', 'number' => '135/189', 'rarity' => 'Peu Commune', 'language' => 'fr'], $work['facts']['card']);
+        // A picture from anywhere but TCGdex's own host is never fetched.
+        $this->assertNull($work['coverUrl']);
+
+        $workId = $this->lookup(['source' => 'ygoprodeck', 'id' => 'fr/46986414'])['workId'];
+        $work = $this->json($this->get("/api/curio-works/$workId", [], 3))['data']['attributes'];
+        $this->assertSame(['set' => 'Legend of Blue Eyes', 'number' => 'LOB-005', 'rarity' => 'Ultra Rare'], $work['facts']['card']);
+
+        // Ids are checked before anything is asked.
+        foreach ([['tcgdex', 'fr/../../admin'], ['tcgdex', 'xx/swsh3-1'], ['scryfall', 'not-a-uuid'], ['ygoprodeck', 'fr/12a']] as [$source, $id]) {
+            $response = $this->send($this->request('POST', '/api/curio/lookup', ['authenticatedAs' => 3, 'json' => ['source' => $source, 'id' => $id]]));
+            $this->assertSame(404, $response->getStatusCode(), "$source $id");
+        }
+    }
+
+    #[Test]
+    public function game_results_name_the_platforms_they_came_out_on(): void
+    {
+        $this->assertSame([
+            ['label' => 'PC', 'fields' => ['platform' => 'PC (Microsoft Windows)']],
+            ['label' => 'Nintendo Switch', 'fields' => ['platform' => 'Nintendo Switch']],
+            ['label' => 'Linux', 'fields' => ['platform' => 'Linux']],
+        ], \Ernestdefoe\Curio\Lookup\Sources\Igdb::platforms(['platforms' => [
+            ['id' => 3, 'name' => 'Linux'], ['id' => 130, 'name' => 'Nintendo Switch'], ['id' => 6, 'name' => 'PC (Microsoft Windows)', 'abbreviation' => 'PC'],
+        ]]));
+
+        // Through Marquee, the platforms are the first part of its line ("PC, PS5 +4 · Action").
+        $marquee = new \Ernestdefoe\Curio\Lookup\Sources\Marquee('game', fn () => [
+            ['id' => 1, 'title' => 'Hades', 'subtitle' => 'PC, PS5, Switch +4 · Action, RPG'],
+            ['id' => 2, 'title' => 'Only genres', 'subtitle' => 'Action, RPG'],
+            ['id' => 3, 'title' => 'Only platforms', 'subtitle' => 'PS4, Vita'],
+        ], fn () => []);
+        $results = $marquee->search('hades');
+
+        $this->assertSame(['PC', 'PS5', 'Switch'], array_column($results[0]['variants'], 'label'));
+        $this->assertSame('PlayStation 5', $results[0]['variants'][1]['fields']['platform']);
+        $this->assertSame('Action, RPG', $results[0]['creator']);
+        $this->assertSame([[], 'Action, RPG'], [$results[1]['variants'], $results[1]['creator']]);
+        $this->assertSame(['PlayStation 4', 'PS Vita'], array_column(array_column($results[2]['variants'], 'fields'), 'platform'));
+    }
+
+    #[Test]
+    public function an_imported_card_is_matched_only_to_the_printing_with_its_number(): void
+    {
+        $same = new \ReflectionMethod(\Ernestdefoe\Curio\Console\MatchWorks::class, 'sameNumber');
+        $this->assertTrue($same->invoke(null, '136/189', '136'));
+        $this->assertTrue($same->invoke(null, '036', '36/102'));
+        $this->assertFalse($same->invoke(null, '136/189', '135'));
+        $this->assertFalse($same->invoke(null, '136', null));
+    }
 }
+

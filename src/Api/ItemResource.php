@@ -144,6 +144,14 @@ class ItemResource extends AbstractDatabaseResource
     public function saving(object $model, OriginalContext $context): ?object
     {
         /** @var Item $model */
+        // For the Collections page's "Latest changes".
+        if ($model->isDirty('progress')) {
+            $model->progress_changed_at = $model->progress ? Carbon::now() : null;
+        }
+        if ($model->isDirty('notes')) {
+            $model->notes_updated_at = $model->notes ? Carbon::now() : null;
+        }
+
         if (array_key_exists(spl_object_id($model), $this->pendingFields)) {
             $type = $model->collection?->type;
             $model->fields = $type ? self::cleanFields($type, $this->pendingFields[spl_object_id($model)]) : [];
@@ -291,6 +299,8 @@ class ItemResource extends AbstractDatabaseResource
                     return fn () => $item->work_id ? $this->images->url($this->titles->work($item->work_id)['cover'] ?? null, true) : null;
                 }),
             Schema\DateTime::make('createdAt'),
+            Schema\DateTime::make('progressChangedAt')->nullable(),
+            Schema\DateTime::make('notesUpdatedAt')->nullable(),
             // The discussion it was shown off in, on the item's own page, when the reader can see it.
             Schema\Integer::make('discussionId')
                 ->nullable()
@@ -346,6 +356,8 @@ class ItemResource extends AbstractDatabaseResource
             SortColumn::make('title'),
             SortColumn::make('year'),
             SortColumn::make('rating'),
+            SortColumn::make('progressChangedAt'),
+            SortColumn::make('notesUpdatedAt'),
         ];
     }
 

@@ -95,6 +95,18 @@ class WorkResolver
             $clean['released'] = $facts['released'];
         }
 
+        // A trading card's printing: set, number, rarity and language, short strings only.
+        $card = [];
+        foreach (['set', 'number', 'rarity', 'language'] as $key) {
+            $value = $facts['card'][$key] ?? null;
+            if (is_string($value) && ($value = mb_substr(trim($value), 0, 80)) !== '') {
+                $card[$key] = $value;
+            }
+        }
+        if ($card) {
+            $clean['card'] = $card;
+        }
+
         return $clean ?: null;
     }
 

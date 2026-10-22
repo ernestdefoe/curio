@@ -15,6 +15,16 @@ import useStyles from '../styles';
 const MAX_PHOTOS = 6;
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'BRL', 'MXN', 'INR'];
 
+/** "fr" → "Français", in the reader's language. */
+const languageName = (code) => {
+  try {
+    const name = new Intl.DisplayNames([locale()], { type: 'language' }).of(code);
+    return name ? name.charAt(0).toLocaleUpperCase(locale()) + name.slice(1) : code;
+  } catch (e) {
+    return code;
+  }
+};
+
 const defaultCurrency = () => {
   const l = locale();
   if (l === 'en-GB') return 'GBP';
@@ -192,7 +202,7 @@ export default class ItemEditModal extends FormModal {
                 <strong>
                   {r.title} {r.year ? <span className="CurioMuted">({r.year})</span> : null}
                 </strong>
-                {r.creator ? <span className="CurioMuted">{r.creator}</span> : null}
+                {r.creator || r.number ? <span className="CurioMuted">{[r.creator, r.number].filter(Boolean).join(' · ')}</span> : null}
                 {this.barcode && Object.keys(this.barcode.fields || {}).length ? (
                   <span className="CurioResult-chips">
                     {this.type
@@ -206,6 +216,7 @@ export default class ItemEditModal extends FormModal {
               </span>
               <Icon name="fas fa-chevron-right" className="CurioResult-go" />
             </button>
+            {this.variants(r)}
           </li>
         ))}
       </ul>
@@ -279,7 +290,51 @@ export default class ItemEditModal extends FormModal {
     this.step = 'details';
   }
 
-  pick(result) {
+  /**
+   * The versions a result comes in (a game's platforms, a card's printings):
+   * one click adds that one. Eight show; the rest are a click away.
+   */
+  variants(r) {
+    const all = r.variants || [];
+    if (!all.length) return null;
+    const open = this.openVariants === r;
+    const shown = open ? all : all.slice(0, 8);
+
+    return (
+      <div className="CurioResult-variants">
+        {shown.map((v) => (
+          <button type="button" className="CurioChip CurioChip--pick" title={v.title} disabled={this.resolving} onclick={() => this.pick(r, v)}>
+            {v.label}
+          </button>
+        ))}
+        {all.length > shown.length ? (
+          <button type="button" className="CurioChip CurioChip--more" onclick={() => (this.openVariants = r)}>
+            +{all.length - shown.length}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  /**
+   * Looked-up values into the type's details of the same key: a text detail
+   * takes the value, a choice takes the one option it names (if exactly one).
+   */
+  applyFields(values, hint, overwrite = true) {
+    const fields = this.type.fields() || [];
+    Object.entries(values || {}).forEach(([key, value]) => {
+      const f = fields.find((field) => field.key === key);
+      if (!f || value === null || value === undefined || value === '' || (!overwrite && this.fields[key])) return;
+      if (f.kind === 'select') {
+        const option = onlyOption(f, [value, hint].filter(Boolean));
+        if (option) this.fields[key] = option;
+      } else if (f.kind === 'text') {
+        this.fields[key] = (key === 'language' ? languageName(value) : String(value)).slice(0, 200);
+      }
+    });
+  }
+
+  pick(result, variant) {
     this.resolving = true;
     const found = result.workId ? Promise.resolve(result.workId) : lookup({ source: result.source, id: result.id }).then((r) => r.workId);
 
@@ -292,6 +347,9 @@ export default class ItemEditModal extends FormModal {
         this.year(work.year() ? String(work.year()) : '');
         if (this.barcode) Object.assign(this.fields, this.barcode.fields || {});
         this.prefillFromFacts(work.facts());
+        // The version clicked, or the only one there is.
+        const only = variant || ((result.variants || []).length === 1 ? result.variants[0] : null);
+        if (only) this.applyFields(only.fields, only.label);
         this.step = 'details';
       })
       .catch(() => (this.alertAttrs = { type: 'error', content: t('item_edit.lookup_failed') }))
@@ -301,15 +359,40 @@ export default class ItemEditModal extends FormModal {
       });
   }
 
-  /** A game found on IGDB names its platforms: when only one of them is an option here, it is chosen. */
+  /**
+   * A game found on IGDB names its platforms: when only one of them is an
+   * option here, it is chosen. A card names its set, number, rarity and
+   * language: each fills the detail of that name, if the type has one.
+   */
   prefillFromFacts(facts) {
-    if (!facts || !facts.platforms) return;
-    (this.type.fields() || [])
-      .filter((f) => f.kind === 'select' && f.key === 'platform' && !this.fields[f.key])
-      .forEach((f) => {
-        const key = onlyOption(f, facts.platforms);
-        if (key) this.fields[f.key] = key;
-      });
+    if (!facts) return;
+    if (facts.platforms) {
+      (this.type.fields() || [])
+        .filter((f) => f.kind === 'select' && f.key === 'platform' && !this.fields[f.key])
+        .forEach((f) => {
+          const key = onlyOption(f, facts.platforms);
+          if (key) this.fields[f.key] = key;
+        });
+    }
+    if (facts.card) this.applyFields(facts.card, null, false);
+  }
+
+  /** "Out on": the looked-up platforms this type offers, one click to choose. */
+  platformChoices(f) {
+    // Only while none is chosen: after that, the menu above says which.
+    const names = (f.key === 'platform' && !this.fields[f.key] && this.work?.facts()?.platforms) || [];
+    const choices = names.map((name) => [name, onlyOption(f, [name])]).filter(([, key]) => key);
+    if (choices.length < 2) return null;
+
+    return (
+      <div className="CurioResult-variants">
+        {choices.map(([name, key]) => (
+          <button type="button" className="CurioChip CurioChip--pick" onclick={() => (this.fields[f.key] = key)}>
+            {name}
+          </button>
+        ))}
+      </div>
+    );
   }
 
   // ── Details & photos ───────────────────────────────────────────────────
@@ -541,7 +624,7 @@ export default class ItemEditModal extends FormModal {
             );
           }
 
-          return (
+          return [
             <div className="Form-group">
               <label for={id}>{label(f.labels)}</label>
               {f.kind === 'select' ? (
@@ -561,8 +644,10 @@ export default class ItemEditModal extends FormModal {
                   oninput={(e) => set(e.target.value)}
                 />
               )}
-            </div>
-          );
+            </div>,
+            // Full width, under the menu's row.
+            f.kind === 'select' ? this.platformChoices(f) : null,
+          ];
         })}
       </div>
     );

@@ -55,6 +55,8 @@ return [
         ->default(Settings::SHORTCUT, 'both')
         ->default(Settings::COVER_FIT, 'blur')
         ->default(Settings::HIDE_EMPTY, false)
+        ->default(Settings::TYPE_COLOR, 'background')
+        ->default(Settings::LATEST_CHANGES, true)
         // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
         ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
         ->serializeToForum('curioCoverFit', Settings::COVER_FIT, fn ($value) => in_array($value, Settings::COVER_FITS, true) ? $value : 'blur')
@@ -109,7 +111,8 @@ return [
         ->addFilter(Search\ItemSearcher::class, Search\Filter\StatusFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\ProgressFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\FacetFilter::class)
-        ->addFilter(Search\ItemSearcher::class, Search\Filter\TitleFilter::class),
+        ->addFilter(Search\ItemSearcher::class, Search\Filter\TitleFilter::class)
+        ->addFilter(Search\ItemSearcher::class, Search\Filter\ChangedFilter::class),
 
     (new Extend\ModelVisibility(Collection::class))
         ->scope(Access\ScopeCollectionVisibility::class),

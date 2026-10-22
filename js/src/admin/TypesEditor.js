@@ -14,7 +14,7 @@ const t = (key, params) => app.translator.trans(`ernestdefoe-curio.admin.${key}`
 const text = (key, params) => extractText(t(key, params));
 
 const SHAPES = ['portrait', 'box', 'square', 'landscape'];
-const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games'];
+const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games', 'pokemon', 'magic', 'yugioh', 'cards'];
 const KINDS = ['select', 'text', 'number', 'date', 'bool'];
 const clone = (v) => JSON.parse(JSON.stringify(v));
 // What a type export carries: everything an admin sets, labels in every language.
@@ -204,6 +204,7 @@ export default class TypesEditor {
             <label>{t('types.source')}</label>
             <Select value={d.source} onchange={(v) => (d.source = v)} options={Object.fromEntries(SOURCES.map((s) => [s, text('source.' + s)]))} />
             {marqueeNeeded ? <small className="CurioAdmin-warn">{t('types.needs_marquee')}</small> : null}
+            {['pokemon', 'magic', 'yugioh', 'cards'].includes(d.source) ? <small className="helpText">{t('types.cards_help')}</small> : null}
           </div>
         </div>
 

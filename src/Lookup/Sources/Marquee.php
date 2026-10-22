@@ -42,13 +42,20 @@ class Marquee implements Source
             throw new LookupException('Marquee search failed', self::outage($e));
         }
 
-        return array_map(fn (array $r) => [
-            'id' => (string) $r['id'],
-            'title' => (string) $r['title'],
-            'creator' => ($r['subtitle'] ?? '') !== '' ? (string) $r['subtitle'] : null,
-            'year' => $r['year'] ?? null,
-            'cover' => self::image($r['poster'] ?? null),
-        ], array_slice($results, 0, 8));
+        return array_map(function (array $r) {
+            $subtitle = ($r['subtitle'] ?? '') !== '' ? (string) $r['subtitle'] : null;
+            $platforms = $this->kind === 'game' ? self::platforms($subtitle) : [];
+
+            return [
+                'id' => (string) $r['id'],
+                'title' => (string) $r['title'],
+                // A game's line reads "PC, PS5, Switch +4 · Action, RPG": the platforms become choices.
+                'creator' => $platforms ? (trim(explode(' · ', (string) $subtitle, 2)[1] ?? '') ?: null) : $subtitle,
+                'year' => $r['year'] ?? null,
+                'cover' => self::image($r['poster'] ?? null),
+                'variants' => array_map(fn (string $short) => ['label' => $short, 'fields' => ['platform' => self::PLATFORMS[$short] ?? $short]], $platforms),
+            ];
+        }, array_slice($results, 0, 8));
     }
 
     public function details(string $id): array
@@ -89,6 +96,36 @@ class Marquee implements Source
                 'genres' => self::names($d['genres'] ?? []),
             ] : null,
         ];
+    }
+
+    /** IGDB's short platform names (as Marquee shows them) → full names, to match a type's options. */
+    private const PLATFORMS = [
+        'PC' => 'PC (Microsoft Windows)', 'PS5' => 'PlayStation 5', 'PS4' => 'PlayStation 4', 'PS3' => 'PlayStation 3',
+        'PS2' => 'PlayStation 2', 'PS1' => 'PlayStation', 'XONE' => 'Xbox One', 'Series X|S' => 'Xbox Series X|S',
+        'X360' => 'Xbox 360', 'XBOX' => 'Xbox', 'Switch' => 'Nintendo Switch', 'Switch 2' => 'Nintendo Switch 2',
+        'WiiU' => 'Wii U', 'Wii' => 'Wii', 'NGC' => 'GameCube', 'N64' => 'Nintendo 64', 'SNES' => 'SNES', 'NES' => 'NES',
+        'GB' => 'Game Boy', 'GBC' => 'Game Boy Color', 'GBA' => 'Game Boy Advance', 'NDS' => 'Nintendo DS',
+        '3DS' => 'Nintendo 3DS', 'Vita' => 'PS Vita', 'PSP' => 'PSP', 'Genesis/MegaDrive' => 'Mega Drive / Genesis',
+        'Saturn' => 'Saturn', 'DC' => 'Dreamcast', 'Mac' => 'Mac', 'iOS' => 'iOS', 'Android' => 'Android', 'Linux' => 'Linux',
+    ];
+
+    /**
+     * The platforms in Marquee's game line: its first part when there are two
+     * ("PC, PS5 +4 · Action"); a lone part only when every name is a platform
+     * (it could be the genres).
+     *
+     * @return list<string>
+     */
+    private static function platforms(?string $line): array
+    {
+        $parts = $line ? explode(' · ', $line) : [];
+        $names = $parts ? array_values(array_filter(array_map(fn ($n) => trim(preg_replace('/\s*\+\d+$/', '', $n) ?? ''), explode(', ', $parts[0])))) : [];
+
+        if (count($parts) === 1 && array_diff($names, array_keys(self::PLATFORMS))) {
+            return [];
+        }
+
+        return $names;
     }
 
     /** @return list<string> names from a list of strings or of {name} */

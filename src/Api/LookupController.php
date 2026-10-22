@@ -78,7 +78,8 @@ class LookupController implements RequestHandlerInterface
         $source = $this->sources->forType($type);
         $results = $source ? $source->search($q) : [];
 
-        return new JsonResponse(['results' => array_map(fn ($r) => ['source' => $source?->key()] + $r, $results)]);
+        // A result names its source when one search asks several (trading cards).
+        return new JsonResponse(['results' => array_map(fn ($r) => $r + ['source' => $source?->key()], $results)]);
     }
 
     private function resolve(array $body): ResponseInterface
