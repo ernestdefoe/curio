@@ -34,6 +34,8 @@ A [Flarum 2](https://flarum.org) extension for showing off what members collect:
 
 ![Adding an item](https://raw.githubusercontent.com/ernestdefoe/curio/main/.github/screenshots/add-details.jpg)
 
+![A game looked up, with the platforms each result came out on](https://raw.githubusercontent.com/ernestdefoe/curio/main/.github/screenshots/add-lookup.jpg)
+
 ![A barcode, scanned](https://raw.githubusercontent.com/ernestdefoe/curio/main/.github/screenshots/add-barcode.jpg)
 
 ![The Collections page](https://raw.githubusercontent.com/ernestdefoe/curio/main/.github/screenshots/browse.jpg)
