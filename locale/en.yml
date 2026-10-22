@@ -191,11 +191,11 @@ ernestdefoe-curio:
       none_trade: Nothing open to trade yet.
       latest: Latest changes
       tab_progress: Status
-      tab_notes: Notes
+      tab_ratings: Ratings
       none_progress: No progress marked yet.
-      none_notes: No notes written yet.
+      none_ratings: Nothing rated yet.
       change_progress: "{name} marked {title} as"
-      change_notes: "{name} on {title}"
+      change_rating: "{name} rated {title}"
       more: More
     nav:
       mine: My collections
@@ -276,7 +276,7 @@ ernestdefoe-curio:
       type_color_background: As the tab's background
       type_color_text: On the icon and name only
       latest_label: Show "Latest changes"
-      latest_help: A row on the Collections page with the latest progress members marked (completed, in progress…) and the latest notes they wrote, from collections the reader can see.
+      latest_help: A row on the Collections page with the latest progress members marked (completed, in progress…) and the latest ratings they gave, from collections the reader can see.
       hide_empty_label: Hide types with nothing in them
       hide_empty_help: Off by default, so the Collections page shows every switched-on type, as the Tags page shows every tag; an empty one invites a first collection. When on, only types holding something are shown (all of them while the forum has nothing yet).
       cover_fit_label: Covers that don't fit the frame

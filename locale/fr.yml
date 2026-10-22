@@ -191,11 +191,11 @@ ernestdefoe-curio:
       none_trade: Rien d'échangeable pour l'instant.
       latest: Derniers changements
       tab_progress: Statut
-      tab_notes: Notes
+      tab_ratings: Notes
       none_progress: Aucun avancement indiqué pour l'instant.
-      none_notes: Aucune note écrite pour l'instant.
+      none_ratings: Rien n'a encore été noté.
       change_progress: "{name} a marqué {title} comme"
-      change_notes: "{name} sur {title}"
+      change_rating: "{name} a noté {title}"
       more: Plus
     nav:
       mine: Mes collections
@@ -276,7 +276,7 @@ ernestdefoe-curio:
       type_color_background: En fond de l'onglet
       type_color_text: Sur l'icône et le nom seulement
       latest_label: Afficher « Derniers changements »
-      latest_help: Une rangée sur la page Collections avec les derniers avancements indiqués par les membres (terminé, en cours…) et leurs dernières notes, dans les collections que le lecteur peut voir.
+      latest_help: Une rangée sur la page Collections avec les derniers avancements indiqués par les membres (terminé, en cours…) et les dernières notes en étoiles qu’ils ont données, dans les collections que le lecteur peut voir.
       hide_empty_label: Masquer les types sans rien dedans
       hide_empty_help: Désactivé par défaut, la page Collections montre donc chaque type activé, comme la page des étiquettes montre chaque étiquette ; un type vide invite à lancer une première collection. Une fois activé, seuls les types qui contiennent quelque chose sont montrés (tous, tant que le forum n'a encore rien).
       cover_fit_label: Jaquettes qui ne remplissent pas le cadre

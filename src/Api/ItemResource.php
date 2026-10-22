@@ -148,8 +148,8 @@ class ItemResource extends AbstractDatabaseResource
         if ($model->isDirty('progress')) {
             $model->progress_changed_at = $model->progress ? Carbon::now() : null;
         }
-        if ($model->isDirty('notes')) {
-            $model->notes_updated_at = $model->notes ? Carbon::now() : null;
+        if ($model->isDirty('rating')) {
+            $model->rating_changed_at = $model->rating ? Carbon::now() : null;
         }
 
         if (array_key_exists(spl_object_id($model), $this->pendingFields)) {
@@ -300,7 +300,7 @@ class ItemResource extends AbstractDatabaseResource
                 }),
             Schema\DateTime::make('createdAt'),
             Schema\DateTime::make('progressChangedAt')->nullable(),
-            Schema\DateTime::make('notesUpdatedAt')->nullable(),
+            Schema\DateTime::make('ratingChangedAt')->nullable(),
             // The discussion it was shown off in, on the item's own page, when the reader can see it.
             Schema\Integer::make('discussionId')
                 ->nullable()
@@ -357,7 +357,7 @@ class ItemResource extends AbstractDatabaseResource
             SortColumn::make('year'),
             SortColumn::make('rating'),
             SortColumn::make('progressChangedAt'),
-            SortColumn::make('notesUpdatedAt'),
+            SortColumn::make('ratingChangedAt'),
         ];
     }
 

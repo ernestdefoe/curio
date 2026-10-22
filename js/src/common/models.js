@@ -65,7 +65,7 @@ Object.assign(CurioItem.prototype, {
   coverUrl: Model.attribute('coverUrl'),
   createdAt: Model.attribute('createdAt', Model.transformDate),
   progressChangedAt: Model.attribute('progressChangedAt', Model.transformDate),
-  notesUpdatedAt: Model.attribute('notesUpdatedAt', Model.transformDate),
+  ratingChangedAt: Model.attribute('ratingChangedAt', Model.transformDate),
   canEdit: Model.attribute('canEdit'),
   discussionId: Model.attribute('discussionId'),
   collectionId: Model.attribute('collectionId'),

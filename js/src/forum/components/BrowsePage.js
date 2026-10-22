@@ -16,6 +16,7 @@ import { optionLabel } from '../../common/labels';
 import addToMyCollection from '../copyItem';
 import { collectionCard, cover, progressPill } from './bits';
 import ItemModal from './ItemModal';
+import Stars from './Stars';
 import useStyles from '../styles';
 
 /** What each list on the page asks for; each loads the first time its tab is opened, 12 at a time. */
@@ -24,7 +25,7 @@ const LISTS = {
   wishlist: { filter: { status: 'wishlist' }, sort: '-createdAt' },
   trade: { filter: { status: 'trade' }, sort: '-createdAt' },
   progress: { filter: { changed: 'progress' }, sort: '-progressChangedAt' },
-  notes: { filter: { changed: 'notes' }, sort: '-notesUpdatedAt' },
+  ratings: { filter: { changed: 'rating' }, sort: '-ratingChangedAt' },
 };
 const PAGE = 12;
 
@@ -35,7 +36,7 @@ const compact = (n) => new Intl.NumberFormat(locale(), { notation: 'compact', ma
  * /collections: what this forum collects. Three looks for the types, the
  * admin's choice: Flarum's own tags page tiles (the default), cover tiles, or
  * a row of small tabs. Then what was added lately (owned, wishlists, open to
- * trade), what changed lately (progress, notes) and the featured collections.
+ * trade), what changed lately (progress, ratings) and the featured collections.
  */
 export default class BrowsePage extends Page {
   oninit(vnode) {
@@ -207,7 +208,7 @@ export default class BrowsePage extends Page {
           <>
             <div className="CurioSection-heading">
               <h2>{t('browse.latest')}</h2>
-              {this.tabs(['progress', 'notes'], this.latestTab, (key) => this.list((this.latestTab = key)))}
+              {this.tabs(['progress', 'ratings'], this.latestTab, (key) => this.list((this.latestTab = key)))}
             </div>
             {this.shown(this.latestTab, (items) => this.changes(items))}
           </>
@@ -252,7 +253,7 @@ export default class BrowsePage extends Page {
       <>
         {render(list.items)}
         {list.more ? (
-          <div className="CurioMore">
+          <div className="CurioBrowse-more">
             <Button className="Button" loading={list.loading} onclick={() => this.loadMore(key)}>
               {t('browse.more')}
             </Button>
@@ -415,29 +416,24 @@ export default class BrowsePage extends Page {
     );
   }
 
-  /** Latest changes: who marked what as completed (or started it), or wrote about it. */
+  /** Latest changes: who marked what as completed (or started it), or rated it. */
   changes(items) {
-    const notes = this.latestTab === 'notes';
+    const ratings = this.latestTab === 'ratings';
     return (
       <ul className="CurioChanges">
         {items.map((item) => {
           const user = item.collection()?.user();
           const title = <strong>{item.displayTitle()}</strong>;
-          const when = notes ? item.notesUpdatedAt() : item.progressChangedAt();
+          const when = ratings ? item.ratingChangedAt() : item.progressChangedAt();
           return (
             <li>
               <button type="button" className="CurioChange" onclick={() => app.modal.show(ItemModal, { itemId: item.id() })}>
                 {cover(item.coverUrl(), item.collection()?.type()?.shape(), false)}
                 <span className="CurioChange-body">
                   <span className="CurioChange-line">
-                    <span>
-                      {notes
-                        ? t('browse.change_notes', { name: <strong>{username(user)}</strong>, title })
-                        : t('browse.change_progress', { name: <strong>{username(user)}</strong>, title })}
-                    </span>
-                    {notes ? null : progressPill(item, item.collection()?.type())}
+                    <span>{t(ratings ? 'browse.change_rating' : 'browse.change_progress', { name: <strong>{username(user)}</strong>, title })}</span>
+                    {ratings ? <Stars value={item.rating()} small /> : progressPill(item, item.collection()?.type())}
                   </span>
-                  {notes ? <span className="CurioChange-notes">{item.notes()}</span> : null}
                 </span>
                 {when ? <span className="CurioChange-time">{humanTime(when)}</span> : null}
               </button>

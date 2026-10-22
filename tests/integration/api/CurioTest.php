@@ -1350,39 +1350,41 @@ class CurioTest extends TestCase
     }
 
     #[Test]
-    public function latest_changes_list_progress_and_notes_newest_first_and_only_what_the_reader_may_see(): void
+    public function latest_changes_list_progress_and_ratings_newest_first_and_only_what_the_reader_may_see(): void
     {
         $public = $this->newCollection(3);
         $private = $this->newCollection(3, ['name' => 'Private', 'visibility' => 'private']);
         $music = $this->newCollection(3, ['name' => 'Records'], 'music');
 
         Carbon::setTestNow('2026-10-01 10:00:00');
-        $old = (int) $this->json($this->item(3, $public, ['title' => 'Old game', 'progress' => 'completed', 'notes' => 'Loved it']))['data']['id'];
+        $old = (int) $this->json($this->item(3, $public, ['title' => 'Old game', 'progress' => 'completed', 'rating' => 9]))['data']['id'];
         Carbon::setTestNow('2026-10-02 10:00:00');
         $new = (int) $this->json($this->item(3, $public, ['title' => 'New game']))['data']['id'];
-        $this->item(3, $private, ['title' => 'Secret game', 'progress' => 'in_progress', 'notes' => 'Nobody reads this']);
+        $this->item(3, $private, ['title' => 'Secret game', 'progress' => 'in_progress', 'rating' => 4]);
         // Wanted, or of a type that does not track progress: never "marked as".
-        $this->item(3, $public, ['title' => 'Wanted game', 'status' => 'wishlist', 'progress' => 'pending']);
+        $this->item(3, $public, ['title' => 'Wanted game', 'status' => 'wishlist', 'progress' => 'pending', 'rating' => 8]);
         $this->item(3, $music, ['title' => 'A record', 'progress' => 'completed']);
         Carbon::setTestNow('2026-10-03 10:00:00');
-        $this->patchItem(3, $new, ['progress' => 'in_progress', 'notes' => 'Halfway']);
+        $this->patchItem(3, $new, ['progress' => 'in_progress', 'rating' => 7]);
         Carbon::setTestNow();
 
         $progress = ['filter' => ['changed' => 'progress'], 'sort' => '-progressChangedAt', 'include' => 'collection.user,collection.type'];
-        $notes = ['filter' => ['changed' => 'notes'], 'sort' => '-notesUpdatedAt'];
+        $ratings = ['filter' => ['changed' => 'rating'], 'sort' => '-ratingChangedAt'];
+        // An import never counts as a change.
+        $this->assertSame(200, $this->upload(3, $public, "title,rating,progress\nImported game,4,completed\n")->getStatusCode());
 
         $this->assertSame(['New game', 'Old game'], $this->titles($this->get('/api/curio-items', $progress)));
-        $this->assertSame(['New game', 'Old game'], $this->titles($this->get('/api/curio-items', $notes, 4)));
+        $this->assertSame(['New game', 'Old game'], $this->titles($this->get('/api/curio-items', $ratings, 4)));
         // The owner sees their private one too.
-        $this->assertSame(['New game', 'Secret game', 'Old game'], $this->titles($this->get('/api/curio-items', $notes, 3)));
+        $this->assertSame(['New game', 'Secret game', 'Old game'], $this->titles($this->get('/api/curio-items', $ratings, 3)));
 
         $first = $this->json($this->get('/api/curio-items', $progress))['data'][0]['attributes'];
         $this->assertStringStartsWith('2026-10-03', $first['progressChangedAt']);
 
-        // Clearing notes takes the item off the list; a later edit of something else leaves the time alone.
-        $this->patchItem(3, $old, ['notes' => null]);
+        // Clearing the rating takes the item off the list; a later edit of something else leaves the time alone.
+        $this->patchItem(3, $old, ['rating' => null]);
         $this->patchItem(3, $new, ['title' => 'New game (GOTY)']);
-        $this->assertSame(['New game (GOTY)'], $this->titles($this->get('/api/curio-items', $notes)));
+        $this->assertSame(['New game (GOTY)'], $this->titles($this->get('/api/curio-items', $ratings)));
         $this->assertStringStartsWith('2026-10-03', $this->json($this->get('/api/curio-items', $progress))['data'][0]['attributes']['progressChangedAt']);
     }
 
@@ -1452,11 +1454,11 @@ class CurioTest extends TestCase
     {
         $id = $this->newCollection(3);
         for ($i = 0; $i < 12; $i++) {
-            $this->item(3, $id, ['title' => "Game $i", 'status' => ['owned', 'wishlist', 'trade'][$i % 3], 'progress' => 'completed', 'notes' => "Note $i"], $i % 2 ? 1 : null);
+            $this->item(3, $id, ['title' => "Game $i", 'status' => ['owned', 'wishlist', 'trade'][$i % 3], 'progress' => 'completed', 'rating' => 6], $i % 2 ? 1 : null);
         }
 
         // The repeated-query detector fails these if anything is fetched per row.
-        foreach ([['status' => 'wishlist'], ['status' => 'trade'], ['changed' => 'progress'], ['changed' => 'notes']] as $filter) {
+        foreach ([['status' => 'wishlist'], ['status' => 'trade'], ['changed' => 'progress'], ['changed' => 'rating']] as $filter) {
             $this->assertSame(200, $this->get('/api/curio-items', ['filter' => $filter, 'include' => 'collection.user,collection.type', 'sort' => '-createdAt', 'page' => ['limit' => 12]], 4)->getStatusCode());
         }
     }
