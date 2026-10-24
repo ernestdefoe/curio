@@ -39,6 +39,13 @@ class ProductNameTest extends TestCase
             'short name and region' => ['Astro Bot (PS5) [Physical] U.S. Version', ['platform' => 'playstation-5', 'region' => 'ntsc-u'], 'Astro Bot'],
             'a platform word inside the title stays' => ['Wii Sports - Nintendo Wii', ['platform' => 'wii'], 'Wii Sports'],
             'nothing recognised' => ['Some Board Game', [], 'Some Board Game'],
+            'a European listing' => ['Mario Kart 8 Deluxe - Nintendo Switch Video Game - European Version', ['platform' => 'nintendo-switch', 'region' => 'pal'], 'Mario Kart 8 Deluxe'],
+            'the platform in the game name stays' => ['Nintendo Switch Sports - Nintendo Switch [Physical]', ['platform' => 'nintendo-switch'], 'Nintendo Switch Sports'],
+            'Icecat: edition, languages and platform' => ['Elden Ring: Shadow of the Erdtree Standard Multilingue PlayStation 5', ['platform' => 'playstation-5'], 'Elden Ring: Shadow of the Erdtree'],
+            'a French edition' => ['Hogwarts Legacy : L\'Héritage de Poudlard - Édition Deluxe (PS5)', ['platform' => 'playstation-5'], 'Hogwarts Legacy : L\'Héritage de Poudlard'],
+            'an English edition and short platform' => ['Final Fantasy VII Rebirth Deluxe Edition PS5', ['platform' => 'playstation-5'], 'Final Fantasy VII Rebirth'],
+            'a language list is not a region' => ['Nintendo The Legend of Zelda: Tears of the Kingdom Standard Danish, German, English, Japanese, Korean Nintendo Switch', ['platform' => 'nintendo-switch'], 'Nintendo The Legend of Zelda: Tears of the Kingdom Standard Danish, German, English, Japanese, Korean'],
+            'short words inside a title stay' => ['Among Us', [], 'Among Us'],
         ];
     }
 

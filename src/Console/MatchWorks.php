@@ -61,7 +61,12 @@ class MatchWorks extends AbstractCommand
                 $hit = null;
 
                 if ($type && $item->barcode) {
-                    $hit = $barcodes->lookup($type, $item->barcode, $item->user_id)['results'][0] ?? null;
+                    try {
+                        $hit = $barcodes->lookup($type, $item->barcode, $item->user_id)['results'][0] ?? null;
+                    } catch (LookupException $e) {
+                        // The barcode services are busy: the title may still find it; if not, a later run asks again.
+                        $item->needs_match = $e->outage;
+                    }
                 }
 
                 $source = $type ? $sources->forType($type) : null;
@@ -83,6 +88,7 @@ class MatchWorks extends AbstractCommand
                 }
 
                 if ($hit) {
+                    $item->needs_match = false;
                     $work = isset($hit['workId']) ? Work::query()->find($hit['workId']) : $works->resolve((string) $hit['source'], (string) $hit['id']);
                     if ($work) {
                         $item->work_id = $work->id;

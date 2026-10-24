@@ -97,7 +97,12 @@ ernestdefoe-curio:
       scan_stop: Stop
       camera_error: The camera could not be started. You can type the barcode instead.
       barcode_found: "Barcode {code} recognised."
-      barcode_unknown: "Nobody knows barcode {code} yet. Add it by hand and the next person who scans it will get your entry."
+      barcode_miss: "No product found for {code}."
+      barcode_named: "Barcode {code} is “{title}”, but the search found no match for it."
+      barcode_unavailable: "The barcode services could not be asked about {code} just now. Try again later, or search by title."
+      barcode_teach: "Find it by title or add it by hand: Curio keeps the barcode with it, so the next person who scans it gets it straight away."
+      barcode_kept: "Barcode {code} will be saved with what you pick, so the next scan finds it."
+      by_title: Search by title instead
       no_results: Nothing found. Try fewer words, or add it by hand.
       no_cards_in: "No {language} cards found. Try the English name, the set and number, or another card language."
       more_results: More results
@@ -266,8 +271,8 @@ ernestdefoe-curio:
   admin:
     settings:
       upc_label: UPCitemdb key (optional)
-      upc_help: Barcodes for games, films and other products are looked up on UPCitemdb, which allows 100 a day with no key. Every barcode the forum resolves is kept, so most forums never need more. A paid key raises the limit.
-      upc_link: Get a key
+      upc_help: "Barcode scanning works without any key. Books are looked up on Open Library and records on Deezer and MusicBrainz. Games, films and other products are asked of UPCitemdb (no key, 100 a day, strongest on North American boxes) and Open Icecat (no key, strongest on European boxes: games, consoles, electronics, toys). Every barcode the forum resolves, or a member matches by hand, is kept, so it never needs asking twice. A paid UPCitemdb key only raises UPCitemdb's daily limit; most forums never need one."
+      upc_link: UPCitemdb plans
       deepl_label: DeepL key (optional)
       deepl_help: When Wikipedia has no description in a language, DeepL translates the English one. Free keys end in ":fx".
       deepl_link: Get a key

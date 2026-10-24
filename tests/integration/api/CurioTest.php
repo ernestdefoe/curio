@@ -428,6 +428,12 @@ class CurioTest extends TestCase
             }
         };
         $container->instance(UpcItemDb::class, $fake);
+        $container->instance(\Ernestdefoe\Curio\Lookup\Icecat::class, new class($container->make(\Ernestdefoe\Curio\Lookup\Http::class), $container->make(\Ernestdefoe\Curio\Lookup\Budget::class), $container->make(\Illuminate\Contracts\Cache\Repository::class)) extends \Ernestdefoe\Curio\Lookup\Icecat {
+            protected function ask(string $ean): ?array
+            {
+                return null;
+            }
+        });
 
         $lookup = fn (string $code) => $this->send($this->request('POST', '/api/curio/lookup', [
             'authenticatedAs' => 4,
@@ -815,6 +821,85 @@ class CurioTest extends TestCase
         // The token and the search are both kept: a second search sends nothing.
         $search();
         $this->assertSame(['twitch https://id.twitch.tv/oauth2/token', 'igdb https://api.igdb.com/v4/games'], $fake->calls);
+    }
+
+    #[Test]
+    public function european_barcodes_are_found_on_icecat_and_a_miss_is_learned_from_the_title_picked(): void
+    {
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $this->fakeIgdb();
+        $igdb = $this->app()->getContainer()->make(\Ernestdefoe\Curio\Lookup\Http::class);
+        $fake = new class($igdb) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $asked = [];
+
+            public function __construct(private \Ernestdefoe\Curio\Lookup\Http $igdb)
+            {
+            }
+
+            public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
+            {
+                $this->asked[] = $service.' '.($query['GTIN'] ?? $query['upc'] ?? '');
+
+                if ($service === 'icecat' && $query['GTIN'] === '3391892030976') {
+                    return ['data' => ['GeneralInfo' => ['ProductName' => 'Metroid Dread', 'Title' => 'Nintendo Metroid Dread Standard Multilingue Nintendo Switch']]];
+                }
+                if ($service === 'icecat') {
+                    throw new \Ernestdefoe\Curio\Lookup\LookupException('icecat request failed (403)');
+                }
+
+                return ['code' => 'OK', 'items' => []];
+            }
+
+            public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+            {
+                return $this->igdb->post($service, $url, $query, $headers, $body, $timeout);
+            }
+        };
+        $this->app()->getContainer()->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        $scan = fn (string $code) => $this->json($this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3,
+            'json' => ['type' => $this->typeId('games'), 'q' => $code],
+        ])))['barcode'];
+
+        // A European box: Icecat first (UPCitemdb is not asked), its words fill the platform.
+        $found = $scan('3391892030976');
+        $this->assertSame(['Metroid Dread', 'igdb', 'nintendo-switch'], [$found['title'], $found['results'][0]['source'], $found['fields']['platform']]);
+        $this->assertSame(['icecat 3391892030976'], $fake->asked);
+
+        // Nobody knows this one: both asked, nothing found, said so.
+        $missed = $scan('3700664528298');
+        $this->assertSame([[], null, false], [$missed['results'], $missed['title'], $missed['known']]);
+        $this->assertSame(['icecat 3700664528298', 'upcitemdb 3700664528298'], array_slice($fake->asked, 1));
+
+        // The member searches by title, picks a game and saves it with the barcode…
+        $work = (int) $this->json($this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3, 'json' => ['source' => 'igdb', 'id' => '154986'],
+        ])))['workId'];
+        $this->assertSame(201, $this->item(3, $this->newCollection(3), ['title' => 'Metroid Dread', 'barcode' => '3700664528298'], $work)->getStatusCode());
+
+        // …and the next scan is answered by the forum, with the work.
+        $learned = $scan('3700664528298');
+        $this->assertTrue($learned['known']);
+        $this->assertSame($work, $learned['results'][0]['workId']);
+        $this->assertCount(2, array_filter($fake->asked, fn ($call) => str_ends_with($call, ' 3700664528298')));
+    }
+
+    #[Test]
+    public function a_barcode_added_by_hand_learns_its_work_from_the_first_pick(): void
+    {
+        $this->app();
+        $now = \Carbon\Carbon::now();
+        [$first, $second] = array_map(fn ($id) => $this->database()->table('curio_works')->insertGetId(['source' => 'igdb', 'source_id' => $id,
+            'title' => 'Game '.$id, 'refreshed_at' => $now, 'created_at' => $now]), ['1', '2']);
+        $barcodes = resolve(BarcodeLookup::class);
+        $barcodes->remember('3700664528298', null, 'Typed by hand', [], 'member');
+        $barcodes->remember('3700664528298', $first, 'Picked', [], 'igdb');
+        $barcodes->remember('3700664528298', $second, 'Later', [], 'igdb');
+
+        $row = $this->database()->table('curio_barcodes')->where('code', '3700664528298')->first();
+        $this->assertSame([$first, 'Picked', 'igdb'], [(int) $row->work_id, $row->title, $row->source]);
     }
 
     #[Test]

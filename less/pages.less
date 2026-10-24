@@ -1342,10 +1342,29 @@ button.CurioChip {
   font-size: 13px;
   font-weight: 600;
 
-  &--miss {
+  &--miss,
+  &--kept {
     background: var(--control-bg);
     color: var(--control-color);
     font-weight: 400;
+  }
+
+  &--miss {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+
+    > .icon {
+      margin-top: 3px;
+    }
+
+    p {
+      margin: 0 0 6px;
+    }
+
+    .Button {
+      margin-top: 4px;
+    }
   }
 }
 
@@ -2147,16 +2166,6 @@ button.CurioChip {
   min-width: 0;
 }
 
-
-.CurioScanned {
-  margin-top: 12px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #dcf5e8;
-  color: #146c43;
-  font-size: 13px;
-  font-weight: 600;
-}
 
 .CurioChip--found {
   background: #dcf5e8;

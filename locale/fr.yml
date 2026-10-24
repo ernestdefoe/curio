@@ -97,7 +97,12 @@ ernestdefoe-curio:
       scan_stop: Arrêter
       camera_error: La caméra n'a pas pu démarrer. Vous pouvez saisir le code-barres à la place.
       barcode_found: "Code-barres {code} reconnu."
-      barcode_unknown: "Personne ne connaît encore le code-barres {code}. Ajoutez-le à la main : la prochaine personne qui le scannera retrouvera votre fiche."
+      barcode_miss: "Aucun produit trouvé pour {code}."
+      barcode_named: "Le code-barres {code} correspond à « {title} », mais la recherche ne l’a pas trouvé."
+      barcode_unavailable: "Les services de codes-barres n’ont pas pu être interrogés pour {code}. Réessayez plus tard, ou cherchez par titre."
+      barcode_teach: "Cherchez-le par titre ou ajoutez-le à la main : Curio garde le code-barres avec, et la prochaine personne qui le scannera le trouvera aussitôt."
+      barcode_kept: "Le code-barres {code} sera enregistré avec ce que vous choisirez : le prochain scan le trouvera."
+      by_title: Chercher par titre
       no_results: Aucun résultat. Essayez avec moins de mots, ou ajoutez-le à la main.
       no_cards_in: "Aucune carte trouvée en {language}. Essayez le nom anglais, l'extension et le numéro, ou une autre langue de carte."
       more_results: Plus de résultats
@@ -266,8 +271,8 @@ ernestdefoe-curio:
   admin:
     settings:
       upc_label: Clé UPCitemdb (facultatif)
-      upc_help: Les codes-barres des jeux, films et autres produits sont recherchés sur UPCitemdb, qui en permet 100 par jour sans clé. Chaque code-barres trouvé est gardé par le forum, la plupart des forums n'ont donc jamais besoin de plus. Une clé payante relève la limite.
-      upc_link: Obtenir une clé
+      upc_help: "Le scan de codes-barres fonctionne sans aucune clé. Les livres sont cherchés sur Open Library et les disques sur Deezer et MusicBrainz. Les jeux, films et autres produits sont demandés à UPCitemdb (sans clé, 100 par jour, surtout les produits nord-américains) et à Open Icecat (sans clé, surtout les produits européens : jeux, consoles, électronique, jouets). Chaque code-barres trouvé par le forum, ou associé à la main par un membre, est gardé : il n’est jamais demandé deux fois. Une clé UPCitemdb payante ne fait que relever la limite quotidienne d’UPCitemdb ; la plupart des forums n’en ont jamais besoin."
+      upc_link: Offres UPCitemdb
       deepl_label: Clé DeepL (facultatif)
       deepl_help: Quand Wikipédia n'a pas de description dans une langue, DeepL traduit celle en anglais. Les clés gratuites finissent par « :fx ».
       deepl_link: Obtenir une clé

@@ -26,7 +26,11 @@ class UpcItemDb
     {
     }
 
-    /** The product's name, or null (unknown, or today's allowance is spent). */
+    /**
+     * The product's name, or null when UPCitemdb does not know it.
+     *
+     * @throws LookupException when UPCitemdb is down or today's allowance is spent
+     */
     public function name(string $ean, int $actorId): ?string
     {
         if ($this->cache->has("curio.upc.miss.$ean")) {
@@ -38,7 +42,7 @@ class UpcItemDb
 
         if (! $this->spend("curio.upc.member.$actorId.$day", self::PER_MEMBER_PER_DAY)
             || ($key === '' && ! $this->spend("curio.upc.forum.$day", self::FREE_PER_DAY))) {
-            return null;
+            throw new LookupException('upcitemdb daily allowance spent', true);
         }
 
         $name = $this->ask($ean, $key);

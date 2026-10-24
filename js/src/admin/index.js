@@ -144,7 +144,7 @@ export const extend = [
       help: (
         <>
           {t('settings.upc_help')}{' '}
-          <Link href="https://www.upcitemdb.com/wp/docs/main/development/getting-started/" external target="_blank">
+          <Link href="https://devs.upcitemdb.com/" external target="_blank">
             {t('settings.upc_link')}
           </Link>
         </>

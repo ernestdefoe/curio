@@ -219,14 +219,7 @@ export default class ItemEditModal extends FormModal {
           </div>
         ) : null}
 
-        {this.barcode ? (
-          <div className={'CurioScanned' + (this.barcode.results.length || this.barcode.title ? '' : ' CurioScanned--miss')}>
-            <Icon name={this.barcode.results.length || this.barcode.title ? 'fas fa-circle-check' : 'fas fa-circle-question'} />{' '}
-            {this.barcode.results.length || this.barcode.title
-              ? t('item_edit.barcode_found', { code: this.barcode.code })
-              : t('item_edit.barcode_unknown', { code: this.barcode.code })}
-          </div>
-        ) : null}
+        {this.scannedNote(searchable)}
 
         {this.searching ? <LoadingIndicator display="block" /> : this.resultList()}
 
@@ -249,8 +242,62 @@ export default class ItemEditModal extends FormModal {
     );
   }
 
+  /**
+   * What a scanned barcode turned out to be. Never nothing: a barcode no
+   * service knows offers the title search, and the code stays with the item
+   * picked or typed, so the forum learns it for the next person.
+   */
+  scannedNote(searchable) {
+    const b = this.barcode;
+    if (!b) {
+      return this.code && this.results ? (
+        <div className="CurioScanned CurioScanned--kept">
+          <Icon name="fas fa-barcode" /> {t('item_edit.barcode_kept', { code: this.code })}
+        </div>
+      ) : null;
+    }
+    if (b.results.length) {
+      return (
+        <div className="CurioScanned">
+          <Icon name="fas fa-circle-check" /> {t('item_edit.barcode_found', { code: b.code })}
+        </div>
+      );
+    }
+
+    const message = b.unavailable
+      ? t('item_edit.barcode_unavailable', { code: b.code })
+      : b.title
+        ? t('item_edit.barcode_named', { code: b.code, title: b.title })
+        : t('item_edit.barcode_miss', { code: b.code });
+
+    return (
+      <div className="CurioScanned CurioScanned--miss">
+        <Icon name="fas fa-circle-question" />
+        <div>
+          <p>{message}</p>
+          <p className="CurioMuted">{t('item_edit.barcode_teach')}</p>
+          {searchable ? (
+            <Button type="button" className="Button Button--primary" icon="fas fa-magnifying-glass" onclick={() => this.byTitle(b.title)}>
+              {t('item_edit.by_title')}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  /** From a barcode nobody matched to the title search, the barcode kept for the item. */
+  byTitle(title) {
+    this.barcode = null;
+    this.results = null;
+    this.query(title || '');
+    if (title) this.search();
+    m.redraw.sync();
+    this.$('.CurioSearchField input').trigger('focus');
+  }
+
   resultList() {
-    if (!this.results) return null;
+    if (!this.results || (this.barcode && !this.results.length)) return null;
     if (!this.results.length) {
       return (
         <p className="CurioEmpty">
@@ -323,19 +370,29 @@ export default class ItemEditModal extends FormModal {
     }
     const asked = q;
 
-    lookup({ type: this.type.id(), q, page, ...(this.cardLang ? { lang: this.cardLang } : {}) })
+    const digits = /^[\d\s-]+$/.test(q) ? q.replace(/\D/g, '') : null;
+
+    lookup({ type: this.type.id(), q, page, ...(this.cardLang ? { lang: this.cardLang } : {}) }, !!digits)
       .then((response) => {
         if (this.query().trim() !== asked) return;
         const found = response.results || [];
         this.results = page > 1 ? [...(this.results || []), ...found] : found;
         this.page = page;
         this.more = !!response.more;
+        // A title search keeps the barcode scanned before it: it is saved with what is picked.
         if (page === 1) {
           this.barcode = response.barcode || null;
-          this.code = response.barcode ? response.barcode.code : null;
+          if (response.barcode) this.code = response.barcode.code;
         }
       })
-      .catch(() => page === 1 && (this.results = []))
+      .catch(() => {
+        if (page > 1) return;
+        this.results = [];
+        if (digits) {
+          this.barcode = { code: digits, results: [], fields: {}, title: null, unavailable: true };
+          this.code = digits;
+        }
+      })
       .finally(() => {
         this.searching = this.loadingMore = false;
         m.redraw();

@@ -34,8 +34,9 @@ export const types = () =>
     .sort((a, b) => a.position() - b.position());
 
 /** A JSON POST to Curio's look-up endpoint. */
-export function lookup(body) {
-  return app.request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/curio/lookup`, body });
+/** quiet: the caller shows its own message when the look-up fails (no alert). */
+export function lookup(body, quiet = false) {
+  return app.request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/curio/lookup`, body, ...(quiet ? { errorHandler() {} } : {}) });
 }
 
 /**
