@@ -12,6 +12,9 @@ use Ernestdefoe\Curio\Settings;
 use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Listener\LinkShownItem;
 use Ernestdefoe\Curio\Notification\NewItemsBlueprint;
+use Ernestdefoe\Curio\Notification\ProgressChangedBlueprint;
+use Ernestdefoe\Curio\Notification\RatingChangedBlueprint;
+use Ernestdefoe\Curio\Notification\WishlistAddedBlueprint;
 use Ernestdefoe\Curio\Notification\WishlistMatchBlueprint;
 use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
@@ -96,7 +99,10 @@ return [
 
     (new Extend\Notification())
         ->type(WishlistMatchBlueprint::class, ['alert', 'email'])
-        ->type(NewItemsBlueprint::class, ['alert']),
+        ->type(NewItemsBlueprint::class, ['alert'])
+        ->type(WishlistAddedBlueprint::class, ['alert'])
+        ->type(ProgressChangedBlueprint::class, ['alert'])
+        ->type(RatingChangedBlueprint::class, ['alert']),
 
     (new Extend\Routes('api'))
         ->post('/curio/lookup', 'curio.lookup', Api\LookupController::class)

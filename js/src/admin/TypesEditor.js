@@ -15,7 +15,7 @@ const text = (key, params) => extractText(t(key, params));
 
 const SHAPES = ['portrait', 'box', 'square', 'landscape'];
 const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games', 'pokemon', 'magic', 'yugioh', 'cards'];
-const KINDS = ['select', 'text', 'number', 'date', 'bool'];
+const KINDS = ['select', 'text', 'number', 'date', 'bool', 'link'];
 const clone = (v) => JSON.parse(JSON.stringify(v));
 // What a type export carries: everything an admin sets, labels in every language.
 const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress'];
@@ -233,7 +233,7 @@ export default class TypesEditor {
           <tbody>
             {d.fields.map((f, i) => (
               <tr>
-                <td>
+                <td data-label={text('types.field_label', { language: app.data.locales[this.lang] })}>
                   <input
                     className="FormControl"
                     value={f.labels[this.lang] || ''}
@@ -241,10 +241,10 @@ export default class TypesEditor {
                     oninput={(e) => (f.labels[this.lang] = e.target.value)}
                   />
                 </td>
-                <td>
+                <td data-label={text('types.field_kind')}>
                   <Select value={f.kind} onchange={(v) => (f.kind = v)} options={Object.fromEntries(KINDS.map((k) => [k, text('kind.' + k)]))} />
                 </td>
-                <td>{f.kind === 'select' ? this.options(f) : <span className="CurioMuted">—</span>}</td>
+                <td>{f.kind === 'select' ? this.options(f) : f.kind === 'link' ? this.reviewSwitch(f) : <span className="CurioMuted">—</span>}</td>
                 <td>
                   <Button
                     className="Button Button--icon Button--link"
@@ -305,7 +305,7 @@ export default class TypesEditor {
             <input
               value={o.labels[this.lang] || ''}
               placeholder={o.labels.en || ''}
-              size={Math.max(6, (o.labels[this.lang] || o.labels.en || '').length)}
+              size={Math.max(6, (o.labels[this.lang] || o.labels.en || '').length + 2)}
               oninput={(e) => (o.labels[this.lang] = e.target.value)}
             />
             <button type="button" aria-label={text('types.remove_choice')} onclick={() => field.options.splice(i, 1)}>
@@ -326,6 +326,26 @@ export default class TypesEditor {
           }}
         />
       </div>
+    );
+  }
+
+  /**
+   * A link detail can be the member's review: the item window then shows
+   * "Read my review" beside the rating. One per type.
+   */
+  reviewSwitch(field) {
+    return (
+      <label className="CurioAdmin-review">
+        <input
+          type="checkbox"
+          checked={!!field.review}
+          onchange={(e) => {
+            this.draft.fields.forEach((other) => delete other.review);
+            if (e.target.checked) field.review = true;
+          }}
+        />
+        {t('types.review_link')}
+      </label>
     );
   }
 

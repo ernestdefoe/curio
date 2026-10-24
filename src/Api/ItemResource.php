@@ -154,7 +154,11 @@ class ItemResource extends AbstractDatabaseResource
 
         if (array_key_exists(spl_object_id($model), $this->pendingFields)) {
             $type = $model->collection?->type;
-            $model->fields = $type ? self::cleanFields($type, $this->pendingFields[spl_object_id($model)]) : [];
+            $invalid = [];
+            $model->fields = $type ? self::cleanFields($type, $this->pendingFields[spl_object_id($model)], $invalid) : [];
+            if ($invalid) {
+                throw new ValidationException(['fields' => $this->translator->trans('ernestdefoe-curio.api.bad_link')]);
+            }
             $facet = $type?->facetField();
             $model->facet = $facet ? ($model->fields[$facet['key']] ?? null) : null;
             unset($this->pendingFields[spl_object_id($model)]);
@@ -179,9 +183,21 @@ class ItemResource extends AbstractDatabaseResource
             $this->queue->push(new NotifyWishlists($model->id));
         }
 
-        // Something new on the shelf: the collection's followers hear about it (once a day).
-        if ($model->wasRecentlyCreated && $model->status !== 'wishlist') {
-            $this->queue->push(new NotifyFollowers($model->collection_id));
+        // Followers hear about it, once a day per kind: something new on the
+        // shelf or the wishlist, something started or finished, a new rating.
+        // (Imports and look-up matching save items directly, never through here.)
+        $kinds = [];
+        if ($model->wasRecentlyCreated || $model->wasChanged('status')) {
+            $kinds[] = $model->status === 'wishlist' ? 'wishlist' : ($model->wasRecentlyCreated ? 'new' : null);
+        }
+        if (! $model->wasRecentlyCreated && $model->wasChanged('progress') && $model->progress) {
+            $kinds[] = 'progress';
+        }
+        if (! $model->wasRecentlyCreated && $model->wasChanged('rating') && $model->rating) {
+            $kinds[] = 'rating';
+        }
+        foreach (array_filter($kinds) as $kind) {
+            $this->queue->push(new NotifyFollowers($model->collection_id, $kind, $kind === 'new' ? null : $model->id));
         }
 
         return $model;
@@ -362,11 +378,13 @@ class ItemResource extends AbstractDatabaseResource
     }
 
     /**
-     * Only the type's own details, each in its kind.
+     * Only the type's own details, each in its kind. A link that is not a
+     * plain http(s) address is left out, and named in $invalid.
      *
+     * @param list<string> $invalid
      * @return array<string, mixed>
      */
-    public static function cleanFields(Type $type, mixed $value): array
+    public static function cleanFields(Type $type, mixed $value, array &$invalid = []): array
     {
         $clean = [];
         $value = (array) $value;
@@ -383,15 +401,48 @@ class ItemResource extends AbstractDatabaseResource
                 'number' => is_numeric($v) ? $v + 0 : null,
                 'date' => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null,
                 'select' => in_array($v, array_column($field['options'] ?? [], 'key'), true) ? $v : null,
+                'link' => self::url($v),
                 default => is_scalar($v) ? mb_substr(trim((string) $v), 0, 200) : null,
             };
 
             if ($v !== null && $v !== '') {
                 $clean[$field['key']] = $v;
+            } elseif ($field['kind'] === 'link') {
+                $invalid[] = $field['key'];
             }
         }
 
         return $clean;
+    }
+
+    /**
+     * A web address members may link to: http or https, a host, no
+     * credentials, no spaces or control characters, at most 500 characters.
+     * "www.example.com/review" gets https:// in front.
+     */
+    public static function url(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $url = trim($value);
+        if (! preg_match('~^[a-z][a-z0-9+.-]*:~i', $url) && preg_match('~^[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+([/?#]|$)~u', $url)) {
+            $url = 'https://'.$url;
+        }
+
+        if ($url === '' || mb_strlen($url) > 500 || preg_match('/[\s\x00-\x1f\x7f<>"`\\\\]/u', $url)) {
+            return null;
+        }
+
+        $parts = parse_url($url);
+
+        return is_array($parts)
+            && in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)
+            && preg_match('/^[\p{L}\p{N}.-]+$/u', $parts['host'] ?? '')
+            && str_contains($parts['host'], '.')
+            && ! isset($parts['user'])
+            ? $url : null;
     }
 
     private function addPhoto(Item $item, ?UploadedFileInterface $file, User $actor): Item

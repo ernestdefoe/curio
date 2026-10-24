@@ -4,7 +4,7 @@ import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t, text, label, locale } from '../util';
-import { fieldValue } from '../../common/labels';
+import { fieldValue, linkTo, reviewField, safeUrl } from '../../common/labels';
 import { typeBadge, statusPill, progressPill, owner, backdrop } from './bits';
 import ItemEditModal from './ItemEditModal';
 import Link from 'flarum/common/components/Link';
@@ -113,11 +113,7 @@ export default class ItemModal extends Modal {
             {item.displayTitle()} {item.year() ? <span className="CurioMuted">({item.year()})</span> : null}
           </h2>
           {item.subtitle() ? <div className="CurioItem-sub">{item.subtitle()}</div> : null}
-          {item.rating() ? (
-            <div className="CurioItem-rating">
-              <Stars value={item.rating()} />
-            </div>
-          ) : null}
+          {this.ratingLine(item, type)}
 
           {this.facts(item, type, work)}
 
@@ -137,6 +133,24 @@ export default class ItemModal extends Modal {
     );
   }
 
+  /** The stars, and "Read my review" when the type has a review link and it is filled. */
+  ratingLine(item, type) {
+    const review = reviewField(type ? type.fields() : []);
+    const url = review && safeUrl((item.fields() || {})[review.key]);
+    if (!item.rating() && !url) return null;
+
+    return (
+      <div className="CurioItem-rating">
+        {item.rating() ? <Stars value={item.rating()} /> : null}
+        {url ? (
+          <span className="CurioItem-review">
+            {linkTo(url.href, [<Icon name="fas fa-arrow-up-right-from-square" />, ' ', t('item.read_review')])}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
   facts(item, type, work) {
     const fields = type ? type.fields() || [] : [];
     const values = item.fields() || {};
@@ -151,9 +165,12 @@ export default class ItemModal extends Modal {
     if (known.genres) rows.push([t('item.genres'), list(known.genres.map(genre))]);
     if (known.platforms) rows.push([t('item.platforms'), list(known.platforms)]);
 
+    const review = reviewField(fields);
     fields.forEach((f) => {
       const v = values[f.key];
       if (v === undefined || v === null || v === '') return;
+      // Shown beside the rating instead.
+      if (f === review && safeUrl(v)) return;
       rows.push([label(f.labels), f.kind === 'bool' ? t(v ? 'item.yes' : 'item.no') : fieldValue(f, v, locale())]);
     });
     if (item.condition())

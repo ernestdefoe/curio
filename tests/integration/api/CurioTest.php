@@ -1997,4 +1997,101 @@ class CurioTest extends TestCase
         $this->assertEquals(['format' => 'hardback'], $this->json($response)['data']['attributes']['fields']);
         $this->assertSame(403, $this->item(4, $xbox, ['title' => 'Halo'])->getStatusCode());
     }
+
+    private function follow(int $as, int $collection): void
+    {
+        $this->assertTrue($this->json($this->patchCollection($as, $collection, ['followed' => true]))['data']['attributes']['followed']);
+    }
+
+    #[Test]
+    public function followers_hear_about_wishlists_progress_and_ratings_once_a_day_each(): void
+    {
+        $id = $this->newCollection(3);
+        $this->follow(4, $id);
+        $this->follow(2, $id);
+
+        $wanted = (int) $this->json($this->item(3, $id, ['title' => 'Wanted']))['data']['id'];
+        $this->assertSame(1, $this->notifications(4, 'curioNewItems'));
+        $this->assertSame(0, $this->notifications(4, 'curioWishlistAdded'));
+
+        // Onto the wishlist (moved there, then added there): one a day.
+        $this->patchItem(3, $wanted, ['status' => 'wishlist']);
+        $this->item(3, $id, ['title' => 'Also wanted', 'status' => 'wishlist']);
+        $this->assertSame(1, $this->notifications(4, 'curioWishlistAdded'));
+        $this->assertSame(1, $this->notifications(2, 'curioWishlistAdded'));
+
+        $game = (int) $this->json($this->item(3, $id, ['title' => 'Celeste']))['data']['id'];
+        $this->assertSame(0, $this->notifications(4, 'curioProgressChanged'));
+        $this->patchItem(3, $game, ['progress' => 'in_progress']);
+        $this->patchItem(3, $game, ['progress' => 'completed']);
+        $this->assertSame(1, $this->notifications(4, 'curioProgressChanged'));
+
+        $this->patchItem(3, $game, ['rating' => 8]);
+        $this->patchItem(3, $game, ['rating' => 9]);
+        $this->assertSame(1, $this->notifications(4, 'curioRatingChanged'));
+        // Taking a rating away is not news.
+        $this->database()->table('notifications')->where('type', 'curioRatingChanged')->delete();
+        $this->patchItem(3, $game, ['rating' => null]);
+        $this->assertSame(0, $this->notifications(4, 'curioRatingChanged'));
+
+        // A notification of every kind lists with its collection, for a member and for an admin.
+        foreach ([4, 1] as $as) {
+            $this->follow($as, $this->newCollection(3, ['name' => "For $as"]));
+        }
+        $response = $this->get('/api/notifications', ['include' => 'subject,fromUser'], 4);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame(['curioNewItems', 'curioProgressChanged', 'curioWishlistAdded'], collect($this->json($response)['data'])->pluck('attributes.contentType')->unique()->sort()->values()->all());
+        $this->assertSame(200, $this->get('/api/notifications', ['include' => 'subject'], 1)->getStatusCode());
+    }
+
+    #[Test]
+    public function a_private_wishlist_tells_no_follower_and_imports_tell_nothing_new(): void
+    {
+        $id = $this->newCollection(3, ['wishlistPublic' => false]);
+        $this->follow(4, $id);
+
+        $wanted = (int) $this->json($this->item(3, $id, ['title' => 'Secret', 'status' => 'wishlist']))['data']['id'];
+        $this->patchItem(3, $wanted, ['progress' => 'in_progress', 'rating' => 6]);
+        foreach (['curioWishlistAdded', 'curioProgressChanged', 'curioRatingChanged'] as $type) {
+            $this->assertSame(0, $this->notifications(4, $type), $type);
+        }
+
+        $this->patchCollection(3, $id, ['wishlistPublic' => true]);
+        $this->database()->table('notifications')->delete();
+        $this->upload(3, $id, "title,status,rating,progress\nImported wish,wishlist,4,completed\nImported game,owned,5,in_progress\n");
+        foreach (['curioWishlistAdded', 'curioProgressChanged', 'curioRatingChanged'] as $type) {
+            $this->assertSame(0, $this->notifications(4, $type), $type);
+        }
+    }
+
+    #[Test]
+    public function a_link_detail_takes_only_web_addresses_and_one_review_link(): void
+    {
+        $games = $this->typeId('games');
+        $fields = $this->json($this->get("/api/curio-types/$games", [], 1))['data']['attributes']['fields'];
+        $fields[] = ['key' => '', 'kind' => 'link', 'labels' => ['en' => 'Review'], 'review' => true];
+        $fields[] = ['key' => '', 'kind' => 'link', 'labels' => ['en' => 'Shop'], 'review' => true];
+        $saved = $this->json($this->patchType($games, ['fields' => $fields]))['data']['attributes']['fields'];
+        $links = array_values(array_filter($saved, fn ($f) => $f['kind'] === 'link'));
+        $this->assertSame(['review', 'shop'], array_column($links, 'key'));
+        $this->assertTrue($links[0]['review']);
+        $this->assertArrayNotHasKey('review', $links[1]);
+
+        $id = $this->newCollection(3);
+        foreach (['javascript:alert(1)', 'data:text/html,hi', 'https://user:pw@example.com/', 'https://exa mple.com', 'http://localhost/x', 'https://example.com/"><script>'] as $bad) {
+            $this->assertSame(422, $this->item(3, $id, ['title' => 'Bad', 'fields' => ['review' => $bad]])->getStatusCode(), $bad);
+        }
+
+        $item = $this->json($this->item(3, $id, ['title' => 'Good', 'fields' => ['review' => 'www.example.com/my-review?x=1', 'shop' => 'HTTP://Example.org']]));
+        $this->assertSame(['review' => 'https://www.example.com/my-review?x=1', 'shop' => 'HTTP://Example.org'], $item['data']['attributes']['fields']);
+
+        // Through a spreadsheet and back; a bad link in a file is left out, not fatal.
+        $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
+        $this->assertStringContainsString('https://www.example.com/my-review?x=1', $csv);
+        $copy = $this->newCollection(3, ['name' => 'Copy']);
+        $this->upload(3, $copy, $csv);
+        $this->upload(3, $copy, "title,review\nEvil,javascript:alert(1)\n");
+        $rows = $this->database()->table('curio_items')->where('collection_id', $copy)->orderBy('position')->pluck('fields')->map(fn ($f) => json_decode($f, true)['review'] ?? null)->all();
+        $this->assertSame(['https://www.example.com/my-review?x=1', null], $rows);
+    }
 }

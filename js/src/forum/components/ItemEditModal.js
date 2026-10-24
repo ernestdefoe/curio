@@ -877,9 +877,10 @@ export default class ItemEditModal extends FormModal {
                 <input
                   id={id}
                   className="FormControl"
-                  type={f.kind === 'number' ? 'number' : f.kind === 'date' ? 'date' : 'text'}
+                  type={f.kind === 'number' ? 'number' : f.kind === 'date' ? 'date' : f.kind === 'link' ? 'url' : 'text'}
                   value={value || ''}
-                  maxlength="200"
+                  maxlength={f.kind === 'link' ? 500 : 200}
+                  placeholder={f.kind === 'link' ? 'https://' : undefined}
                   oninput={(e) => set(e.target.value)}
                 />
               )}

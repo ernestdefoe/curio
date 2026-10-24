@@ -14,11 +14,37 @@ export function optionLabel(field, key, locale) {
   return option ? pick(option.labels, locale) : key;
 }
 
-/** A field's value as text for display ("Yes" for a checked box is the caller's word). */
+/**
+ * A member's web address, only when it is plain http(s): a detail switched
+ * to Link after holding text may keep any old value, so nothing else becomes an href.
+ */
+export function safeUrl(value) {
+  try {
+    const url = new URL(String(value));
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** A member's link: a new tab, never followed by search engines, no opener. */
+export function linkTo(value, text) {
+  const url = safeUrl(value);
+  if (!url) return String(value);
+  return m('a', { href: url.href, target: '_blank', rel: 'nofollow ugc noopener noreferrer' }, text || url.hostname.replace(/^www\./, ''));
+}
+
+/** A field's value for display ("Yes" for a checked box is the caller's word). */
 export function fieldValue(field, value, locale) {
   if (value === undefined || value === null || value === '') return null;
   if (field.kind === 'select') return optionLabel(field, value, locale);
+  if (field.kind === 'link') return linkTo(value);
   return String(value);
+}
+
+/** The type's link detail marked as the member's review, if any. */
+export function reviewField(fields) {
+  return (fields || []).find((f) => f.kind === 'link' && f.review) || null;
 }
 
 /**

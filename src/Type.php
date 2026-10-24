@@ -30,7 +30,7 @@ class Type extends AbstractModel
 
     public const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games', 'pokemon', 'magic', 'yugioh', 'cards'];
 
-    public const FIELD_KINDS = ['text', 'number', 'select', 'date', 'bool'];
+    public const FIELD_KINDS = ['text', 'number', 'select', 'date', 'bool', 'link'];
 
     protected $table = 'curio_types';
 
@@ -57,6 +57,18 @@ class Type extends AbstractModel
     {
         foreach ($this->fieldList() as $field) {
             if ($field['kind'] === 'select') {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    /** The link detail marked as the member's review ("Read my review" beside the rating). */
+    public function reviewField(): ?array
+    {
+        foreach ($this->fieldList() as $field) {
+            if ($field['kind'] === 'link' && ! empty($field['review'])) {
                 return $field;
             }
         }

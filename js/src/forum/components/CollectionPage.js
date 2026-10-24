@@ -411,7 +411,7 @@ export default class CollectionPage extends Page {
   }
 
   list(type) {
-    const fields = (type?.fields() || []).filter((f) => f.kind !== 'bool').slice(0, 2);
+    const fields = (type?.fields() || []).filter((f) => f.kind !== 'bool' && f.kind !== 'link').slice(0, 2);
     const shape = type ? type.shape() : 'portrait';
 
     return (
@@ -433,7 +433,8 @@ export default class CollectionPage extends Page {
             {this.items.map((item) => {
               const values = fields.map((f) => {
                 const v = (item.fields() || {})[f.key];
-                return v === undefined || v === '' ? null : f.kind === 'select' ? optionLabel(f, v, app.translator.getLocale()) : v;
+                if (v === undefined || v === '') return null;
+                return f.kind === 'select' ? optionLabel(f, v, app.translator.getLocale()) : v;
               });
               // Each is drawn twice (column and phone stack): Mithril needs a fresh vnode per place.
               const condition = () =>

@@ -215,6 +215,7 @@ class TypeResource extends AbstractDatabaseResource
     {
         $fields = [];
         $seen = [];
+        $review = false;
 
         foreach (array_slice((array) $value, 0, 12) as $field) {
             if (! is_array($field) || ! in_array($field['kind'] ?? null, Type::FIELD_KINDS, true)) {
@@ -238,6 +239,11 @@ class TypeResource extends AbstractDatabaseResource
                     }
                 }
                 $clean['options'] = $options;
+            }
+
+            // One link per type may be the member's review.
+            if ($field['kind'] === 'link' && ! empty($field['review']) && ! $review) {
+                $clean['review'] = $review = true;
             }
 
             $fields[] = $clean;

@@ -144,6 +144,7 @@ ernestdefoe-curio:
       favourite: Favori
       photo_n: "Photo {n}"
       "yes": Oui
+      read_review: Lire mon avis
       "no": Non
       condition: État
       acquired: Acquis le
@@ -265,6 +266,12 @@ ernestdefoe-curio:
       match_setting: Quelqu’un propose à l’échange un objet de ma liste de souhaits
       new_items: "{username} a ajouté des objets à {name}"
       new_items_setting: Une collection que je suis a des nouveautés
+      wishlist_added: "{username} a ajouté des objets à la liste de souhaits de {name}"
+      wishlist_added_setting: Un objet rejoint la liste de souhaits d’une collection que je suis
+      progress_changed: "{username} a commencé ou terminé un objet de {name}"
+      progress_changed_setting: Un objet est commencé ou terminé dans une collection que je suis
+      rating_changed: "{username} a noté un objet de {name}"
+      rating_changed_setting: Un objet est noté dans une collection que je suis
     widget:
       label: Ajouts récents aux collections
       field_title: Titre
@@ -350,6 +357,7 @@ ernestdefoe-curio:
       remove_choice: Retirer le choix
       remove_field: Retirer le détail
       add_field: Ajouter un détail
+      review_link: "Lien vers l’avis : affiche « Lire mon avis » à côté de la note"
       translation_note: Les titres et descriptions trouvés arrivent seuls dans chaque langue installée (Wikidata et Wikipédia). Seuls les libellés que vous écrivez ici sont à traduire.
       save: Enregistrer le type
       create: Créer le type
@@ -392,6 +400,7 @@ ernestdefoe-curio:
       number: Nombre
       date: Date
       bool: Oui / non
+      link: Lien
     permissions:
       view: Voir les collections
       create: Créer des collections, ajouter des objets et des photos
@@ -403,13 +412,23 @@ ernestdefoe-curio:
       subject: "{title} est proposé à l’échange"
       body: "Bonjour {recipient_display_name}, {owner} propose {title} à l’échange. Il est dans votre liste de souhaits."
       link: Voir l’offre
+    followed_link: Voir la collection
     new_items:
       subject: "Du nouveau dans {name}"
       body: "Bonjour {recipient_display_name}, {owner} a ajouté des objets à {name}, une collection que vous suivez."
-      link: Voir la collection
+    wishlist_added:
+      subject: "Du nouveau dans la liste de souhaits de {name}"
+      body: "Bonjour {recipient_display_name}, {owner} a ajouté des objets à la liste de souhaits de {name}, une collection que vous suivez."
+    progress_changed:
+      subject: "Avancement dans {name}"
+      body: "Bonjour {recipient_display_name}, {owner} a commencé ou terminé un objet de {name}, une collection que vous suivez."
+    rating_changed:
+      subject: "Nouvelles notes dans {name}"
+      body: "Bonjour {recipient_display_name}, {owner} a noté un objet de {name}, une collection que vous suivez."
   api:
     type_in_use: Ce type a des collections, il ne peut donc pas être supprimé.
     type_disabled: Ce type de collection est désactivé.
+    bad_link: "Un lien doit être une adresse web commençant par http:// ou https://."
     too_many_collections: "Vous pouvez avoir jusqu'à {count} collections."
     collection_full: "Une collection contient jusqu'à {count} objets."
     too_many_photos: "Un objet peut avoir jusqu'à {count} photos."

@@ -1,4 +1,7 @@
 import Extend from 'flarum/common/extenders';
-import { WishlistMatchNotification, NewItemsNotification } from './components/notifications';
+import { WishlistMatchNotification, FOLLOWED } from './components/notifications';
 
-export default [new Extend.Notification().add('curioWishlistMatch', WishlistMatchNotification).add('curioNewItems', NewItemsNotification)];
+const notifications = new Extend.Notification().add('curioWishlistMatch', WishlistMatchNotification);
+FOLLOWED.forEach(([type, component]) => notifications.add(type, component));
+
+export default [notifications];

@@ -8,6 +8,7 @@ import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Placeholder from 'flarum/common/components/Placeholder';
 import Button from 'flarum/common/components/Button';
 import Link from 'flarum/common/components/Link';
+import Tooltip from 'flarum/common/components/Tooltip';
 import username from 'flarum/common/helpers/username';
 import humanTime from 'flarum/common/helpers/humanTime';
 import textContrastClass from 'flarum/common/helpers/textContrastClass';
@@ -152,17 +153,36 @@ export default class BrowsePage extends Page {
             {this.overview ? <p>{t('browse.lead', { items: this.overview.items, members: this.overview.members })}</p> : null}
           </div>
           <div className="CurioBrowse-tools">
-            <div className="Form-group CurioSearchField">
-              <Icon name="fas fa-magnifying-glass" />
-              <input
-                className="FormControl"
-                type="search"
-                value={this.q}
-                placeholder={text('browse.search')}
-                aria-label={text('browse.search')}
-                oninput={(e) => this.search(e.target.value)}
-              />
-            </div>
+            {this.searching || this.q ? (
+              <div className="Form-group CurioSearchField">
+                <Icon name="fas fa-magnifying-glass" />
+                <input
+                  className="FormControl"
+                  type="search"
+                  value={this.q}
+                  placeholder={text('browse.search')}
+                  aria-label={text('browse.search')}
+                  oncreate={(vnode) => vnode.dom.focus()}
+                  onblur={() => (this.searching = false)}
+                  onkeydown={(e) => {
+                    if (e.key !== 'Escape') return;
+                    e.preventDefault();
+                    this.searching = false;
+                    this.search('');
+                  }}
+                  oninput={(e) => this.search(e.target.value)}
+                />
+              </div>
+            ) : (
+              <Tooltip text={text('browse.search')}>
+                <Button
+                  className="Button Button--icon"
+                  icon="fas fa-magnifying-glass"
+                  aria-label={text('browse.search')}
+                  onclick={() => (this.searching = true)}
+                />
+              </Tooltip>
+            )}
             {app.session.user && app.forum.attribute('canCreateCurio') ? (
               <Button className="Button Button--primary" icon="fas fa-plus" onclick={() => addToMyCollection({})}>
                 {t('browse.add')}
