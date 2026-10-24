@@ -179,7 +179,11 @@ export default class BrowsePage extends Page {
                   className="Button Button--icon"
                   icon="fas fa-magnifying-glass"
                   aria-label={text('browse.search')}
-                  onclick={() => (this.searching = true)}
+                  onclick={() => {
+                    // Drawn now, inside the tap, so iOS lets the field take focus and opens the keyboard.
+                    this.searching = true;
+                    m.redraw.sync();
+                  }}
                 />
               </Tooltip>
             )}
