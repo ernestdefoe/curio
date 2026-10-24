@@ -67,9 +67,27 @@ php flarum migrate
 - **Offer the "Recently added" widget** (off by default).
 - **IGDB client ID and secret** (optional). Game look-ups on IGDB. [Create a Twitch app](https://dev.twitch.tv/console/apps/create) (any name, OAuth redirect URL `http://localhost`, category Application Integration), then copy its Client ID and make a New Secret. The forum keeps its Twitch token until a day before it expires, keeps searches for a day, and sends IGDB at most four requests a second and 2,000 a day.
 - **UPCitemdb key** (optional). Barcodes work without it: UPCitemdb allows 100 lookups a day with no key, and Open Icecat needs none. Every barcode the forum resolves is kept, so it never asks twice. A paid key only raises UPCitemdb's limit. [UPCitemdb plans](https://devs.upcitemdb.com/).
+- **Barcode scanning and look-ups** (on by default). Turned off, the Scan button goes, a number typed in the search box is searched as a title, and the forum asks no barcode service at all (the look-up endpoint answers a barcode with 403).
+- **barcodelookup.com API key and EAN-Search.org API token** (optional, paid). See [Paid barcode services](#paid-barcode-services-optional).
 - **eBay App ID, Cert ID and site** (optional). See [eBay barcode look-ups](#ebay-barcode-look-ups-optional).
 - **DeepL key** (optional). Translates a description when Wikipedia has none in a language. Keys ending in `:fx` use DeepL's free plan.
 - **Largest photo** (default 8 MB). Photos are resized and re-encoded, so what is stored is far smaller.
+
+## Paid barcode services (optional)
+
+For forums that want more boxes found than the free services know, Curio can also ask two paid services with the forum's own key. Without a key a service is never contacted.
+
+| | [barcodelookup.com](https://www.barcodelookup.com/api) | [EAN-Search.org](https://www.ean-search.org/ean-database-api.html) |
+|---|---|---|
+| Cost (October 2026) | from $99 a month for 5,000 answers (Starter); free test key on the same page | from €19 a month for 5,000 queries (Pro); €1 trial month of 100, once per person |
+| Counted | only look-ups that find something | every query |
+| Asked | after UPCitemdb and Open Icecat | after barcodelookup.com, before eBay |
+| Kept by Curio | the name, for a day | the name for a month, a miss for a week |
+
+- **Order:** the forum's own barcode table, UPCitemdb and Open Icecat (in the order the barcode's country favours), barcodelookup.com (a miss costs nothing there), EAN-Search, then eBay.
+- **Within limits.** Each is asked at most 2 times a second, 200 times a day and 25 times per member a day, and never twice for a barcode while its answer is kept.
+- **Fails safe.** Any problem (refused key, rate limit, outage, an unexpected answer) is a miss: the member gets the usual "Search by title instead", and one line a day goes to the forum's log, with no key in it. A refused key is not tried again for an hour; a new key is tried at once.
+- **Only the name is used.** barcodelookup.com's images and descriptions belong to third parties under its terms, so Curio never shows or keeps them; its terms also ask that kept answers go when the subscription ends, which is why a name is kept a day. EAN-Search answers with names and categories only.
 
 ## eBay barcode look-ups (optional)
 

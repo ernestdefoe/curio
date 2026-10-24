@@ -30,4 +30,14 @@ class Budget
             usleep((int) ((1 - fmod(microtime(true), 1)) * 1000000) + 20000);
         }
     }
+
+    /** @throws LookupException when this member has spent their share of today's allowance */
+    public function spendFor(string $service, int $actorId, int $perDay): void
+    {
+        $counter = "curio.$service.member.$actorId.".date('Ymd');
+        $this->cache->add($counter, 0, 2 * 86400);
+        if ($this->cache->increment($counter) > $perDay) {
+            throw new LookupException("$service member allowance spent", true);
+        }
+    }
 }

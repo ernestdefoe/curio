@@ -6,7 +6,7 @@ import Select from 'flarum/common/components/Select';
 import Switch from 'flarum/common/components/Switch';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Stream from 'flarum/common/utils/Stream';
-import { t, text, label, locale, STATUSES, CONDITIONS, PROGRESS, lookup, closeThen } from '../util';
+import { t, text, label, locale, STATUSES, CONDITIONS, PROGRESS, lookup, closeThen, barcodesOn } from '../util';
 import { pick, onlyOption } from '../../common/labels';
 import Stars from './Stars';
 import { canScan, scan } from '../scanner';
@@ -24,6 +24,8 @@ const CARD_LANGUAGES = {
   magic: ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'ru', 'zh-cn', 'zh-tw'],
 };
 const LANGUAGE_KEY = 'curio.cardLanguage';
+/** What a barcode answer calls the thing: the product's cleaned name, else the title it was matched to (books, records). */
+const barcodeName = (b) => (b && (b.title || (b.results[0] && b.results[0].title))) || null;
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'BRL', 'MXN', 'INR'];
 
 /** "fr" → "Français", in the reader's language ("français" mid-sentence). */
@@ -67,8 +69,10 @@ export default class ItemEditModal extends FormModal {
 
     this.collection = this.attrs.collection;
     this.type = this.collection.type();
-    // A new item starts at the look-up: even a type with no title search takes a barcode.
-    this.step = item || from || this.attrs.work ? 'details' : 'find';
+    // A new item starts at the look-up: even a type with no title search takes a barcode (unless barcodes are off).
+    this.barcodes = barcodesOn();
+    this.findable = this.type.searchable() || this.barcodes;
+    this.step = item || from || this.attrs.work || !this.findable ? 'details' : 'find';
 
     this.query = Stream('');
     this.results = null;
@@ -139,7 +143,7 @@ export default class ItemEditModal extends FormModal {
   content() {
     return (
       <div className="Modal-body">
-        {this.attrs.item ? null : (
+        {this.attrs.item || !this.findable ? null : (
           <div className="CurioTabs" role="tablist">
             <button
               type="button"
@@ -178,8 +182,8 @@ export default class ItemEditModal extends FormModal {
             <input
               className="FormControl"
               value={this.query()}
-              placeholder={text(searchable ? 'item_edit.search_placeholder' : 'item_edit.barcode_placeholder')}
-              aria-label={text(searchable ? 'item_edit.search_placeholder' : 'item_edit.barcode_placeholder')}
+              placeholder={text(this.placeholder(searchable))}
+              aria-label={text(this.placeholder(searchable))}
               oninput={(e) => this.typed(e.target.value)}
               onkeydown={(e) => {
                 if (e.key === 'Enter') {
@@ -200,7 +204,7 @@ export default class ItemEditModal extends FormModal {
               options={Object.fromEntries(this.cardLanguages.map((code) => [code, languageName(code)]))}
             />
           ) : null}
-          {canScan() ? (
+          {this.barcodes && canScan() ? (
             <Button
               type="button"
               className={'Button CurioScanButton' + (this.scanning ? ' Button--primary' : '')}
@@ -242,6 +246,11 @@ export default class ItemEditModal extends FormModal {
     );
   }
 
+  placeholder(searchable) {
+    if (!this.barcodes) return 'item_edit.title_placeholder';
+    return searchable ? 'item_edit.search_placeholder' : 'item_edit.barcode_placeholder';
+  }
+
   /**
    * What a scanned barcode turned out to be. Never nothing: a barcode no
    * service knows offers the title search, and the code stays with the item
@@ -259,7 +268,10 @@ export default class ItemEditModal extends FormModal {
     if (b.results.length) {
       return (
         <div className="CurioScanned">
-          <Icon name="fas fa-circle-check" /> {t('item_edit.barcode_found', { code: b.code })}
+          <Icon name="fas fa-circle-check" />{' '}
+          {barcodeName(b)
+            ? t('item_edit.barcode_found_named', { code: b.code, title: barcodeName(b) })
+            : t('item_edit.barcode_found', { code: b.code })}
         </div>
       );
     }
@@ -354,7 +366,7 @@ export default class ItemEditModal extends FormModal {
     this.query(value);
     clearTimeout(this.debounce);
     // A barcode is searched when complete (Enter or a scanner's own Enter), not while typing digits.
-    if (/^[\d\s-]*$/.test(value)) return;
+    if (this.barcodes && /^[\d\s-]*$/.test(value)) return;
     this.debounce = setTimeout(() => this.search(), 350);
   }
 
@@ -370,9 +382,10 @@ export default class ItemEditModal extends FormModal {
     }
     const asked = q;
 
-    const digits = /^[\d\s-]+$/.test(q) ? q.replace(/\D/g, '') : null;
+    const digits = this.barcodes && /^[\d\s-]+$/.test(q) ? q.replace(/\D/g, '') : null;
+    const extra = { ...(this.cardLang ? { lang: this.cardLang } : {}), ...(this.barcodes ? {} : { text: 1 }) };
 
-    lookup({ type: this.type.id(), q, page, ...(this.cardLang ? { lang: this.cardLang } : {}) }, !!digits)
+    lookup({ type: this.type.id(), q, page, ...extra }, !!digits)
       .then((response) => {
         if (this.query().trim() !== asked) return;
         const found = response.results || [];
@@ -383,6 +396,9 @@ export default class ItemEditModal extends FormModal {
         if (page === 1) {
           this.barcode = response.barcode || null;
           if (response.barcode) this.code = response.barcode.code;
+          // A barcode with a name: the name goes in the box, to refine and search again.
+          const named = barcodeName(response.barcode);
+          if (named) this.query(named);
         }
       })
       .catch(() => {
@@ -407,7 +423,7 @@ export default class ItemEditModal extends FormModal {
     } catch (e) {
       // Kept for this window only.
     }
-    if (this.query().trim() && !/^[\d\s-]*$/.test(this.query())) this.search();
+    if (this.query().trim() && !(this.barcodes && /^[\d\s-]*$/.test(this.query()))) this.search();
   }
 
   toggleScan() {
@@ -441,7 +457,7 @@ export default class ItemEditModal extends FormModal {
       this.code = this.barcode.code;
       if (this.barcode.title && !this.itemTitle()) this.itemTitle(this.barcode.title);
       Object.assign(this.fields, this.barcode.fields || {});
-    } else if (this.query().trim() && !/^\d/.test(this.query())) {
+    } else if (this.query().trim() && !(this.barcodes && /^\d/.test(this.query()))) {
       this.itemTitle(this.itemTitle() || this.query().trim());
     }
     this.step = 'details';

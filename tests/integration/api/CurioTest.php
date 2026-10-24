@@ -931,6 +931,93 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function paid_barcode_services_are_asked_after_the_free_ones_and_before_ebay(): void
+    {
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $this->put('ernestdefoe-curio.barcodelookup_key', 'bl-key');
+        $this->put('ernestdefoe-curio.eansearch_token', 'es-token');
+        $this->put('ernestdefoe-curio.ebay_app_id', 'Forum-Curio-PRD-1');
+        $this->put('ernestdefoe-curio.ebay_cert_id', 'PRD-cert');
+        $fake = $this->fakeBarcodeServices();
+
+        $found = $this->json($this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3,
+            'json' => ['type' => $this->typeId('games'), 'q' => '0045496428778'],
+        ])))['barcode'];
+
+        // barcodelookup.com has nothing (not charged), EAN-Search names it; eBay is not needed.
+        $this->assertSame(['upcitemdb 045496428778', 'icecat 0045496428778', 'barcodelookup 0045496428778', 'eansearch 0045496428778'], $fake->asked);
+        $this->assertSame(['Metroid Dread', 'nintendo-switch', 'igdb'], [$found['title'], $found['fields']['platform'], $found['results'][0]['source']]);
+    }
+
+    #[Test]
+    public function barcodes_switched_off_ask_nobody_and_a_number_is_searched_as_a_title(): void
+    {
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $this->put('ernestdefoe-curio.barcodelookup_key', 'bl-key');
+        $this->put('ernestdefoe-curio.barcodes', '0');
+        $fake = $this->fakeBarcodeServices();
+        $ask = fn (array $body) => $this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3,
+            'json' => ['type' => $this->typeId('games')] + $body,
+        ]));
+
+        $refused = $ask(['q' => '0045496428778']);
+        $this->assertSame(403, $refused->getStatusCode());
+        $this->assertSame('barcodes_disabled', $this->json($refused)['errors'][0]['code']);
+
+        $asText = $ask(['q' => '1942', 'text' => 1]);
+        $this->assertSame(200, $asText->getStatusCode());
+        $this->assertArrayNotHasKey('barcode', $this->json($asText));
+        $this->assertSame([], $fake->asked);
+
+        // An item saved with a barcode still teaches the forum, but nothing is answered from it while off.
+        $this->assertSame(['code' => '0045496428778', 'results' => [], 'fields' => [], 'title' => null, 'known' => false],
+            resolve(BarcodeLookup::class)->lookup(\Ernestdefoe\Curio\Type::query()->find($this->typeId('games')), '0045496428778', 3));
+
+        $forum = $this->json($this->send($this->request('GET', '/api')));
+        $this->assertFalse($forum['data']['attributes']['curioBarcodes']);
+    }
+
+    /** Every barcode service answers from recorded shapes; IGDB is the fake one. */
+    private function fakeBarcodeServices(): object
+    {
+        $this->fakeIgdb();
+        $igdb = $this->app()->getContainer()->make(\Ernestdefoe\Curio\Lookup\Http::class);
+        $fake = new class($igdb) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $asked = [];
+
+            public function __construct(private \Ernestdefoe\Curio\Lookup\Http $igdb)
+            {
+            }
+
+            public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
+            {
+                $this->asked[] = $service.' '.($query['GTIN'] ?? $query['upc'] ?? $query['gtin'] ?? $query['barcode'] ?? $query['ean'] ?? '');
+
+                return match ($service) {
+                    'icecat' => throw new \Ernestdefoe\Curio\Lookup\LookupException('icecat request failed (400)'),
+                    // A 404, "No data returned", comes back from Http as [].
+                    'barcodelookup' => [],
+                    'eansearch' => [['ean' => $query['ean'], 'name' => 'Metroid Dread Nintendo Switch', 'categoryId' => '0', 'categoryName' => 'Video Games', 'issuingCountry' => 'US']],
+                    'ebay' => json_decode(file_get_contents(__DIR__.'/../../fixtures/ebay/search-hit.json'), true),
+                    default => ['code' => 'OK', 'items' => []],
+                };
+            }
+
+            public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+            {
+                return $service === 'ebay-token' ? ['access_token' => 'tok', 'expires_in' => 7200] : $this->igdb->post($service, $url, $query, $headers, $body, $timeout);
+            }
+        };
+        $this->app()->getContainer()->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        return $fake;
+    }
+
+    #[Test]
     public function a_barcode_added_by_hand_learns_its_work_from_the_first_pick(): void
     {
         $this->app();

@@ -22,6 +22,14 @@ final class Settings
     /** An eBay marketplace id (EBAY_FR…); blank = from the forum's language. */
     public const EBAY_MARKETPLACE = 'ernestdefoe-curio.ebay_marketplace';
 
+    /** Optional paid barcode services, asked after the free ones and before eBay. */
+    public const BARCODELOOKUP_KEY = 'ernestdefoe-curio.barcodelookup_key';
+
+    public const EANSEARCH_TOKEN = 'ernestdefoe-curio.eansearch_token';
+
+    /** Barcode scanning and look-ups. On by default; off hides the Scan button and nothing is asked about a barcode. */
+    public const BARCODES = 'ernestdefoe-curio.barcodes';
+
     /** Offer the "Recently added" widget to Bespoke and FoF Forum Widgets. Off until an admin turns it on. */
     public const WIDGET = 'ernestdefoe-curio.widget';
 

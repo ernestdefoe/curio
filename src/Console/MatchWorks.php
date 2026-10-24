@@ -60,7 +60,7 @@ class MatchWorks extends AbstractCommand
             try {
                 $hit = null;
 
-                if ($type && $item->barcode) {
+                if ($type && $item->barcode && $barcodes->enabled()) {
                     try {
                         $hit = $barcodes->lookup($type, $item->barcode, $item->user_id)['results'][0] ?? null;
                     } catch (LookupException $e) {

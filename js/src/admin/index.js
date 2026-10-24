@@ -138,6 +138,12 @@ export const extend = [
       label: t('settings.igdb_secret_label'),
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.barcodes',
+      type: 'boolean',
+      label: t('settings.barcodes_label'),
+      help: t('settings.barcodes_help'),
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.upcitemdb_key',
       type: 'text',
       label: t('settings.upc_label'),
@@ -146,6 +152,32 @@ export const extend = [
           {t('settings.upc_help')}{' '}
           <Link href="https://devs.upcitemdb.com/" external target="_blank">
             {t('settings.upc_link')}
+          </Link>
+        </>
+      ),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.barcodelookup_key',
+      type: 'password',
+      label: t('settings.barcodelookup_label'),
+      help: (
+        <>
+          {t('settings.barcodelookup_help')}{' '}
+          <Link href="https://www.barcodelookup.com/api" external target="_blank">
+            {t('settings.barcodelookup_link')}
+          </Link>
+        </>
+      ),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.eansearch_token',
+      type: 'password',
+      label: t('settings.eansearch_label'),
+      help: (
+        <>
+          {t('settings.eansearch_help')}{' '}
+          <Link href="https://www.ean-search.org/ean-database-api.html" external target="_blank">
+            {t('settings.eansearch_link')}
           </Link>
         </>
       ),

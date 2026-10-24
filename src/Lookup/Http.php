@@ -78,7 +78,7 @@ class Http
                 $this->cache->put($down, true, self::DOWN_SECONDS);
             }
 
-            throw new LookupException("$service request failed ($status)", $outage, $status === 401);
+            throw new LookupException("$service request failed ($status)", $outage, $status === 401, $status);
         }
 
         $body = json_decode((string) $response->getBody(), true);

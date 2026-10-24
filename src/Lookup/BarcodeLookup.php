@@ -6,8 +6,10 @@ use Carbon\Carbon;
 use Ernestdefoe\Curio\Lookup\Sources\Deezer;
 use Ernestdefoe\Curio\Lookup\Sources\MusicBrainz;
 use Ernestdefoe\Curio\Lookup\Sources\OpenLibrary;
+use Ernestdefoe\Curio\Settings;
 use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Type;
+use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Database\ConnectionInterface;
 
 /**
@@ -16,9 +18,10 @@ use Illuminate\Database\ConnectionInterface;
  * Library); a record is asked of Deezer, then MusicBrainz; anything else gets
  * a product name from UPCitemdb (strong on North American boxes) and Open
  * Icecat (strong on European ones), asked in the order the barcode's country
- * prefix favours, then eBay when the forum has its own eBay app. The name's
- * platform or format words become the item's details and its remaining words
- * are searched as a title.
+ * prefix favours, then the paid services the admin added a key for
+ * (barcodelookup.com, EAN-Search), then eBay when the forum has its own eBay
+ * app. The name's platform or format words become the item's details and its
+ * remaining words are searched as a title.
  */
 class BarcodeLookup
 {
@@ -47,9 +50,18 @@ class BarcodeLookup
         private MusicBrainz $musicBrainz,
         private UpcItemDb $upc,
         private Icecat $icecat,
+        private BarcodeLookupCom $barcodeLookup,
+        private EanSearch $eanSearch,
         private Ebay $ebay,
-        private Images $images
+        private Images $images,
+        private SettingsRepositoryInterface $settings
     ) {
+    }
+
+    /** "Barcode scanning and look-ups" (on unless the admin turned it off). */
+    public function enabled(): bool
+    {
+        return (bool) $this->settings->get(Settings::BARCODES, true);
     }
 
     /**
@@ -59,6 +71,12 @@ class BarcodeLookup
     public function lookup(Type $type, string $ean, int $actorId): array
     {
         $answer = ['code' => $ean, 'results' => [], 'fields' => [], 'title' => null, 'known' => false];
+
+        // Switched off: nothing is asked, not even the forum's own table.
+        if (! $this->enabled()) {
+            return $answer;
+        }
+
         $cached = $this->db->table('curio_barcodes')->where('code', $ean)->first();
 
         if ($cached) {
@@ -103,9 +121,10 @@ class BarcodeLookup
     /**
      * The product's name from the first service that knows it: UPCitemdb first
      * for US and Canadian barcodes (prefixes 00–13), Open Icecat first for the
-     * rest; eBay last, for what both miss. A service that is down or out of
-     * today's allowance is skipped; if nobody answered because of that, the
-     * member is told to try again.
+     * rest; then the paid services with a key (barcodelookup.com first: it
+     * does not charge for a miss, EAN-Search does); eBay last. A service that
+     * is down or out of today's allowance is skipped; if nobody answered
+     * because of that, the member is told to try again.
      *
      * @return array{title: string, name: string}|null
      * @throws LookupException
@@ -130,8 +149,8 @@ class BarcodeLookup
             }
         }
 
-        // eBay, only when set up: never throws, a failure is a miss.
-        if ($found = $this->ebay->product($ean)) {
+        // Only when set up; none of these throws, a failure is a miss.
+        if ($found = $this->barcodeLookup->product($ean, $actorId) ?? $this->eanSearch->product($ean, $actorId) ?? $this->ebay->product($ean)) {
             return $found;
         }
 

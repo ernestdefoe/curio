@@ -35,6 +35,9 @@ export const types = () =>
 
 /** A JSON POST to Curio's look-up endpoint. */
 /** quiet: the caller shows its own message when the look-up fails (no alert). */
+/** "Barcode scanning and look-ups" (admin setting, on unless turned off). */
+export const barcodesOn = () => app.forum.attribute('curioBarcodes') !== false;
+
 export function lookup(body, quiet = false) {
   return app.request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/curio/lookup`, body, ...(quiet ? { errorHandler() {} } : {}) });
 }

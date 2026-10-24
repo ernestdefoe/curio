@@ -19,6 +19,8 @@ use Psr\Log\LoggerInterface;
  */
 class Ebay
 {
+    use LogsOnce;
+
     private const TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 
     private const SEARCH_URL = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
@@ -91,7 +93,7 @@ class Ebay
             }
             $found = self::name($data['itemSummaries'] ?? []);
         } catch (LookupException $e) {
-            $this->failed($e);
+            $this->failed('ebay', 'eBay', $e);
 
             return null;
         }
@@ -256,21 +258,6 @@ class Ebay
     private function tokenKey(): string
     {
         return 'curio.ebay.token.'.md5($this->appId().':'.$this->certId());
-    }
-
-    /** One line a day per kind of failure; the message never holds the keys or a token. */
-    private function failed(LookupException $e): void
-    {
-        // Resting after a failure is that failure's echo, already logged.
-        if (str_ends_with($e->getMessage(), 'is marked down')) {
-            return;
-        }
-
-        $kind = preg_replace('/[^a-z0-9]+/', '-', strtolower($e->getMessage()));
-
-        if ($this->cache->add("curio.ebay.logged.$kind.".date('Ymd'), true, 2 * 86400)) {
-            $this->log->warning('[curio] eBay barcode look-up skipped: '.$e->getMessage());
-        }
     }
 
     private function appId(): string

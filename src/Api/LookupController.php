@@ -20,8 +20,10 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * POST /api/curio/lookup
- *   {type, q, page?, lang?} → title search ({results, more}), or a barcode/ISBN when q is one;
- *                       lang = the card language picked ("ja"), for card sources
+ *   {type, q, page?, lang?, text?} → title search ({results, more}), or a barcode/ISBN when q is one;
+ *                       lang = the card language picked ("ja"), for card sources;
+ *                       text = search q as a title even when it is all digits.
+ *                       A barcode with barcodes switched off is refused (403).
  *   {source, id}      → {workId}: the stored work for a result (fetched once, shared)
  *
  * POST so it carries the CSRF token; each call can cost the forum outbound
@@ -72,7 +74,11 @@ class LookupController implements RequestHandlerInterface
             return new JsonResponse(['results' => []]);
         }
 
-        if ($ean = Barcode::normalise($q)) {
+        if (! Arr::get($body, 'text') && $ean = Barcode::normalise($q)) {
+            if (! $this->barcodes->enabled()) {
+                return new JsonResponse(['errors' => [['status' => '403', 'code' => 'barcodes_disabled']]], 403);
+            }
+
             $found = $this->barcodes->lookup($type, $ean, $actorId);
             $found['results'] = array_map(fn ($r) => Arr::only($r, ['source', 'id', 'workId', 'title', 'creator', 'year', 'cover']), $found['results']);
             // An object even when empty, so the client can merge it into an item's details.

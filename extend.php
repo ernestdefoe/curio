@@ -57,8 +57,10 @@ return [
         ->default(Settings::HIDE_EMPTY, false)
         ->default(Settings::TYPE_COLOR, 'background')
         ->default(Settings::LATEST_CHANGES, true)
+        ->default(Settings::BARCODES, true)
         // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
         ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
+        ->serializeToForum('curioBarcodes', Settings::BARCODES, 'boolval')
         ->serializeToForum('curioCoverFit', Settings::COVER_FIT, fn ($value) => in_array($value, Settings::COVER_FITS, true) ? $value : 'blur')
         ->serializeToForum('curioShortcut', Settings::SHORTCUT, fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both'),
 

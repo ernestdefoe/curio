@@ -1,0 +1,56 @@
+{
+  "products": [
+    {
+      "barcode_number": "0045496428778",
+      "barcode_formats": "UPC-A 045496428778, EAN-13 0045496428778",
+      "mpn": "HACPAYMPA",
+      "model": "",
+      "asin": "B097B2YWFX",
+      "title": "Metroid Dread - Nintendo Switch",
+      "category": "Media > Video Games",
+      "manufacturer": "Nintendo",
+      "brand": "Nintendo",
+      "contributors": [],
+      "age_group": "",
+      "ingredients": "",
+      "nutrition_facts": "",
+      "energy_efficiency_class": "",
+      "color": "",
+      "gender": "",
+      "material": "",
+      "pattern": "",
+      "format": "Nintendo Switch",
+      "multipack": "",
+      "size": "",
+      "length": "",
+      "width": "",
+      "height": "",
+      "weight": "",
+      "release_date": "2021-10-08",
+      "description": "Join intergalactic bounty hunter Samus Aran in her first new 2D Metroid story in 19 years.",
+      "features": ["Samus returns in a new side-scrolling adventure"],
+      "images": ["https://images.barcodelookup.com/5219/52194594-1.jpg"],
+      "last_update": "2022-03-03 20:28:19",
+      "stores": [
+        {
+          "name": "Newegg.com",
+          "country": "US",
+          "currency": "USD",
+          "currency_symbol": "$",
+          "price": "41.38",
+          "sale_price": "35.99",
+          "tax": [{ "country": "US", "region": "US", "rate": "5.00", "tax_ship": "no" }],
+          "link": "https://www.newegg.com/product-link",
+          "item_group_id": "AB-4312",
+          "availability": "in stock",
+          "condition": "new",
+          "shipping": [{ "country": "US", "region": "US", "service": "Standard", "price": "8.49 USD" }],
+          "last_update": "2021-05-19 09:07:42"
+        }
+      ],
+      "reviews": [
+        { "name": "Josh Keller", "rating": "5", "title": "Love it!", "review": "Great game.", "date": "2015-03-19 21:48:03" }
+      ]
+    }
+  ]
+}

@@ -93,10 +93,12 @@ ernestdefoe-curio:
       tab_details: Détails et photos
       search_placeholder: Titre, ou scannez ou saisissez un code-barres ou un ISBN
       barcode_placeholder: Scannez ou saisissez un code-barres ou un ISBN
+      title_placeholder: Chercher par titre
       scan: Scanner
       scan_stop: Arrêter
       camera_error: La caméra n'a pas pu démarrer. Vous pouvez saisir le code-barres à la place.
       barcode_found: "Code-barres {code} reconnu."
+      barcode_found_named: "Code-barres {code} : « {title} »."
       barcode_miss: "Aucun produit trouvé pour {code}."
       barcode_named: "Le code-barres {code} correspond à « {title} », mais la recherche ne l’a pas trouvé."
       barcode_unavailable: "Les services de codes-barres n’ont pas pu être interrogés pour {code}. Réessayez plus tard, ou cherchez par titre."
@@ -273,6 +275,14 @@ ernestdefoe-curio:
       upc_label: Clé UPCitemdb (facultatif)
       upc_help: "Le scan de codes-barres fonctionne sans aucune clé. Les livres sont cherchés sur Open Library et les disques sur Deezer et MusicBrainz. Les jeux, films et autres produits sont demandés à UPCitemdb (sans clé, 100 par jour, surtout les produits nord-américains) et à Open Icecat (sans clé, surtout les produits européens : jeux, consoles, électronique, jouets). Chaque code-barres trouvé par le forum, ou associé à la main par un membre, est gardé : il n’est jamais demandé deux fois. Une clé UPCitemdb payante ne fait que relever la limite quotidienne d’UPCitemdb ; la plupart des forums n’en ont jamais besoin."
       upc_link: Offres UPCitemdb
+      barcodes_label: Scan et recherche de codes-barres
+      barcodes_help: "Les membres peuvent scanner ou saisir un code-barres ou un ISBN pour trouver ce qu’ils ajoutent. Désactivé, le bouton Scanner disparaît, un nombre saisi dans la recherche est cherché comme un titre, et le forum n’interroge plus aucun service de codes-barres."
+      barcodelookup_label: Clé API barcodelookup.com (facultatif, payant)
+      barcodelookup_help: "Un service payant, interrogé après les services gratuits et avant eBay pour les codes-barres qu’ils ne connaissent pas. Les offres commencent vers 99 $ par mois pour 5 000 réponses ; une recherche sans résultat n’est pas comptée, et une clé de test gratuite est proposée sur la même page. Curio ne lit que le nom du produit (ses images et descriptions appartiennent à des tiers et ne sont jamais utilisées), garde un nom un jour, et interroge 200 fois par jour au plus, 25 par membre."
+      barcodelookup_link: Offres et clé API barcodelookup.com
+      eansearch_label: Jeton API EAN-Search.org (facultatif, payant)
+      eansearch_help: "Une base payante d’environ 1,3 milliard de codes-barres, interrogée après barcodelookup.com et avant eBay. Les offres commencent vers 19 € par mois pour 5 000 requêtes, avec un mois d’essai à 1 € pour 100 (une fois par personne) ; chaque requête compte, trouvée ou non. Curio interroge dans la langue du forum, garde un nom un mois et un échec une semaine, et interroge 200 fois par jour au plus, 25 par membre. Votre jeton s’affiche dans votre compte EAN-Search après l’inscription."
+      eansearch_link: Offres et inscription EAN-Search
       ebay_app_label: App ID eBay (Client ID) (facultatif)
       ebay_cert_label: Cert ID eBay (Client Secret)
       ebay_help: "Pour les codes-barres qu’UPCitemdb et Open Icecat ne connaissent pas, un compte développeur eBay gratuit permet à Curio de demander à eBay, qui liste presque tous les produits en boîte. Connectez-vous (ou inscrivez-vous au programme eBay Developers), ouvrez Application Keys et créez un jeu de clés Production (nom au choix). À côté du jeu de clés, ouvrez Notifications et, sous Marketplace Account Deletion, activez l’exemption « Not persisting eBay data » : Curio ne garde que le nom du produit lu et le code-barres, jamais les annonces, vendeurs ou acheteurs. Copiez ici l’App ID et le Cert ID. eBay est demandé en dernier, 1 000 fois par jour au plus ; ses photos ne sont pas utilisées."
