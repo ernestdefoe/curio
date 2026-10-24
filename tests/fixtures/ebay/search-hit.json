@@ -1,0 +1,325 @@
+{
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?gtin=0045496428778&limit=10&offset=0",
+  "total": 6,
+  "limit": 10,
+  "offset": 0,
+  "itemSummaries": [
+    {
+      "itemId": "v1|10000000000|0",
+      "title": "Metroid Dread - Nintendo Switch - Neuf sous blister",
+      "leafCategoryIds": [
+        "139973"
+      ],
+      "categories": [
+        {
+          "categoryId": "139973",
+          "categoryName": "Jeux vidéo"
+        },
+        {
+          "categoryId": "1249",
+          "categoryName": "Jeux vidéo, consoles"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AbC0/s-l225.jpg"
+      },
+      "price": {
+        "value": "39.90",
+        "currency": "EUR"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C10000000000%7C0",
+      "seller": {
+        "username": "vendeur_0",
+        "feedbackPercentage": "99.6",
+        "feedbackScore": 1200
+      },
+      "condition": "Occasion",
+      "conditionId": "3000",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AbC0/s-l1600.jpg"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "itemWebUrl": "https://www.ebay.fr/itm/10000000000",
+      "itemLocation": {
+        "postalCode": "75***",
+        "country": "FR"
+      },
+      "adultOnly": false,
+      "legacyItemId": "10000000000",
+      "availableCoupons": false,
+      "itemCreationDate": "2026-09-10T08:15:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_FR",
+      "epid": "28047155690"
+    },
+    {
+      "itemId": "v1|10000000001|0",
+      "title": "Metroid Dread (Nintendo Switch, 2021) PAL FR",
+      "leafCategoryIds": [
+        "139973"
+      ],
+      "categories": [
+        {
+          "categoryId": "139973",
+          "categoryName": "Jeux vidéo"
+        },
+        {
+          "categoryId": "1249",
+          "categoryName": "Jeux vidéo, consoles"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AbC1/s-l225.jpg"
+      },
+      "price": {
+        "value": "34.00",
+        "currency": "EUR"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C10000000001%7C0",
+      "seller": {
+        "username": "vendeur_1",
+        "feedbackPercentage": "99.6",
+        "feedbackScore": 1201
+      },
+      "condition": "Neuf",
+      "conditionId": "1000",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AbC1/s-l1600.jpg"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "itemWebUrl": "https://www.ebay.fr/itm/10000000001",
+      "itemLocation": {
+        "postalCode": "75***",
+        "country": "FR"
+      },
+      "adultOnly": false,
+      "legacyItemId": "10000000001",
+      "availableCoupons": false,
+      "itemCreationDate": "2026-09-11T08:15:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_FR",
+      "epid": "28047155690"
+    },
+    {
+      "itemId": "v1|10000000002|0",
+      "title": "METROID DREAD NINTENDO SWITCH JEU NEUF",
+      "leafCategoryIds": [
+        "139973"
+      ],
+      "categories": [
+        {
+          "categoryId": "139973",
+          "categoryName": "Jeux vidéo"
+        },
+        {
+          "categoryId": "1249",
+          "categoryName": "Jeux vidéo, consoles"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AbC2/s-l225.jpg"
+      },
+      "price": {
+        "value": "41.50",
+        "currency": "EUR"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C10000000002%7C0",
+      "seller": {
+        "username": "vendeur_2",
+        "feedbackPercentage": "99.6",
+        "feedbackScore": 1202
+      },
+      "condition": "Occasion",
+      "conditionId": "3000",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AbC2/s-l1600.jpg"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "itemWebUrl": "https://www.ebay.fr/itm/10000000002",
+      "itemLocation": {
+        "postalCode": "75***",
+        "country": "FR"
+      },
+      "adultOnly": false,
+      "legacyItemId": "10000000002",
+      "availableCoupons": false,
+      "itemCreationDate": "2026-09-12T08:15:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_FR",
+      "epid": "28047155690"
+    },
+    {
+      "itemId": "v1|10000000003|0",
+      "title": "Metroid Dread Switch Game PAL - Complete with manual",
+      "leafCategoryIds": [
+        "139973"
+      ],
+      "categories": [
+        {
+          "categoryId": "139973",
+          "categoryName": "Jeux vidéo"
+        },
+        {
+          "categoryId": "1249",
+          "categoryName": "Jeux vidéo, consoles"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AbC3/s-l225.jpg"
+      },
+      "price": {
+        "value": "29.99",
+        "currency": "EUR"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C10000000003%7C0",
+      "seller": {
+        "username": "vendeur_3",
+        "feedbackPercentage": "99.6",
+        "feedbackScore": 1203
+      },
+      "condition": "Neuf",
+      "conditionId": "1000",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AbC3/s-l1600.jpg"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "itemWebUrl": "https://www.ebay.fr/itm/10000000003",
+      "itemLocation": {
+        "postalCode": "75***",
+        "country": "FR"
+      },
+      "adultOnly": false,
+      "legacyItemId": "10000000003",
+      "availableCoupons": false,
+      "itemCreationDate": "2026-09-13T08:15:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_FR",
+      "epid": "28047155690"
+    },
+    {
+      "itemId": "v1|10000000004|0",
+      "title": "Lot Metroid Dread + Metroid Prime Remastered Switch",
+      "leafCategoryIds": [
+        "139973"
+      ],
+      "categories": [
+        {
+          "categoryId": "139973",
+          "categoryName": "Jeux vidéo"
+        },
+        {
+          "categoryId": "1249",
+          "categoryName": "Jeux vidéo, consoles"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AbC4/s-l225.jpg"
+      },
+      "price": {
+        "value": "79.00",
+        "currency": "EUR"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C10000000004%7C0",
+      "seller": {
+        "username": "vendeur_4",
+        "feedbackPercentage": "99.6",
+        "feedbackScore": 1204
+      },
+      "condition": "Occasion",
+      "conditionId": "3000",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AbC4/s-l1600.jpg"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "itemWebUrl": "https://www.ebay.fr/itm/10000000004",
+      "itemLocation": {
+        "postalCode": "75***",
+        "country": "FR"
+      },
+      "adultOnly": false,
+      "legacyItemId": "10000000004",
+      "availableCoupons": false,
+      "itemCreationDate": "2026-09-14T08:15:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_FR"
+    },
+    {
+      "itemId": "v1|10000000005|0",
+      "title": "Metroid Dread Edition Spéciale Steelbook Nintendo Switch",
+      "leafCategoryIds": [
+        "139973"
+      ],
+      "categories": [
+        {
+          "categoryId": "139973",
+          "categoryName": "Jeux vidéo"
+        },
+        {
+          "categoryId": "1249",
+          "categoryName": "Jeux vidéo, consoles"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AbC5/s-l225.jpg"
+      },
+      "price": {
+        "value": "89.00",
+        "currency": "EUR"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C10000000005%7C0",
+      "seller": {
+        "username": "vendeur_5",
+        "feedbackPercentage": "99.6",
+        "feedbackScore": 1205
+      },
+      "condition": "Neuf",
+      "conditionId": "1000",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AbC5/s-l1600.jpg"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "itemWebUrl": "https://www.ebay.fr/itm/10000000005",
+      "itemLocation": {
+        "postalCode": "75***",
+        "country": "FR"
+      },
+      "adultOnly": false,
+      "legacyItemId": "10000000005",
+      "availableCoupons": false,
+      "itemCreationDate": "2026-09-15T08:15:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_FR",
+      "epid": "38047155111"
+    }
+  ]
+}

@@ -16,8 +16,9 @@ use Illuminate\Database\ConnectionInterface;
  * Library); a record is asked of Deezer, then MusicBrainz; anything else gets
  * a product name from UPCitemdb (strong on North American boxes) and Open
  * Icecat (strong on European ones), asked in the order the barcode's country
- * prefix favours. The name's platform or format words become the item's
- * details and its remaining words are searched as a title.
+ * prefix favours, then eBay when the forum has its own eBay app. The name's
+ * platform or format words become the item's details and its remaining words
+ * are searched as a title.
  */
 class BarcodeLookup
 {
@@ -46,6 +47,7 @@ class BarcodeLookup
         private MusicBrainz $musicBrainz,
         private UpcItemDb $upc,
         private Icecat $icecat,
+        private Ebay $ebay,
         private Images $images
     ) {
     }
@@ -101,8 +103,9 @@ class BarcodeLookup
     /**
      * The product's name from the first service that knows it: UPCitemdb first
      * for US and Canadian barcodes (prefixes 00–13), Open Icecat first for the
-     * rest. A service that is down or out of today's allowance is skipped; if
-     * nobody answered because of that, the member is told to try again.
+     * rest; eBay last, for what both miss. A service that is down or out of
+     * today's allowance is skipped; if nobody answered because of that, the
+     * member is told to try again.
      *
      * @return array{title: string, name: string}|null
      * @throws LookupException
@@ -125,6 +128,11 @@ class BarcodeLookup
             } catch (LookupException $e) {
                 $down = $e;
             }
+        }
+
+        // eBay, only when set up: never throws, a failure is a miss.
+        if ($found = $this->ebay->product($ean)) {
+            return $found;
         }
 
         if ($down && $down->outage) {

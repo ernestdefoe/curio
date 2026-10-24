@@ -1,0 +1,6 @@
+{
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?gtin=3700664528298&limit=10&offset=0",
+  "total": 0,
+  "limit": 10,
+  "offset": 0
+}

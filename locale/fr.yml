@@ -273,6 +273,13 @@ ernestdefoe-curio:
       upc_label: Clé UPCitemdb (facultatif)
       upc_help: "Le scan de codes-barres fonctionne sans aucune clé. Les livres sont cherchés sur Open Library et les disques sur Deezer et MusicBrainz. Les jeux, films et autres produits sont demandés à UPCitemdb (sans clé, 100 par jour, surtout les produits nord-américains) et à Open Icecat (sans clé, surtout les produits européens : jeux, consoles, électronique, jouets). Chaque code-barres trouvé par le forum, ou associé à la main par un membre, est gardé : il n’est jamais demandé deux fois. Une clé UPCitemdb payante ne fait que relever la limite quotidienne d’UPCitemdb ; la plupart des forums n’en ont jamais besoin."
       upc_link: Offres UPCitemdb
+      ebay_app_label: App ID eBay (Client ID) (facultatif)
+      ebay_cert_label: Cert ID eBay (Client Secret)
+      ebay_help: "Pour les codes-barres qu’UPCitemdb et Open Icecat ne connaissent pas, un compte développeur eBay gratuit permet à Curio de demander à eBay, qui liste presque tous les produits en boîte. Connectez-vous (ou inscrivez-vous au programme eBay Developers), ouvrez Application Keys et créez un jeu de clés Production (nom au choix). À côté du jeu de clés, ouvrez Notifications et, sous Marketplace Account Deletion, activez l’exemption « Not persisting eBay data » : Curio ne garde que le nom du produit lu et le code-barres, jamais les annonces, vendeurs ou acheteurs. Copiez ici l’App ID et le Cert ID. eBay est demandé en dernier, 1 000 fois par jour au plus ; ses photos ne sont pas utilisées."
+      ebay_link: Ouvrir les Application Keys d’eBay
+      ebay_market_label: Site eBay à interroger
+      ebay_market_help: Le site eBay dont les annonces nomment le code-barres. Par défaut, il suit la langue du forum (français → eBay France, allemand → eBay Allemagne, anglais britannique → eBay Royaume-Uni, sinon eBay États-Unis).
+      ebay_market_auto: Selon la langue du forum
       deepl_label: Clé DeepL (facultatif)
       deepl_help: Quand Wikipédia n'a pas de description dans une langue, DeepL traduit celle en anglais. Les clés gratuites finissent par « :fx ».
       deepl_link: Obtenir une clé

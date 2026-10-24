@@ -887,6 +887,50 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function ebay_names_what_the_free_services_miss_only_when_the_forum_has_keys(): void
+    {
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $this->put('ernestdefoe-curio.ebay_app_id', 'Forum-Curio-PRD-1');
+        $this->put('ernestdefoe-curio.ebay_cert_id', 'PRD-cert');
+        $this->fakeIgdb();
+        $igdb = $this->app()->getContainer()->make(\Ernestdefoe\Curio\Lookup\Http::class);
+        $fake = new class($igdb) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $asked = [];
+
+            public function __construct(private \Ernestdefoe\Curio\Lookup\Http $igdb)
+            {
+            }
+
+            public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
+            {
+                $this->asked[] = $service.' '.($query['GTIN'] ?? $query['upc'] ?? $query['gtin'] ?? '');
+
+                return match ($service) {
+                    'icecat' => throw new \Ernestdefoe\Curio\Lookup\LookupException('icecat request failed (400)'),
+                    'ebay' => json_decode(file_get_contents(__DIR__.'/../../fixtures/ebay/search-hit.json'), true),
+                    default => ['code' => 'OK', 'items' => []],
+                };
+            }
+
+            public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+            {
+                return $service === 'ebay-token' ? ['access_token' => 'tok', 'expires_in' => 7200] : $this->igdb->post($service, $url, $query, $headers, $body, $timeout);
+            }
+        };
+        $this->app()->getContainer()->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        $found = $this->json($this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3,
+            'json' => ['type' => $this->typeId('games'), 'q' => '0045496428778'],
+        ])))['barcode'];
+
+        // Both free services first, eBay last; its listings' shared words fill the platform and search IGDB.
+        $this->assertSame(['upcitemdb 045496428778', 'icecat 0045496428778', 'ebay 0045496428778'], $fake->asked);
+        $this->assertSame(['Metroid Dread', 'nintendo-switch', 'igdb', 'Metroid Dread'], [$found['title'], $found['fields']['platform'], $found['results'][0]['source'], $found['results'][0]['title']]);
+    }
+
+    #[Test]
     public function a_barcode_added_by_hand_learns_its_work_from_the_first_pick(): void
     {
         $this->app();

@@ -151,6 +151,50 @@ export const extend = [
       ),
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.ebay_app_id',
+      type: 'text',
+      label: t('settings.ebay_app_label'),
+      help: (
+        <>
+          {t('settings.ebay_help')}{' '}
+          <Link href="https://developer.ebay.com/my/keys" external target="_blank">
+            {t('settings.ebay_link')}
+          </Link>
+        </>
+      ),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.ebay_cert_id',
+      type: 'password',
+      label: t('settings.ebay_cert_label'),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.ebay_marketplace',
+      type: 'select',
+      label: t('settings.ebay_market_label'),
+      help: t('settings.ebay_market_help'),
+      options: Object.fromEntries(
+        [
+          '',
+          'EBAY_US',
+          'EBAY_GB',
+          'EBAY_DE',
+          'EBAY_FR',
+          'EBAY_IT',
+          'EBAY_ES',
+          'EBAY_NL',
+          'EBAY_BE',
+          'EBAY_AT',
+          'EBAY_CH',
+          'EBAY_IE',
+          'EBAY_PL',
+          'EBAY_CA',
+          'EBAY_AU',
+        ].map((id) => [id, id ? id.replace('EBAY_', 'eBay ') : t('settings.ebay_market_auto')])
+      ),
+      default: '',
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.deepl_key',
       type: 'text',
       label: t('settings.deepl_label'),

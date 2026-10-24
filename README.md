@@ -67,8 +67,27 @@ php flarum migrate
 - **Offer the "Recently added" widget** (off by default).
 - **IGDB client ID and secret** (optional). Game look-ups on IGDB. [Create a Twitch app](https://dev.twitch.tv/console/apps/create) (any name, OAuth redirect URL `http://localhost`, category Application Integration), then copy its Client ID and make a New Secret. The forum keeps its Twitch token until a day before it expires, keeps searches for a day, and sends IGDB at most four requests a second and 2,000 a day.
 - **UPCitemdb key** (optional). Barcodes work without it: UPCitemdb allows 100 lookups a day with no key, and Open Icecat needs none. Every barcode the forum resolves is kept, so it never asks twice. A paid key only raises UPCitemdb's limit. [UPCitemdb plans](https://devs.upcitemdb.com/).
+- **eBay App ID, Cert ID and site** (optional). See [eBay barcode look-ups](#ebay-barcode-look-ups-optional).
 - **DeepL key** (optional). Translates a description when Wikipedia has none in a language. Keys ending in `:fx` use DeepL's free plan.
 - **Largest photo** (default 8 MB). Photos are resized and re-encoded, so what is stored is far smaller.
+
+## eBay barcode look-ups (optional)
+
+For forums that create their own free eBay developer app, Curio can ask eBay's Browse API about barcodes that UPCitemdb and Open Icecat both miss. Without the keys nothing changes and eBay is never contacted.
+
+1. Sign in at [eBay Application Keys](https://developer.ebay.com/my/keys) (join the eBay Developers Program first if you are new) and create a **Production** keyset (any name).
+2. Beside the keyset, open **Notifications** and, under **Marketplace Account Deletion**, turn on the **Not persisting eBay data** exemption. That is true of Curio: see below.
+3. Copy the **App ID (Client ID)** and **Cert ID (Client Secret)** into Curio's settings. The Cert ID is a password field. Like every Flarum setting it is visible to admins only, it is never sent to the forum's pages, and it is never written to the log.
+4. Optionally pick the **eBay site to ask**. By default it follows the forum's language: French → eBay France, German → eBay Germany, British English → eBay UK, otherwise eBay US.
+
+How it works:
+
+- **Asked last.** The forum's own barcode table first, then UPCitemdb and Open Icecat, then eBay. When eBay names the product, its platform or format words fill the item's details and the rest is searched on IGDB, Marquee or the type's other source, as with any barcode.
+- **The name is what most listings share.** Curio asks for ten listings with that barcode (`item_summary/search?gtin=`), keeps those of the most common eBay catalogue product, and takes the words at least half of them use, dropping sellers' words such as "New", "Sealed" or a trailing "Game".
+- **Within eBay's limits.** An application token (about two hours) is kept until five minutes before it ends and renewed once if eBay refuses it. At most 2 requests a second and 1,000 a day (eBay allows 5,000). A name is kept for a day, a barcode eBay does not know for a week.
+- **Fails safe.** Any eBay problem (refused keys, rate limit, outage, an answer that is not search results) counts as a miss: the member gets the usual "Search by title instead", and one line a day goes to the forum's log, with no keys or token in it. Refused keys are not tried again for an hour.
+- **What is kept.** Only the product name Curio derived and, once a member saves an item, the barcode with the work they picked, in the forum's own barcode table. Nothing about listings, prices, sellers or buyers is stored.
+- **No eBay photos.** eBay's API License Agreement keeps eBay content within eBay's displays and asks that it be no older than a day (six hours for listing details). Listing photos also belong to their sellers. So Curio never shows, downloads or re-hosts them: the cover comes from the work the member picks (IGDB, Marquee, Open Library…), or from their own photo.
 
 ## Good to know
 

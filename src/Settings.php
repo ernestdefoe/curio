@@ -14,6 +14,14 @@ final class Settings
 
     public const IGDB_CLIENT_SECRET = 'ernestdefoe-curio.igdb_client_secret';
 
+    /** The forum's own eBay app (optional): barcodes the free services miss are asked of eBay's Browse API. */
+    public const EBAY_APP_ID = 'ernestdefoe-curio.ebay_app_id';
+
+    public const EBAY_CERT_ID = 'ernestdefoe-curio.ebay_cert_id';
+
+    /** An eBay marketplace id (EBAY_FR…); blank = from the forum's language. */
+    public const EBAY_MARKETPLACE = 'ernestdefoe-curio.ebay_marketplace';
+
     /** Offer the "Recently added" widget to Bespoke and FoF Forum Widgets. Off until an admin turns it on. */
     public const WIDGET = 'ernestdefoe-curio.widget';
 

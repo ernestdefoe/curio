@@ -86,7 +86,7 @@ class Http
         return is_array($body) ? $body : [];
     }
 
-    private function client(): Client
+    protected function client(): Client
     {
         return $this->client ??= new Client(['connect_timeout' => 3, 'headers' => [
             'User-Agent' => 'Curio for Flarum (+https://github.com/ernestdefoe/curio; '.$this->url->to('forum')->base().')',
