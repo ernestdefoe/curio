@@ -2470,13 +2470,24 @@ button.CurioChip {
     height: 100%;
     margin: 0;
     opacity: 0;
-    cursor: pointer;
+    // The row of stars takes every tap, slide and click (Stars.js); this slider is for the
+    // keyboard and screen readers only.
+    pointer-events: none;
     &::-webkit-slider-thumb {
       width: 1px;
     }
     &::-moz-range-thumb {
       width: 1px;
     }
+  }
+
+  &--input {
+    cursor: pointer;
+    // A sideways slide rates; an up-and-down swipe still scrolls the page.
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   &--input:focus-within {
