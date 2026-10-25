@@ -33,6 +33,13 @@ class Igdb implements Source
      */
     public const GAME_TYPES = '(0,3,4,8,9,10,11)';
 
+    /**
+     * Editions of another game are left out, except bundles: IGDB files some
+     * real releases as a bundle that is an edition of its game, such as
+     * "Shovel Knight: Treasure Trove" (Wlork, Discuss d/40107 #73).
+     */
+    public const WHERE = 'where game_type = '.self::GAME_TYPES.' & (version_parent = null | game_type = 3);';
+
     private const BUNDLE = 3;
 
     public function __construct(private Http $http, private SettingsRepositoryInterface $settings, private Cache $cache)
@@ -57,11 +64,11 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.3.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return $this->cache->remember('curio.igdb.search.4.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
             // IGDB ranks hits by text alone: take 50 and put the well-known ones first.
             $games = $this->query('games', 'search "'.$query.'"; fields name,game_type,first_release_date,total_rating_count,cover.image_id,'
                 .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer; '
-                .'where game_type = '.self::GAME_TYPES.' & version_parent = null; limit 50;');
+                .self::WHERE.' limit 50;');
 
             return array_map(fn (array $g) => [
                 'id' => (string) $g['id'],

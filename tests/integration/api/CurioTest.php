@@ -1088,6 +1088,8 @@ class CurioTest extends TestCase
         $types = explode(',', trim(\Ernestdefoe\Curio\Lookup\Sources\Igdb::GAME_TYPES, '()'));
         $this->assertContains('3', $types);
         $this->assertEmpty(array_intersect(['1', '2', '5', '13'], $types));
+        // Shovel Knight: Treasure Trove is a bundle that is also an edition of Shovel Knight (version_parent set).
+        $this->assertStringContainsString('(version_parent = null | game_type = 3)', \Ernestdefoe\Curio\Lookup\Sources\Igdb::WHERE);
 
         $titles = fn (string $q, array $games) => array_column(\Ernestdefoe\Curio\Lookup\Sources\Igdb::rank($games, $q), 'name');
 
