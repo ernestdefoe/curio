@@ -42,6 +42,8 @@ Object.assign(CurioCollection.prototype, {
   type: Model.hasOne('type'),
 });
 
+const hasWork = Model.hasOne('work');
+
 export class CurioItem extends Model {}
 Object.assign(CurioItem.prototype, {
   title: Model.attribute('title'),
@@ -72,7 +74,10 @@ Object.assign(CurioItem.prototype, {
   tradeOffers: Model.attribute('tradeOffers'),
   ownersCount: Model.attribute('ownersCount'),
   collection: Model.hasOne('collection'),
-  work: Model.hasOne('work'),
+  // An item entered by hand has no looked-up title: null, not core's `false`, so `item.work()?.facts()` is safe.
+  work() {
+    return hasWork.call(this) || null;
+  },
   user: Model.hasOne('user'),
 });
 

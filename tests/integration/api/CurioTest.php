@@ -1053,6 +1053,67 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function an_item_entered_by_hand_can_be_opened_edited_listed_and_exported(): void
+    {
+        $id = $this->newCollection(3);
+        $created = $this->item(3, $id, ['title' => 'Homebrew cart', 'year' => 2024, 'fields' => ['platform' => 'pc']]);
+        $this->assertSame(201, $created->getStatusCode(), (string) $created->getBody());
+        $item = $this->json($created)['data']['id'];
+
+        // No looked-up title: the relationship is there, and empty (the client must not treat it as a work).
+        $shown = $this->json($this->get("/api/curio-items/$item", [], 3));
+        $this->assertSame(['data' => null], $shown['data']['relationships']['work']);
+        $this->assertNull($shown['data']['attributes']['coverUrl']);
+
+        $edited = $this->send($this->request('PATCH', "/api/curio-items/$item", [
+            'authenticatedAs' => 3,
+            'json' => ['data' => ['type' => 'curio-items', 'id' => $item, 'attributes' => [
+                'title' => 'Homebrew cartridge', 'subtitle' => 'Me', 'status' => 'trade', 'rating' => 8, 'progress' => 'completed', 'fields' => ['platform' => 'switch'],
+            ]]],
+        ]));
+        $this->assertSame(200, $edited->getStatusCode(), (string) $edited->getBody());
+        $this->assertSame(['Homebrew cartridge', 'Me', 'trade', 8], array_map(fn ($k) => $this->json($edited)['data']['attributes'][$k], ['title', 'subtitle', 'status', 'rating']));
+
+        $listed = $this->json($this->get('/api/curio-items', ['filter' => ['collection' => $id]], 3));
+        $this->assertSame(['Homebrew cartridge'], array_column(array_column($listed['data'], 'attributes'), 'title'));
+
+        $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
+        $this->assertStringContainsString('Homebrew cartridge', $csv);
+    }
+
+    #[Test]
+    public function igdb_finds_games_filed_as_bundles_but_keeps_shop_bundles_under_the_games(): void
+    {
+        // UFO 50 and Collection of SaGa are bundles on IGDB (game_type 3); DLC (1), expansions (2), mods (5) and packs (13) stay out.
+        $types = explode(',', trim(\Ernestdefoe\Curio\Lookup\Sources\Igdb::GAME_TYPES, '()'));
+        $this->assertContains('3', $types);
+        $this->assertEmpty(array_intersect(['1', '2', '5', '13'], $types));
+
+        $titles = fn (string $q, array $games) => array_column(\Ernestdefoe\Curio\Lookup\Sources\Igdb::rank($games, $q), 'name');
+
+        // IGDB's answers, in IGDB's order (2026-10-25).
+        $this->assertSame(['UFO 50', 'UFO 50 Nonograms'], $titles('ufo 50', [
+            ['id' => 54555, 'name' => 'UFO 50', 'game_type' => 3, 'total_rating_count' => 30],
+            ['id' => 397748, 'name' => 'UFO 50 Nonograms', 'game_type' => 0],
+        ]));
+        $this->assertSame(['Halo: Combat Evolved', 'Halo: The Master Chief Collection', 'Halo 2', 'Halo Beats!', 'Halo 3 + Halo Wars'], $titles('Halo', [
+            ['id' => 1, 'name' => 'Halo: Combat Evolved', 'game_type' => 0, 'total_rating_count' => 936],
+            ['id' => 2, 'name' => 'Halo 3 + Halo Wars', 'game_type' => 3, 'total_rating_count' => 0],
+            ['id' => 3, 'name' => 'Halo: The Master Chief Collection', 'game_type' => 3, 'total_rating_count' => 315],
+            ['id' => 4, 'name' => 'Halo Beats!', 'game_type' => 0],
+            ['id' => 5, 'name' => 'Halo 2', 'game_type' => 0, 'total_rating_count' => 298],
+            ['name' => 'no id'],
+        ]));
+        // An unrated bundle with the exact title still comes first.
+        $this->assertSame(['Dark Souls Trilogy', 'Dark Souls', 'Fated Souls', 'Dark Souls Trilogy Box'], $titles('dark souls trilogy', [
+            ['id' => 1, 'name' => 'Dark Souls Trilogy Box', 'game_type' => 3],
+            ['id' => 2, 'name' => 'Fated Souls', 'game_type' => 0],
+            ['id' => 3, 'name' => 'Dark Souls', 'game_type' => 0, 'total_rating_count' => 1741],
+            ['id' => 4, 'name' => 'Dark Souls Trilogy', 'game_type' => 3],
+        ]));
+    }
+
+    #[Test]
     public function without_igdb_keys_games_search_as_before(): void
     {
         // No IGDB keys and no Marquee: games have no title search, only barcodes and by hand.
