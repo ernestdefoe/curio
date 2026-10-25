@@ -11,6 +11,7 @@ ernestdefoe-curio:
       pending: Pas commencé
       in_progress: En cours
       completed: Terminé
+      abandoned: Abandonné
     condition:
       sealed: Scellé
       mint: Neuf
@@ -194,7 +195,13 @@ ernestdefoe-curio:
       no_results: Rien ne correspond.
       recent: Ajouts récents
       featured: Collections à la une
-      largest: Les plus grandes collections
+      largest: Top collections
+      collectors: Top collectionneurs
+      collector: Membre
+      collector_collections: Collections
+      collector_owned: Possédés
+      collector_wishlist: Souhaits
+      none_collectors: Personne ne collectionne encore rien.
       none: Aucune collection ici pour l'instant.
       add: Ajouter un objet
       types: Types de collection
@@ -268,8 +275,8 @@ ernestdefoe-curio:
       new_items_setting: Une collection que je suis a des nouveautés
       wishlist_added: "{username} a ajouté des objets à la liste de souhaits de {name}"
       wishlist_added_setting: Un objet rejoint la liste de souhaits d’une collection que je suis
-      progress_changed: "{username} a commencé ou terminé un objet de {name}"
-      progress_changed_setting: Un objet est commencé ou terminé dans une collection que je suis
+      progress_changed: "{username} a commencé, terminé ou abandonné un objet de {name}"
+      progress_changed_setting: Un objet est commencé, terminé ou abandonné dans une collection que je suis
       rating_changed: "{username} a noté un objet de {name}"
       rating_changed_setting: Un objet est noté dans une collection que je suis
     widget:
@@ -307,6 +314,11 @@ ernestdefoe-curio:
       layout_tags: Comme la page des étiquettes (par défaut de Flarum)
       layout_covers: Tuiles de couvertures
       layout_compact: Onglets compacts (une rangée de petits boutons)
+      ranking_label: Classements sur la page Collections
+      ranking_help: "Ce que la page Collections classe sous les collections à la une : les collections les plus fournies, les membres qui collectionnent le plus (avatar, collections, objets possédés et souhaits, classés par objets possédés), ou les deux."
+      ranking_collections: Top collections
+      ranking_collectors: Top collectionneurs
+      ranking_both: Les deux
       type_color_label: Couleur des onglets compacts
       type_color_help: Avec les onglets compacts, la couleur de chaque type peut remplir son onglet ou seulement colorer son icône et son nom.
       type_color_background: En fond de l'onglet
@@ -371,7 +383,7 @@ ernestdefoe-curio:
       "on": Activé
       "off": Désactivé
       progress: Suivre l'avancement
-      progress_help: "Chaque objet peut être marqué Pas commencé, En cours ou Terminé : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
+      progress_help: "Chaque objet peut être marqué Pas commencé, En cours, Terminé ou Abandonné : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
       export: Exporter
       export_all: Tout exporter
       import: Importer
@@ -421,7 +433,7 @@ ernestdefoe-curio:
       body: "Bonjour {recipient_display_name}, {owner} a ajouté des objets à la liste de souhaits de {name}, une collection que vous suivez."
     progress_changed:
       subject: "Avancement dans {name}"
-      body: "Bonjour {recipient_display_name}, {owner} a commencé ou terminé un objet de {name}, une collection que vous suivez."
+      body: "Bonjour {recipient_display_name}, {owner} a commencé, terminé ou abandonné un objet de {name}, une collection que vous suivez."
     rating_changed:
       subject: "Nouvelles notes dans {name}"
       body: "Bonjour {recipient_display_name}, {owner} a noté un objet de {name}, une collection que vous suivez."

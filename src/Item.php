@@ -50,8 +50,8 @@ class Item extends AbstractModel
 
     public const CONDITIONS = ['sealed', 'mint', 'very_good', 'good', 'fair', 'poor'];
 
-    /** Where the owner is with it: not started, in progress, completed. */
-    public const PROGRESS = ['pending', 'in_progress', 'completed'];
+    /** Where the owner is with it: not started, in progress, completed, or given up on. */
+    public const PROGRESS = ['pending', 'in_progress', 'completed', 'abandoned'];
 
     public const MAX_PHOTOS = 6;
 

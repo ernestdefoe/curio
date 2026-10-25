@@ -82,3 +82,15 @@ test('a duplicated type takes the next free number, never "Title 2 2"', () => {
   assert.equal(freeSlug('title-2', ['title', 'title-2']), 'title-3');
   assert.equal(freeSlug('title', ['title', 'title-2']), 'title-3');
 });
+
+import { browseSections } from '../src/common/ranking.js';
+
+test('featuring a collection adds the featured list and keeps the ranking', () => {
+  assert.deepEqual(browseSections('collections', 0), ['top']);
+  assert.deepEqual(browseSections('collections', 2), ['featured', 'top']);
+  assert.deepEqual(browseSections('collectors', 1), ['featured', 'collectors']);
+  assert.deepEqual(browseSections('both', 1), ['featured', 'top', 'collectors']);
+  assert.deepEqual(browseSections('both', 0), ['top', 'collectors']);
+  // An unknown or missing setting keeps the default.
+  assert.deepEqual(browseSections(undefined, 0), ['top']);
+});

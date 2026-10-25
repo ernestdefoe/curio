@@ -62,6 +62,7 @@ class OverviewController implements RequestHandlerInterface
             'typeColor' => $this->settings->get(Settings::TYPE_COLOR) === 'text' ? 'text' : 'background',
             'hideEmpty' => (bool) $this->settings->get(Settings::HIDE_EMPTY),
             'latest' => (bool) $this->settings->get(Settings::LATEST_CHANGES),
+            'ranking' => in_array($ranking = $this->settings->get(Settings::RANKING), Settings::RANKINGS, true) ? $ranking : 'collections',
         ] + $overview);
     }
 

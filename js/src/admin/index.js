@@ -70,6 +70,14 @@ export const extend = [
       default: 'tags',
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.browse_ranking',
+      type: 'select',
+      label: t('settings.ranking_label'),
+      help: t('settings.ranking_help'),
+      options: { collections: t('settings.ranking_collections'), collectors: t('settings.ranking_collectors'), both: t('settings.ranking_both') },
+      default: 'collections',
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.type_color',
       type: 'select',
       label: t('settings.type_color_label'),

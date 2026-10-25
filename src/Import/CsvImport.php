@@ -25,6 +25,7 @@ class CsvImport
         'pending' => 'pending', 'not started' => 'pending', 'pas commencé' => 'pending', 'to-read' => 'pending',
         'in_progress' => 'in_progress', 'in progress' => 'in_progress', 'en cours' => 'in_progress', 'currently-reading' => 'in_progress',
         'completed' => 'completed', 'terminé' => 'completed', 'read' => 'completed',
+        'abandoned' => 'abandoned', 'abandonné' => 'abandoned', 'dropped' => 'abandoned', 'did-not-finish' => 'abandoned', 'did not finish' => 'abandoned',
     ];
 
     private const DISCOGS_CONDITIONS = [

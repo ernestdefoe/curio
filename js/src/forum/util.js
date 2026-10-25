@@ -9,7 +9,7 @@ export const locale = () => app.translator.getLocale() || 'en';
 export const label = (labels) => pick(labels, locale());
 
 export const STATUSES = ['owned', 'wishlist', 'trade'];
-export const PROGRESS = ['pending', 'in_progress', 'completed'];
+export const PROGRESS = ['pending', 'in_progress', 'completed', 'abandoned'];
 export const CONDITIONS = ['sealed', 'mint', 'very_good', 'good', 'fair', 'poor'];
 
 export const collectionUrl = (collection) => app.route('curio.collection', { id: `${collection.id()}-${collection.slug()}` });

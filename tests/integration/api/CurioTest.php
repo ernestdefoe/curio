@@ -1498,20 +1498,30 @@ class CurioTest extends TestCase
         $playing = $this->json($this->item(3, $id, ['title' => 'Hades', 'progress' => 'in_progress']))['data']['id'];
         $this->item(3, $id, ['title' => 'Celeste', 'progress' => 'completed']);
         $this->item(3, $id, ['title' => 'Tunic']);
-        $this->assertSame(422, $this->item(3, $id, ['title' => 'Nope', 'progress' => 'abandoned'])->getStatusCode());
+        $this->item(3, $id, ['title' => 'Dropped', 'progress' => 'abandoned']);
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Nope', 'progress' => 'given_up'])->getStatusCode());
 
         $titles = fn (array $filter) => array_column(array_column($this->json($this->get('/api/curio-items', ['filter' => $filter + ['collection' => $id]]))['data'], 'attributes'), 'title');
         $this->assertSame(['Hades'], $titles(['progress' => 'in_progress']));
         $this->assertSame(['Celeste'], $titles(['progress' => 'completed']));
+        $this->assertSame(['Dropped'], $titles(['progress' => 'abandoned']));
         $this->assertSame('in_progress', $this->json($this->get("/api/curio-items/$playing"))['data']['attributes']['progress']);
 
         $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
         $this->assertStringContainsString(',progress', strtok($csv, "\n"));
+        $this->assertStringContainsString("Dropped,,,owned,,,,,,,,,abandoned,,,,\n", $csv);
+        // Four rows at most, so the importer's one insert per row stays under the repeated-query detector.
+        $csv = str_replace("Dropped,,,owned,,,,,,,,,abandoned,,,,\n", '', $csv);
 
         $to = $this->newCollection(3, ['name' => 'Copy']);
         $this->upload(3, $to, $csv."Outer Wilds,,,,,,,,,,,,En cours\n");
         $rows = $this->database()->table('curio_items')->where('collection_id', $to)->orderBy('position')->pluck('progress', 'title')->all();
         $this->assertSame(['Hades' => 'in_progress', 'Celeste' => 'completed', 'Tunic' => null, 'Outer Wilds' => 'in_progress'], $rows);
+
+        // Abandoned, from its French label or a reading app's "did not finish" shelf.
+        $more = $this->newCollection(3, ['name' => 'More']);
+        $this->upload(3, $more, "title,progress\nSpiritfarer,Abandonné\nGris,did-not-finish\n");
+        $this->assertSame(['Spiritfarer' => 'abandoned', 'Gris' => 'abandoned'], $this->database()->table('curio_items')->where('collection_id', $more)->orderBy('position')->pluck('progress', 'title')->all());
     }
 
     #[Test]
@@ -2156,5 +2166,113 @@ class CurioTest extends TestCase
         $this->upload(3, $copy, "title,review\nEvil,javascript:alert(1)\n");
         $rows = $this->database()->table('curio_items')->where('collection_id', $copy)->orderBy('position')->pluck('fields')->map(fn ($f) => json_decode($f, true)['review'] ?? null)->all();
         $this->assertSame(['https://www.example.com/my-review?x=1', null], $rows);
+    }
+
+    #[Test]
+    public function the_collections_page_ranks_collections_unless_the_admin_chooses_collectors(): void
+    {
+        $this->assertSame('collections', $this->json($this->get('/api/curio/overview'))['ranking']);
+
+        $this->put('ernestdefoe-curio.browse_ranking', 'both');
+        $this->assertSame('both', $this->json($this->get('/api/curio/overview'))['ranking']);
+
+        $this->put('ernestdefoe-curio.browse_ranking', 'nonsense');
+        $this->assertSame('collections', $this->json($this->get('/api/curio/overview'))['ranking']);
+    }
+
+    /** Collections straight into the table, with their stored counts, as CollectionStats keeps them. */
+    private function shelf(int $user, array $attributes = []): void
+    {
+        $now = Carbon::now()->toDateTimeString();
+        $this->database()->table('curio_collections')->insert($attributes + [
+            'user_id' => $user, 'type_id' => $this->typeId('games'), 'name' => "Shelf of $user", 'slug' => "shelf-$user",
+            'visibility' => 'public', 'wishlist_public' => true, 'owned_count' => 0, 'wish_count' => 0, 'trade_count' => 0,
+            'created_at' => $now, 'updated_at' => $now,
+        ]);
+    }
+
+    private function collectors(?int $as = null, int $offset = 0): array
+    {
+        $response = $this->get('/api/curio/collectors', ['offset' => (string) $offset], $as);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+
+        return $this->json($response);
+    }
+
+    #[Test]
+    public function top_collectors_count_only_what_the_reader_may_see(): void
+    {
+        // collector (3): two public shelves, one with a hidden wishlist, and a private one.
+        $this->shelf(3, ['owned_count' => 10, 'wish_count' => 2]);
+        $this->shelf(3, ['owned_count' => 5, 'wish_count' => 7, 'wishlist_public' => false]);
+        $this->shelf(3, ['owned_count' => 100, 'wish_count' => 1, 'visibility' => 'private']);
+        // visitor (4): one members-only shelf, and one of a switched-off type.
+        $this->shelf(4, ['owned_count' => 12, 'wish_count' => 3, 'visibility' => 'members']);
+        $this->shelf(4, ['owned_count' => 50, 'type_id' => $this->typeId('lego')]);
+        $this->database()->table('curio_types')->where('slug', 'lego')->update(['enabled' => false]);
+
+        $rows = fn (array $found) => array_map(fn ($r) => [$r['userId'], $r['collections'], $r['owned'], $r['wishlist']], $found['data']);
+
+        // A guest: public shelves only, and only the public wishlist.
+        $guest = $this->collectors();
+        $this->assertSame([['3', 2, 15, 2]], $rows($guest));
+        $this->assertSame('collector', $guest['users'][0]['attributes']['username']);
+        $this->assertArrayNotHasKey('email', $guest['users'][0]['attributes']);
+        $this->assertFalse($guest['more']);
+
+        // Another member also sees the members-only shelf, ranked by items owned.
+        $this->assertSame([['3', 2, 15, 2], ['4', 1, 12, 3]], $rows($this->collectors(2)));
+
+        // The owner counts their own private shelf and hidden wishlist.
+        $this->assertSame([['3', 3, 115, 10], ['4', 1, 12, 3]], $rows($this->collectors(3)));
+
+        // A moderator sees every wishlist; a switched-off type counts for nobody.
+        $this->assertSame([['3', 3, 115, 10], ['4', 1, 12, 3]], $rows($this->collectors(1)));
+
+        // Without the view permission, nothing.
+        $this->database()->table('group_permission')->where('permission', 'ernestdefoe-curio.view')->delete();
+        $this->app()->getContainer()->make(\Flarum\Group\PermissionCache::class)->flush();
+        $this->assertSame(403, $this->get('/api/curio/collectors')->getStatusCode());
+    }
+
+    #[Test]
+    public function top_collectors_come_ten_at_a_time_at_a_fixed_number_of_queries(): void
+    {
+        $count = function (?int $as = null): int {
+            $db = $this->app()->getContainer()->make(\Illuminate\Database\ConnectionInterface::class);
+            $queries = 0;
+            $db->listen(function () use (&$queries) {
+                $queries++;
+            });
+            $this->collectors($as);
+            $before = $queries;
+            $this->collectors($as);
+
+            return $queries - $before;
+        };
+
+        $this->shelf(3, ['owned_count' => 1]);
+        $one = $count(2);
+
+        $now = Carbon::now()->toDateTimeString();
+        for ($id = 10; $id < 22; $id++) {
+            $this->database()->table('users')->insert(['id' => $id, 'username' => "member$id", 'email' => "m$id@machine.local", 'password' => '', 'is_email_confirmed' => 1, 'joined_at' => $now]);
+            // Same items owned for some, so collections then the oldest member break the tie.
+            $this->shelf($id, ['owned_count' => $id % 4, 'slug' => "a-$id"]);
+            if ($id % 2) {
+                $this->shelf($id, ['owned_count' => 0, 'slug' => "b-$id"]);
+            }
+        }
+        $this->assertSame($one, $count(2), 'The query count grows with the members ranked.');
+
+        $first = $this->collectors();
+        $this->assertCount(10, $first['data']);
+        $this->assertTrue($first['more']);
+        $this->assertSame(['11', '15', '19', '10', '14', '18', '13', '17', '21', '3'], array_column($first['data'], 'userId'));
+
+        $second = $this->collectors(null, 10);
+        $this->assertSame(['12', '16', '20'], array_column($second['data'], 'userId'));
+        $this->assertFalse($second['more']);
+        $this->assertCount(3, $second['users']);
     }
 }

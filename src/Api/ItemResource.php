@@ -277,7 +277,7 @@ class ItemResource extends AbstractDatabaseResource
                 ->writable()
                 ->rule('integer')
                 ->rule('between:1,10'),
-            // Not started, in progress or completed; shown where the item's type tracks it.
+            // Not started, in progress, completed or abandoned; shown where the item's type tracks it.
             Schema\Str::make('progress')
                 ->nullable()
                 ->writable()

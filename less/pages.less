@@ -65,7 +65,8 @@
   }
 }
 
-// Progress: quiet for "not started", the forum colour while in progress, green when done.
+// Progress: quiet for "not started", the forum colour while in progress, green when done,
+// the forum's error colour when abandoned.
 .CurioProgress {
   display: inline-flex;
   align-items: center;
@@ -80,6 +81,9 @@
   }
   &--completed {
     color: #15803d;
+  }
+  &--abandoned {
+    color: var(--error-color);
   }
 }
 
@@ -2435,12 +2439,13 @@ button.CurioChip {
 // Five glyphs drawn twice: a dim row, and a gold copy clipped to the rating.
 .CurioStars {
   --curio-gold: #f5c518;
+  --curio-gap: 2px;
   position: relative;
   display: inline-block;
   width: max-content;
   font-size: 20px;
   line-height: 1;
-  letter-spacing: 2px;
+  letter-spacing: var(--curio-gap);
   white-space: nowrap;
   vertical-align: middle;
 
@@ -2452,15 +2457,17 @@ button.CurioChip {
     content: '★★★★★';
     position: absolute;
     inset: 0 auto 0 0;
-    width: var(--curio-fill);
+    // Each star is followed by its letter-spacing, so a half is cut half a gap early:
+    // through the middle of the glyph, not just right of it.
+    width: calc(var(--curio-fill) - var(--curio-gap) / 2);
     overflow: hidden;
     color: var(--curio-gold);
     pointer-events: none;
   }
 
   &--small {
+    --curio-gap: 1px;
     font-size: 12px;
-    letter-spacing: 1px;
   }
 
   &-input {
@@ -2481,7 +2488,17 @@ button.CurioChip {
     }
   }
 
+  // The picker: bigger, and an empty half that reads as empty next to a gold one, an
+  // outlined star on the control colour (both from the forum's palette, so dark mode follows).
   &--input {
+    --curio-gap: 4px;
+    font-size: 30px;
+
+    .CurioStars-row {
+      color: var(--control-bg);
+      -webkit-text-stroke: 1px var(--muted-color);
+    }
+
     cursor: pointer;
     // A sideways slide rates; an up-and-down swipe still scrolls the page.
     touch-action: pan-y;
@@ -2542,6 +2559,85 @@ button.CurioChip {
 
 .CurioBrowse-more {
   margin: -18px 0 32px;
+}
+
+// Top collectors: an inline table like a collection's list view, the member's avatar and name first.
+.CurioCollectors {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 32px;
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-color);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--control-bg);
+  }
+
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--control-bg);
+    vertical-align: middle;
+  }
+
+  &-rank {
+    width: 1%;
+    color: var(--muted-color);
+    font-weight: 700;
+    text-align: right;
+  }
+
+  // Counts line up on the right, in table figures.
+  &-n {
+    width: 1%;
+    text-align: right !important;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &-member {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    color: var(--text-color);
+    font-weight: 700;
+
+    .Avatar {
+      --size: 32px;
+      flex-shrink: 0;
+    }
+    .username {
+      overflow-wrap: anywhere;
+    }
+    &:hover .username {
+      text-decoration: underline;
+    }
+  }
+
+  & + .CurioBrowse-more {
+    margin-top: -20px;
+  }
+
+  @media @phone {
+    th,
+    td {
+      padding: 8px 5px;
+    }
+    th {
+      font-size: 10px;
+      letter-spacing: 0.02em;
+    }
+    &-member {
+      gap: 8px;
+      .Avatar {
+        --size: 28px;
+      }
+    }
+  }
 }
 
 // Small tabs, about a button's size. Coloured: filled, or the icon and name only.

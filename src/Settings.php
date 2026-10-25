@@ -38,6 +38,15 @@ final class Settings
 
     public const BROWSE_LAYOUTS = ['tags', 'covers', 'compact'];
 
+    /**
+     * What the Collections page ranks under the featured collections: the
+     * "collections" with the most in them (the default), the "collectors"
+     * (members) with the most, or "both".
+     */
+    public const RANKING = 'ernestdefoe-curio.browse_ranking';
+
+    public const RANKINGS = ['collections', 'collectors', 'both'];
+
     /** Compact tabs: the type's colour as the tab's "background", or on its icon and name ("text"). */
     public const TYPE_COLOR = 'ernestdefoe-curio.type_color';
 

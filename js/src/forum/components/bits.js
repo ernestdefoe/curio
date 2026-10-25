@@ -23,14 +23,20 @@ export function statusPill(status) {
   );
 }
 
-/** Not started, in progress or completed, where the item's type tracks it. */
+const PROGRESS_ICONS = {
+  pending: 'far fa-circle',
+  in_progress: 'fas fa-circle-half-stroke',
+  completed: 'fas fa-circle-check',
+  abandoned: 'fas fa-circle-xmark',
+};
+
+/** Not started, in progress, completed or abandoned, where the item's type tracks it. */
 export function progressPill(item, type) {
   const progress = type?.progress() && item.status() !== 'wishlist' ? item.progress() : null;
   if (!progress) return null;
   return (
     <span className={'CurioProgress CurioProgress--' + progress}>
-      <Icon name={{ pending: 'far fa-circle', in_progress: 'fas fa-circle-half-stroke', completed: 'fas fa-circle-check' }[progress]} />{' '}
-      {t('progress.' + progress)}
+      <Icon name={PROGRESS_ICONS[progress]} /> {t('progress.' + progress)}
     </span>
   );
 }

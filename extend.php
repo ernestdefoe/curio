@@ -55,6 +55,7 @@ return [
         ->default(Settings::MAX_UPLOAD_KB, 8192)
         ->default(Settings::WIDGET, false)
         ->default(Settings::BROWSE_LAYOUT, 'tags')
+        ->default(Settings::RANKING, 'collections')
         ->default(Settings::SHORTCUT, 'both')
         ->default(Settings::COVER_FIT, 'blur')
         ->default(Settings::HIDE_EMPTY, false)
@@ -106,7 +107,8 @@ return [
 
     (new Extend\Routes('api'))
         ->post('/curio/lookup', 'curio.lookup', Api\LookupController::class)
-        ->get('/curio/overview', 'curio.overview', Api\OverviewController::class),
+        ->get('/curio/overview', 'curio.overview', Api\OverviewController::class)
+        ->get('/curio/collectors', 'curio.collectors', Api\CollectorsController::class),
 
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(Collection::class, Search\CollectionSearcher::class)

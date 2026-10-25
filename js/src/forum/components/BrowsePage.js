@@ -14,6 +14,7 @@ import humanTime from 'flarum/common/helpers/humanTime';
 import textContrastClass from 'flarum/common/helpers/textContrastClass';
 import { t, text, label, locale, types, loadTypes, collectionUrl } from '../util';
 import { optionLabel } from '../../common/labels';
+import { browseSections } from '../../common/ranking';
 import addToMyCollection from '../copyItem';
 import { collectionCard, cover, progressPill } from './bits';
 import ItemModal from './ItemModal';
@@ -37,7 +38,8 @@ const compact = (n) => new Intl.NumberFormat(locale(), { notation: 'compact', ma
  * /collections: what this forum collects. Three looks for the types, the
  * admin's choice: Flarum's own tags page tiles (the default), cover tiles, or
  * a row of small tabs. Then what was added lately (owned, wishlists, open to
- * trade), what changed lately (progress, ratings) and the featured collections.
+ * trade), what changed lately (progress, ratings), the featured collections,
+ * and the rankings the admin chose: top collections, top collectors, or both.
  */
 export default class BrowsePage extends Page {
   oninit(vnode) {
@@ -49,6 +51,9 @@ export default class BrowsePage extends Page {
     this.recentTab = 'owned';
     this.latestTab = 'progress';
     this.collections = null;
+    this.featured = null;
+    this.top = null;
+    this.collectors = null;
     this.typeId = m.route.param('type') || null;
     this.q = '';
     this.found = null;
@@ -62,7 +67,10 @@ export default class BrowsePage extends Page {
       if (o.latest && !this.typeId) this.list(this.latestTab);
       m.redraw();
     });
-    if (!this.typeId) this.list(this.recentTab);
+    if (!this.typeId) {
+      this.list(this.recentTab);
+      this.loadFeatured();
+    }
     this.loadCollections();
   }
 
@@ -108,26 +116,65 @@ export default class BrowsePage extends Page {
     );
   }
 
+  /** The chosen type's collections, biggest first. Without a type, the home lists load as they are drawn. */
   loadCollections() {
     this.collections = null;
-    this.standIn = false;
-    const query = this.typeId
-      ? { filter: { type: this.typeId }, sort: '-ownedCount', page: { limit: 24 } }
-      : { filter: { featured: '1' }, sort: '-featuredAt', page: { limit: 12 } };
-
-    app.store.find('curio-collections', query).then((found) => {
-      // No collection featured yet: the biggest public ones stand in.
-      if (!found.length && !this.typeId) {
-        return app.store.find('curio-collections', { sort: '-ownedCount', page: { limit: 12 } }).then((biggest) => {
-          // Headed as what they are, never as "Featured".
-          this.standIn = true;
-          this.collections = biggest;
-          m.redraw();
-        });
-      }
+    if (!this.typeId) return;
+    app.store.find('curio-collections', { filter: { type: this.typeId }, sort: '-ownedCount', page: { limit: 24 } }).then((found) => {
       this.collections = found;
       m.redraw();
     });
+  }
+
+  /**
+   * Featured collections, then the rankings the admin chose, each fetched the
+   * first time it is drawn. Featuring adds a list; it never replaces "Top
+   * collections" (it used to stand in only while nothing was featured).
+   */
+  sections() {
+    if (!this.featured) this.loadFeatured();
+    if (this.featured.loading) return [];
+
+    const sections = browseSections(this.overview.ranking, this.featured.length);
+    if (sections.includes('top') && !this.top) {
+      this.top = [];
+      this.top.loading = true;
+      app.store.find('curio-collections', { sort: '-ownedCount', page: { limit: 12 } }).then((found) => {
+        this.top = found;
+        m.redraw();
+      });
+    }
+    if (sections.includes('collectors') && !this.collectors) {
+      this.collectors = { rows: [], more: false, loading: false };
+      this.loadCollectors();
+    }
+    return sections;
+  }
+
+  loadFeatured() {
+    this.featured = [];
+    this.featured.loading = true;
+    app.store.find('curio-collections', { filter: { featured: '1' }, sort: '-featuredAt', page: { limit: 12 } }).then((found) => {
+      this.featured = found;
+      m.redraw();
+    });
+  }
+
+  /** The next ten collectors: their counts, and just enough of each member for an avatar and a link. */
+  loadCollectors() {
+    const state = this.collectors;
+    state.loading = true;
+    app
+      .request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/curio/collectors`, params: { offset: state.rows.length } })
+      .then((found) => {
+        app.store.pushPayload({ data: found.users });
+        state.rows = state.rows.concat(found.data.map((row) => ({ ...row, user: app.store.getById('users', row.userId) })));
+        state.more = found.more;
+      })
+      .finally(() => {
+        state.loading = false;
+        m.redraw();
+      });
   }
 
   search(q) {
@@ -238,28 +285,87 @@ export default class BrowsePage extends Page {
           </>
         ) : null}
 
+        {chosen ? (
+          <>
+            <div className="CurioSection-heading">
+              <h2>{label(chosen.names())}</h2>
+            </div>
+            {this.cards(this.collections)}
+          </>
+        ) : this.overview ? (
+          this.sections().map((section) => this.section(section))
+        ) : null}
+      </>
+    );
+  }
+
+  section(key) {
+    const icon = { featured: 'fas fa-award', top: 'fas fa-ranking-star', collectors: 'fas fa-trophy' }[key];
+    return (
+      <>
         <div className="CurioSection-heading">
           <h2>
-            {chosen ? (
-              label(chosen.names())
-            ) : (
-              <>
-                <Icon name={this.standIn ? 'fas fa-ranking-star' : 'fas fa-award'} /> {t(this.standIn ? 'browse.largest' : 'browse.featured')}
-              </>
-            )}
+            <Icon name={icon} /> {t({ featured: 'browse.featured', top: 'browse.largest', collectors: 'browse.collectors' }[key])}
           </h2>
         </div>
-        {this.collections === null ? (
-          <LoadingIndicator display="block" />
-        ) : this.collections.length ? (
-          <div className="CurioCards">
-            {this.collections.map((c) => (
-              <div className="CurioCards-slot">{collectionCard(c)}</div>
+        {key === 'collectors' ? this.collectorTable() : this.cards(key === 'featured' ? this.featured : this.top)}
+      </>
+    );
+  }
+
+  /** Collection cards, or a line when there are none. */
+  cards(collections) {
+    if (!collections || collections.loading) return <LoadingIndicator display="block" />;
+    if (!collections.length) return <Placeholder text={t('browse.none')} />;
+    return (
+      <div className="CurioCards">
+        {collections.map((c) => (
+          <div className="CurioCards-slot">{collectionCard(c)}</div>
+        ))}
+      </div>
+    );
+  }
+
+  /** Top collectors: rank, member (to their collections), collections, items owned, wishlist; ten more at a time. */
+  collectorTable() {
+    const { rows, more, loading } = this.collectors;
+    if (!rows.length) return loading ? <LoadingIndicator display="block" /> : <Placeholder text={t('browse.none_collectors')} />;
+    const number = new Intl.NumberFormat(locale());
+    return (
+      <>
+        <table className="CurioCollectors">
+          <thead>
+            <tr>
+              <th className="CurioCollectors-rank">#</th>
+              <th>{t('browse.collector')}</th>
+              <th className="CurioCollectors-n">{t('browse.collector_collections')}</th>
+              <th className="CurioCollectors-n">{t('browse.collector_owned')}</th>
+              <th className="CurioCollectors-n">{t('browse.collector_wishlist')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.userId}>
+                <td className="CurioCollectors-rank">{i + 1}</td>
+                <td>
+                  <Link className="CurioCollectors-member" href={app.route('user.curio', { username: row.user.slug() })}>
+                    <Avatar user={row.user} /> <span className="username">{username(row.user)}</span>
+                  </Link>
+                </td>
+                <td className="CurioCollectors-n">{number.format(row.collections)}</td>
+                <td className="CurioCollectors-n">{number.format(row.owned)}</td>
+                <td className="CurioCollectors-n">{number.format(row.wishlist)}</td>
+              </tr>
             ))}
+          </tbody>
+        </table>
+        {more ? (
+          <div className="CurioBrowse-more">
+            <Button className="Button" loading={loading} onclick={() => this.loadCollectors()}>
+              {t('browse.more')}
+            </Button>
           </div>
-        ) : (
-          <Placeholder text={t('browse.none')} />
-        )}
+        ) : null}
       </>
     );
   }
