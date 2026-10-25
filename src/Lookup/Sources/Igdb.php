@@ -25,8 +25,15 @@ class Igdb implements Source
 
     private const PER_DAY = 2000;
 
-    /** Main games, standalone expansions, remakes, remasters, expanded games and ports: no DLC, bundles or mods. */
-    private const GAME_TYPES = '(0,4,8,9,10,11)';
+    /**
+     * Main games, bundles, standalone expansions, remakes, remasters, expanded
+     * games and ports: no DLC, packs or mods. Bundles are in because IGDB files
+     * real games as bundles too (UFO 50, Collection of SaGa, Mass Effect
+     * Legendary Edition); rank() keeps store bundles under the games.
+     */
+    public const GAME_TYPES = '(0,3,4,8,9,10,11)';
+
+    private const BUNDLE = 3;
 
     public function __construct(private Http $http, private SettingsRepositoryInterface $settings, private Cache $cache)
     {
@@ -50,15 +57,11 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.2.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
-            // IGDB ranks hits by text alone: take 30 and put the well-known ones first.
-            $games = $this->query('games', 'search "'.$query.'"; fields name,first_release_date,total_rating_count,cover.image_id,'
+        return $this->cache->remember('curio.igdb.search.3.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+            // IGDB ranks hits by text alone: take 50 and put the well-known ones first.
+            $games = $this->query('games', 'search "'.$query.'"; fields name,game_type,first_release_date,total_rating_count,cover.image_id,'
                 .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer; '
-                .'where game_type = '.self::GAME_TYPES.' & version_parent = null; limit 30;');
-
-            $exact = mb_strtolower($query);
-            usort($games, fn ($a, $b) => [mb_strtolower((string) ($a['name'] ?? '')) !== $exact, -($a['total_rating_count'] ?? 0)]
-                <=> [mb_strtolower((string) ($b['name'] ?? '')) !== $exact, -($b['total_rating_count'] ?? 0)]);
+                .'where game_type = '.self::GAME_TYPES.' & version_parent = null; limit 50;');
 
             return array_map(fn (array $g) => [
                 'id' => (string) $g['id'],
@@ -68,8 +71,32 @@ class Igdb implements Source
                 'cover' => self::cover($g['cover']['image_id'] ?? null),
                 // Which machines it came out on, so the right copy can be picked.
                 'variants' => self::platforms($g),
-            ], array_slice(array_values(array_filter($games, fn ($g) => is_array($g) && isset($g['id'], $g['name']))), 0, 8));
+            ], array_slice(self::rank($games, $query), 0, 8));
         });
+    }
+
+    /**
+     * The exact title first, then the well-known (most rated) first. A bundle
+     * nobody has rated ("Halo 3 + Halo Wars", "Dark Souls Trilogy Box") is a
+     * shop listing, not a game people know, so it comes after every game; a
+     * rated one (UFO 50, Mass Effect Trilogy) ranks like any game. Public so it
+     * is tested without credentials.
+     *
+     * @param list<mixed> $games
+     * @return list<array<string, mixed>>
+     */
+    public static function rank(array $games, string $query): array
+    {
+        $exact = mb_strtolower(trim($query));
+        $key = fn (array $g) => [
+            mb_strtolower((string) $g['name']) !== $exact,
+            ($g['game_type'] ?? null) === self::BUNDLE && empty($g['total_rating_count']),
+            -($g['total_rating_count'] ?? 0),
+        ];
+        $games = array_values(array_filter($games, fn ($g) => is_array($g) && isset($g['id'], $g['name'])));
+        usort($games, fn ($a, $b) => $key($a) <=> $key($b));
+
+        return $games;
     }
 
     public function details(string $id): array
