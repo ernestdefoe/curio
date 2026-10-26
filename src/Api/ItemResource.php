@@ -31,6 +31,7 @@ use Ernestdefoe\Curio\Job\NotifyWishlists;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Psr\Http\Message\UploadedFileInterface;
+use Psr\Log\LoggerInterface;
 use Tobyz\JsonApiServer\Context as OriginalContext;
 
 /**
@@ -52,7 +53,8 @@ class ItemResource extends AbstractDatabaseResource
         private WorkTexts $texts,
         private TranslatorInterface $translator,
         private Cache $cache,
-        private Queue $queue
+        private Queue $queue,
+        private LoggerInterface $log
     ) {
     }
 
@@ -125,7 +127,8 @@ class ItemResource extends AbstractDatabaseResource
         $actor = $context->getActor();
         $collection = $model->collection;
 
-        if (! $collection || $collection->user_id !== $actor->id) {
+        // The owner, or a moderator helping out: the item is still the owner's.
+        if (! $collection || $actor->cannot('addItems', $collection)) {
             throw new PermissionDeniedException();
         }
 
@@ -133,9 +136,10 @@ class ItemResource extends AbstractDatabaseResource
             throw new ValidationException(['title' => $this->translator->trans('ernestdefoe-curio.api.collection_full', ['count' => Collection::MAX_ITEMS])]);
         }
 
-        $model->user_id = $actor->id;
+        $model->user_id = $collection->user_id;
         $model->status ??= 'owned';
         $model->favourite ??= false;
+        $model->graded ??= false;
         $model->position = (int) Item::query()->where('collection_id', $collection->id)->max('position') + 1;
 
         return $model;
@@ -150,6 +154,11 @@ class ItemResource extends AbstractDatabaseResource
         }
         if ($model->isDirty('rating')) {
             $model->rating_changed_at = $model->rating ? Carbon::now() : null;
+        }
+
+        // Each type keeps its own condition scale: cards are Near Mint, records Very good.
+        if ($model->isDirty('condition') && $model->condition !== null && ! in_array($model->condition, $model->collection?->type?->conditionList() ?? Item::CONDITIONS, true)) {
+            throw new ValidationException(['condition' => $this->translator->trans('validation.in', ['attribute' => 'condition'])]);
         }
 
         if (array_key_exists(spl_object_id($model), $this->pendingFields)) {
@@ -170,6 +179,8 @@ class ItemResource extends AbstractDatabaseResource
     public function saved(object $model, OriginalContext $context): ?object
     {
         /** @var Item $model */
+        $this->audit($context->getActor(), $model, $model->wasRecentlyCreated ? 'added' : 'changed');
+
         if ($model->wasRecentlyCreated && $model->barcode) {
             $this->barcodes->remember($model->barcode, $model->work_id, $model->title, $model->fields ?? [], $model->work_id ? (string) $model->work?->source : 'member');
         }
@@ -209,6 +220,8 @@ class ItemResource extends AbstractDatabaseResource
             return;
         }
 
+        $this->audit($context->getActor(), $model, 'removed');
+
         foreach ($model->photos ?? [] as $photo) {
             $this->images->delete($photo);
         }
@@ -221,6 +234,8 @@ class ItemResource extends AbstractDatabaseResource
     public function fields(): array
     {
         $isOwner = fn (Item $item, Context $context) => ! $context->getActor()->isGuest() && $item->user_id === $context->getActor()->id;
+        // What the owner paid stays theirs: a moderator editing the item neither sees nor changes it.
+        $ownerWrites = fn (Item $item, Context $context) => ! $item->exists || $isOwner($item, $context);
 
         return [
             Schema\Str::make('title')
@@ -252,10 +267,14 @@ class ItemResource extends AbstractDatabaseResource
             Schema\Str::make('status')
                 ->writable()
                 ->in(Item::STATUSES),
+            // On the scale of the item's type (checked when saved).
             Schema\Str::make('condition')
                 ->nullable()
                 ->writable()
-                ->in(Item::CONDITIONS),
+                ->in(array_values(array_unique([...Item::CONDITIONS, ...Item::CARD_CONDITIONS]))),
+            // Professionally graded (slabbed); the member's photos show by whom and the score.
+            Schema\Boolean::make('graded')
+                ->writable(),
             Schema\Date::make('acquiredOn')
                 ->nullable()
                 ->writable()
@@ -292,14 +311,14 @@ class ItemResource extends AbstractDatabaseResource
             Schema\Number::make('pricePaid')
                 ->nullable()
                 ->visible($isOwner)
-                ->writable()
+                ->writable($ownerWrites)
                 ->rule('numeric')
                 ->rule('between:0,99999999')
                 ->get(fn (Item $item) => $item->price_paid !== null ? (float) $item->price_paid : null),
             Schema\Str::make('priceCurrency')
                 ->nullable()
                 ->visible($isOwner)
-                ->writable()
+                ->writable($ownerWrites)
                 ->rule('regex:/^[A-Z]{3}$/'),
             Schema\Integer::make('position'),
             Schema\Arr::make('photos')
@@ -400,7 +419,7 @@ class ItemResource extends AbstractDatabaseResource
                 'bool' => (bool) $v,
                 'number' => is_numeric($v) ? $v + 0 : null,
                 'date' => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null,
-                'select' => in_array($v, array_column($field['options'] ?? [], 'key'), true) ? $v : null,
+                'select' => Type::allows($field, $v) ? $v : null,
                 'link' => self::url($v),
                 default => is_scalar($v) ? mb_substr(trim((string) $v), 0, 200) : null,
             };
@@ -468,6 +487,19 @@ class ItemResource extends AbstractDatabaseResource
         $this->refreshCollection($item);
 
         return $item;
+    }
+
+    /**
+     * A moderator's change to someone else's item goes in the forum's log,
+     * so there is a trail of who touched what.
+     */
+    private function audit(User $actor, Item $item, string $action): void
+    {
+        if ($actor->isGuest() || $actor->id === $item->user_id) {
+            return;
+        }
+
+        $this->log->info(sprintf('[curio] %s (#%d) %s item #%d “%s” in collection #%d of user #%d', $actor->username, $actor->id, $action, $item->id, preg_replace('/[\x00-\x1f\x7f]+/u', ' ', $item->title), $item->collection_id, $item->user_id));
     }
 
     /** A window that starts with the first use, so no clock boundary resets it early. */

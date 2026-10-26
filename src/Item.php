@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $price_paid
  * @property string|null $price_currency
  * @property bool $favourite
+ * @property bool $graded
  * @property int|null $rating
  * @property string|null $progress
  * @property int $position
@@ -50,6 +51,9 @@ class Item extends AbstractModel
 
     public const CONDITIONS = ['sealed', 'mint', 'very_good', 'good', 'fair', 'poor'];
 
+    /** Trading cards' own scale (TCGplayer's): Mint, Near Mint, Light, Moderately and Heavily Played, Damaged. */
+    public const CARD_CONDITIONS = ['mint', 'near_mint', 'light_played', 'moderately_played', 'heavily_played', 'damaged'];
+
     /** Where the owner is with it: not started, in progress, completed, or given up on. */
     public const PROGRESS = ['pending', 'in_progress', 'completed', 'abandoned'];
 
@@ -68,6 +72,7 @@ class Item extends AbstractModel
         'fields' => 'array',
         'photos' => 'array',
         'favourite' => 'boolean',
+        'graded' => 'boolean',
         'rating' => 'integer',
         'needs_match' => 'boolean',
         'position' => 'integer',

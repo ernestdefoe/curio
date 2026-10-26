@@ -18,7 +18,8 @@ const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games', 'pokemon', '
 const KINDS = ['select', 'text', 'number', 'date', 'bool', 'link'];
 const clone = (v) => JSON.parse(JSON.stringify(v));
 // What a type export carries: everything an admin sets, labels in every language.
-const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress'];
+const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress', 'conditionScale', 'grading'];
+const SCALES = ['general', 'cards'];
 
 /** Saves text as a file in the browser. */
 function download(name, data) {
@@ -69,8 +70,21 @@ export default class TypesEditor {
           fields: clone(type.fields() || []),
           enabled: type.enabled() !== false,
           progress: !!type.progress(),
+          conditionScale: type.conditionScale() || 'general',
+          grading: !!type.grading(),
         }
-      : { names: {}, icon: 'fas fa-box', color: '', shape: 'portrait', source: 'none', fields: [], enabled: true, progress: false };
+      : {
+          names: {},
+          icon: 'fas fa-box',
+          color: '',
+          shape: 'portrait',
+          source: 'none',
+          fields: [],
+          enabled: true,
+          progress: false,
+          conditionScale: 'general',
+          grading: false,
+        };
   }
 
   /**
@@ -206,6 +220,15 @@ export default class TypesEditor {
             {marqueeNeeded ? <small className="CurioAdmin-warn">{t('types.needs_marquee')}</small> : null}
             {['pokemon', 'magic', 'yugioh', 'cards'].includes(d.source) ? <small className="helpText">{t('types.cards_help')}</small> : null}
           </div>
+          <div className="Form-group">
+            <label>{t('types.conditions')}</label>
+            <Select
+              value={d.conditionScale}
+              onchange={(v) => (d.conditionScale = v)}
+              options={Object.fromEntries(SCALES.map((s) => [s, text('types.conditions_' + s)]))}
+            />
+            <small className="helpText">{t('types.conditions_help')}</small>
+          </div>
         </div>
 
         <div className="CurioAdmin-switches">
@@ -217,6 +240,10 @@ export default class TypesEditor {
             {t('types.progress')}
           </Switch>
           <small className="helpText">{t('types.progress_help')}</small>
+          <Switch state={d.grading} onchange={(v) => (d.grading = v)}>
+            {t('types.grading')}
+          </Switch>
+          <small className="helpText">{t('types.grading_help')}</small>
         </div>
 
         <h4>{t('types.fields')}</h4>

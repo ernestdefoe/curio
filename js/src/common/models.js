@@ -13,6 +13,8 @@ Object.assign(CurioType.prototype, {
   searchable: Model.attribute('searchable'),
   enabled: Model.attribute('enabled'),
   progress: Model.attribute('progress'),
+  conditionScale: Model.attribute('conditionScale'),
+  grading: Model.attribute('grading'),
 });
 
 export class CurioCollection extends Model {}
@@ -33,6 +35,7 @@ Object.assign(CurioCollection.prototype, {
   updatedAt: Model.attribute('updatedAt', Model.transformDate),
   canEdit: Model.attribute('canEdit'),
   canDelete: Model.attribute('canDelete'),
+  canAddItems: Model.attribute('canAddItems'),
   canFeature: Model.attribute('canFeature'),
   canImport: Model.attribute('canImport'),
   canExport: Model.attribute('canExport'),
@@ -57,6 +60,7 @@ Object.assign(CurioItem.prototype, {
   facet: Model.attribute('facet'),
   notes: Model.attribute('notes'),
   favourite: Model.attribute('favourite'),
+  graded: Model.attribute('graded'),
   rating: Model.attribute('rating'),
   progress: Model.attribute('progress'),
   barcode: Model.attribute('barcode'),

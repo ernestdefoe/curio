@@ -10,6 +10,7 @@ use Ernestdefoe\Curio\Lookup\LookupException;
 use Ernestdefoe\Curio\Lookup\Paged;
 use Ernestdefoe\Curio\Lookup\Source;
 use Ernestdefoe\Curio\Translation\WorkTexts;
+use Ernestdefoe\Curio\Type;
 use Flarum\Locale\TranslatorInterface;
 use Illuminate\Contracts\Cache\Repository as Cache;
 
@@ -41,6 +42,16 @@ class TcgDex implements Source, Paged, CardLanguages
 
     /** Languages with their own sets, whose ids are the codes printed on the cards. */
     private const ASIAN = ['ja', 'ko', 'zh-tw', 'zh-cn', 'id', 'th'];
+
+    /** Finishes TCGdex names a printing by (variants_detailed "type"). */
+    private const FINISHES = ['normal', 'holo', 'reverse', 'metal', 'lenticular'];
+
+    /**
+     * Words that name a printing, not the card: "Gengar 057/091 trick or
+     * trade" is Gengar 057/091, and the Trick or Trade printing is picked
+     * from its chips.
+     */
+    private const PRINTING_WORDS = '/\b(trick[\s-]*or[\s-]*trade|cosmos(\s+holo)?|reverse(\s+holo)?|holo|(1st|first)\s+edition)\b/iu';
 
     /** The language picked in the look-up, or null for the reader's own. */
     private ?string $lang = null;
@@ -76,7 +87,7 @@ class TcgDex implements Source, Paged, CardLanguages
      */
     public function page(string $query, int $page): array
     {
-        $asked = CardQuery::parse($query);
+        $asked = CardQuery::parse(self::withoutPrinting($query));
         $cards = [];
 
         if ($this->lang !== null) {
@@ -133,6 +144,7 @@ class TcgDex implements Source, Paged, CardLanguages
                 'rarity' => $rarity,
                 'language' => $m[1],
                 'variants' => self::variants($c['variants'] ?? null),
+                'printings' => $this->printings($c, $m[1], $m[2]),
             ]],
         ];
     }
@@ -417,6 +429,75 @@ class TcgDex implements Source, Paged, CardLanguages
         $keys = ['normal' => 'normal', 'reverse' => 'reverse', 'holo' => 'holo', 'firstEdition' => 'first_edition', 'wPromo' => 'w_promo'];
 
         return is_array($variants) ? array_values(array_intersect_key($keys, array_filter($variants, fn ($v) => $v === true))) : [];
+    }
+
+    /** The query with any printing words taken out ("Gengar 057/091 trick or trade" → "Gengar 057/091"). */
+    public static function withoutPrinting(string $query): string
+    {
+        $plain = trim((string) preg_replace(['/\s+/u'], ' ', (string) preg_replace(self::PRINTING_WORDS, ' ', $query)));
+
+        return $plain !== '' ? $plain : $query;
+    }
+
+    /**
+     * Every way this card was printed, from TCGdex's variants_detailed: its
+     * finish, then any special pattern, foil, stamps and size, as Variant
+     * keys ("holo", "holo.cosmos.trick-or-trade", "normal.1st-edition").
+     * Their words come from the English card (TCGdex translates "holo" as
+     * "Olografica"), matched by variantId; a card only one language has
+     * keeps its own words when they are plain.
+     *
+     * @return list<string>
+     */
+    private function printings(array $card, string $lang, string $id): array
+    {
+        $variants = array_filter((array) ($card['variants_detailed'] ?? []), 'is_array');
+        if (! $variants) {
+            return [];
+        }
+
+        if ($lang !== 'en' && ! in_array($lang, self::ASIAN, true)) {
+            try {
+                $english = [];
+                foreach (array_filter((array) ($this->get("en/cards/$id")['variants_detailed'] ?? []), 'is_array') as $v) {
+                    if (is_string($v['variantId'] ?? null)) {
+                        $english[$v['variantId']] = $v;
+                    }
+                }
+                $variants = array_map(fn ($v) => $english[$v['variantId'] ?? ''] ?? $v, $variants);
+            } catch (LookupException $e) {
+                // No English card: its own words.
+            }
+        }
+
+        $keys = [];
+        foreach ($variants as $v) {
+            $finish = self::slug($v['type'] ?? null);
+            if (! in_array($finish, self::FINISHES, true)) {
+                continue;
+            }
+            $parts = [$finish, self::slug($v['subtype'] ?? null), self::slug($v['foil'] ?? null)];
+            foreach (array_slice(array_filter((array) ($v['stamp'] ?? []), 'is_string'), 0, 3) as $stamp) {
+                $parts[] = self::slug($stamp);
+            }
+            if (self::slug($v['size'] ?? null) === 'jumbo') {
+                $parts[] = 'jumbo';
+            }
+            $key = implode('.', array_values(array_unique(array_filter($parts))));
+            if (strlen($key) <= 100 && preg_match(Type::PRINTING, $key)) {
+                $keys[] = $key;
+            }
+        }
+
+        return array_slice(array_values(array_unique($keys)), 0, 30);
+    }
+
+    /** "Trick-or-Trade", "cracked ice" → "trick-or-trade", "cracked-ice"; anything else (accents, scripts) → ''. */
+    private static function slug(mixed $value): string
+    {
+        $slug = is_string($value) ? trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($value)), '-') : '';
+
+        return preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $slug) && strlen($slug) <= 40 && ! preg_match('/[^\x20-\x7e]/', (string) $value) ? $slug : '';
     }
 
     /** "swsh3-136" with local id "136" is card 136 of set "swsh3". */

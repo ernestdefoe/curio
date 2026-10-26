@@ -1509,9 +1509,9 @@ class CurioTest extends TestCase
 
         $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
         $this->assertStringContainsString(',progress', strtok($csv, "\n"));
-        $this->assertStringContainsString("Dropped,,,owned,,,,,,,,,abandoned,,,,\n", $csv);
+        $this->assertStringContainsString("Dropped,,,owned,,,,,,,,,abandoned,,,,,\n", $csv);
         // Four rows at most, so the importer's one insert per row stays under the repeated-query detector.
-        $csv = str_replace("Dropped,,,owned,,,,,,,,,abandoned,,,,\n", '', $csv);
+        $csv = str_replace("Dropped,,,owned,,,,,,,,,abandoned,,,,,\n", '', $csv);
 
         $to = $this->newCollection(3, ['name' => 'Copy']);
         $this->upload(3, $to, $csv."Outer Wilds,,,,,,,,,,,,En cours\n");
@@ -1801,7 +1801,8 @@ class CurioTest extends TestCase
     {
         $fake = $this->fakeCards();
         $cards = $this->typeId('cards');
-        $this->assertSame(['set', 'number', 'variant', 'grade', 'rarity', 'language'], array_column(json_decode((string) $this->database()->table('curio_types')->where('id', $cards)->value('fields'), true), 'key'));
+        // The free-text Grade gave way to the Graded tick box (1.16).
+        $this->assertSame(['set', 'number', 'variant', 'rarity', 'language'], array_column(json_decode((string) $this->database()->table('curio_types')->where('id', $cards)->value('fields'), true), 'key'));
 
         // None until the admin picks one.
         $this->assertSame([], $this->lookup(['type' => $cards, 'q' => 'fouinar'])['results']);
@@ -2274,5 +2275,229 @@ class CurioTest extends TestCase
         $this->assertSame(['12', '16', '20'], array_column($second['data'], 'userId'));
         $this->assertFalse($second['more']);
         $this->assertCount(3, $second['users']);
+    }
+
+    #[Test]
+    public function trading_cards_use_the_card_condition_scale_and_other_types_keep_theirs(): void
+    {
+        $types = array_column(array_map(fn ($t) => ['slug' => $t['attributes']['slug'], 'scale' => $t['attributes']['conditionScale'], 'grading' => $t['attributes']['grading']], $this->json($this->get('/api/curio-types'))['data']), null, 'slug');
+        $this->assertSame(['cards', true], [$types['cards']['scale'], $types['cards']['grading']]);
+        $this->assertSame(['general', true], [$types['games']['scale'], $types['games']['grading']]);
+        $this->assertSame(['general', true], [$types['comics']['scale'], $types['comics']['grading']]);
+        $this->assertSame(['general', false], [$types['music']['scale'], $types['music']['grading']]);
+
+        $cards = $this->newCollection(3, [], 'cards');
+        $games = $this->newCollection(3);
+
+        $response = $this->item(3, $cards, ['title' => 'Gengar', 'condition' => 'near_mint', 'graded' => true]);
+        $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        $card = $this->json($response)['data'];
+        $this->assertSame(['near_mint', true], [$card['attributes']['condition'], $card['attributes']['graded']]);
+
+        // Each scale is the type's own.
+        $this->assertSame(422, $this->item(3, $cards, ['title' => 'Haunter', 'condition' => 'very_good'])->getStatusCode());
+        $this->assertSame(422, $this->item(3, $games, ['title' => 'Hades', 'condition' => 'light_played'])->getStatusCode());
+        $this->assertSame(201, $this->item(3, $games, ['title' => 'Hades', 'condition' => 'very_good'])->getStatusCode());
+        $this->assertSame(422, $this->patchItem(3, (int) $card['id'], ['condition' => 'good'])->getStatusCode());
+        $this->assertSame(200, $this->patchItem(3, (int) $card['id'], ['condition' => 'damaged'])->getStatusCode());
+
+        // An admin switches a type's scale and grading.
+        $response = $this->patchType($this->typeId('music'), ['conditionScale' => 'cards', 'grading' => true]);
+        $this->assertSame(['cards', true], [$this->json($response)['data']['attributes']['conditionScale'], $this->json($response)['data']['attributes']['grading']]);
+        $this->assertSame(422, $this->patchType($this->typeId('music'), ['conditionScale' => 'stamps'])->getStatusCode());
+
+        // The CSV carries both, and reads the card codes shops use.
+        $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$cards/export", ['authenticatedAs' => 3]))->getBody();
+        $this->assertStringContainsString(',progress,graded,', $csv);
+        $this->assertStringContainsString(',damaged,', $csv);
+        $this->assertStringContainsString(',yes,', explode("\n", $csv)[1]);
+
+        $file = tempnam(sys_get_temp_dir(), 'curio');
+        file_put_contents($file, "title,condition,graded\nCharizard,NM,yes\nPikachu,Lightly Played,\nEevee,very_good,yes\n");
+        $response = $this->send($this->request('POST', "/api/curio-collections/$cards/import", ['authenticatedAs' => 3])
+            ->withUploadedFiles(['file' => new UploadedFile($file, filesize($file), UPLOAD_ERR_OK, 'cards.csv', 'text/csv')]));
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $rows = $this->database()->table('curio_items')->where('collection_id', $cards)->whereIn('title', ['Charizard', 'Pikachu', 'Eevee'])->orderBy('id')->get(['condition', 'graded']);
+        $this->assertSame([['near_mint', 1], ['light_played', 0], [null, 1]], $rows->map(fn ($r) => [$r->condition, (int) $r->graded])->all());
+    }
+
+    #[Test]
+    public function the_old_grade_detail_becomes_the_graded_box_and_its_words_move_to_the_notes(): void
+    {
+        $cards = $this->newCollection(3, [], 'cards');
+        $migration = include __DIR__.'/../../../migrations/2026_10_26_000001_add_curio_card_conditions_and_graded.php';
+        $schema = $this->database()->getSchemaBuilder();
+        $migration['down']($schema);
+
+        // As it was before: a free-text Grade on the seeded cards type, and a card on the general scale.
+        $type = $this->database()->table('curio_types')->where('slug', 'cards')->first();
+        $fields = json_decode((string) $type->fields, true);
+        array_splice($fields, 3, 0, [['key' => 'grade', 'kind' => 'text', 'labels' => ['en' => 'Grade', 'fr' => 'Note']]]);
+        $this->database()->table('curio_types')->where('id', $type->id)->update(['fields' => json_encode($fields), 'source' => 'pokemon']);
+        $now = Carbon::now();
+        $this->database()->table('curio_items')->insert([
+            ['collection_id' => $cards, 'user_id' => 3, 'title' => 'Charizard', 'status' => 'owned', 'condition' => 'very_good', 'fields' => json_encode(['number' => '4', 'grade' => 'PSA 9']), 'notes' => 'Base set.', 'favourite' => false, 'position' => 1, 'created_at' => $now, 'updated_at' => $now],
+            ['collection_id' => $cards, 'user_id' => 3, 'title' => 'Pikachu', 'status' => 'owned', 'condition' => null, 'fields' => json_encode(['grade' => '']), 'notes' => null, 'favourite' => false, 'position' => 2, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
+        $migration['up']($schema);
+
+        $this->assertNotContains('grade', array_column(json_decode((string) $this->database()->table('curio_types')->where('slug', 'cards')->value('fields'), true), 'key'));
+        $items = $this->database()->table('curio_items')->where('collection_id', $cards)->orderBy('position')->get();
+        $this->assertSame(['near_mint', 1, "Base set.\nGrade: PSA 9", ['number' => '4']], [$items[0]->condition, (int) $items[0]->graded, $items[0]->notes, json_decode($items[0]->fields, true)]);
+        $this->assertSame([0, null], [(int) $items[1]->graded, $items[1]->notes]);
+    }
+
+    /** TCGdex answering in French and in English for a card with a Trick or Trade printing. */
+    private function fakeTrickOrTrade(): object
+    {
+        $container = $this->app()->getContainer();
+        $fake = new class($container->make(\Illuminate\Contracts\Cache\Repository::class), $container->make(\Flarum\Http\UrlGenerator::class)) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $calls = [];
+
+            public function json(string $service, string $url, array $query = [], array $headers = [], float $timeout = 6): array
+            {
+                $this->calls[] = $url.($query ? '?'.http_build_query($query) : '');
+                $card = fn (string $lang, array $variants) => ['id' => 'sv03-136', 'localId' => '136', 'name' => $lang === 'fr' ? 'Darkrai' : 'Darkrai', 'illustrator' => 'Bun Toujo',
+                    'set' => ['id' => 'sv03', 'name' => 'Obsidian Flames', 'cardCount' => ['official' => 197]], 'variants' => ['normal' => true, 'holo' => true, 'reverse' => true],
+                    'variants_detailed' => $variants];
+
+                return match (true) {
+                    str_ends_with($url, '/fr/cards/sv03-136') => $card('fr', [
+                        ['type' => 'Holo', 'size' => 'Standard', 'variantId' => 'h'],
+                        ['type' => 'Reverse', 'size' => 'Standard', 'variantId' => 'r'],
+                        ['type' => 'Holo', 'size' => 'Standard', 'foil' => 'Galaxie', 'variantId' => 'g'],
+                        ['type' => 'Normal', 'size' => 'Standard', 'stamp' => ['trick-or-trade'], 'variantId' => 'tn'],
+                        ['type' => 'Holo', 'size' => 'Standard', 'foil' => 'Cosmos', 'stamp' => ['trick-or-trade'], 'variantId' => 'tc'],
+                        ['type' => '<b>', 'variantId' => 'x'],
+                    ]),
+                    str_ends_with($url, '/en/cards/sv03-136') => $card('en', [
+                        ['type' => 'holo', 'size' => 'standard', 'variantId' => 'h'],
+                        ['type' => 'reverse', 'size' => 'standard', 'variantId' => 'r'],
+                        ['type' => 'holo', 'size' => 'standard', 'foil' => 'galaxy', 'variantId' => 'g'],
+                        ['type' => 'normal', 'size' => 'standard', 'stamp' => ['trick-or-trade'], 'variantId' => 'tn'],
+                        ['type' => 'holo', 'size' => 'jumbo', 'foil' => 'cosmos', 'stamp' => ['trick-or-trade'], 'variantId' => 'tc'],
+                    ]),
+                    (bool) preg_match('#/en/cards$#', $url) => [['id' => 'sv03-136', 'localId' => '136', 'name' => 'Darkrai']],
+                    (bool) preg_match('#/en/sets$#', $url) => [['id' => 'sv03', 'name' => 'Obsidian Flames', 'cardCount' => ['official' => 197]]],
+                    default => [],
+                };
+            }
+        };
+        $container->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        return $fake;
+    }
+
+    #[Test]
+    public function a_card_brings_every_printing_tcgdex_lists_and_a_member_keeps_the_one_they_own(): void
+    {
+        $fake = $this->fakeTrickOrTrade();
+        $cards = $this->typeId('cards');
+        $this->database()->table('curio_types')->where('id', $cards)->update(['source' => 'pokemon']);
+
+        // "trick or trade" names the printing, not the card: the card is still found.
+        $results = $this->lookup(['type' => $cards, 'q' => 'Darkrai 136/197 trick or trade', 'lang' => 'en'])['results'];
+        $this->assertSame(['en/sv03-136'], array_column($results, 'id'));
+
+        // Picked in French, its printings are named in English words (matched by TCGdex's variantId), each one apart.
+        $workId = $this->lookup(['source' => 'tcgdex', 'id' => 'fr/sv03-136'])['workId'];
+        $facts = $this->json($this->get("/api/curio-works/$workId", [], 3))['data']['attributes']['facts']['card'];
+        $this->assertSame(['holo', 'reverse', 'holo.galaxy', 'normal.trick-or-trade', 'holo.cosmos.trick-or-trade.jumbo'], $facts['printings']);
+        $this->assertSame(['normal', 'reverse', 'holo'], $facts['variants']);
+        $this->assertContains('https://api.tcgdex.net/v2/en/cards/sv03-136', $fake->calls);
+
+        // The Trick or Trade copy is its own item, and its own line in the breakdown.
+        $collection = $this->newCollection(3, [], 'cards');
+        $response = $this->item(3, $collection, ['title' => 'Darkrai', 'fields' => ['variant' => 'holo.cosmos.trick-or-trade.jumbo']], (int) $workId);
+        $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame('holo.cosmos.trick-or-trade.jumbo', $this->json($response)['data']['attributes']['facet']);
+        $this->item(3, $collection, ['title' => 'Darkrai', 'fields' => ['variant' => 'holo']], (int) $workId);
+        $this->assertEquals(['holo.cosmos.trick-or-trade.jumbo' => 1, 'holo' => 1], $this->json($this->get("/api/curio-collections/$collection", [], 3))['data']['attributes']['facets']);
+
+        // Only well-formed printings: nothing else gets past the type's own choices.
+        foreach (['holo.<b>', 'shiny.cosmos', 'holo.'.str_repeat('a', 120), 'holo..x'] as $bad) {
+            $item = $this->json($this->item(3, $collection, ['title' => 'Bad', 'fields' => ['variant' => $bad]]))['data']['attributes'];
+            $this->assertEquals([], $item['fields'], $bad);
+        }
+    }
+
+    #[Test]
+    public function an_admin_saving_a_type_keeps_the_keys_its_choices_already_have(): void
+    {
+        $id = $this->typeId('cards');
+        $fields = $this->json($this->get("/api/curio-types/$id"))['data']['attributes']['fields'];
+        $response = $this->patchType($id, ['fields' => $fields]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+
+        $variant = array_values(array_filter($this->json($response)['data']['attributes']['fields'], fn ($f) => $f['key'] === 'variant'))[0];
+        $this->assertContains('first_edition', array_column($variant['options'], 'key'));
+        $this->assertContains('w_promo', array_column($variant['options'], 'key'));
+    }
+
+    #[Test]
+    public function moderators_add_edit_and_remove_anyones_items_and_members_cannot(): void
+    {
+        $this->prepareDatabase([
+            User::class => [['id' => 5, 'username' => 'warden', 'email' => 'warden@machine.local', 'is_email_confirmed' => 1]],
+            'group_user' => [['user_id' => 5, 'group_id' => 4], ['user_id' => 5, 'group_id' => 3]],
+        ]);
+        $logged = [];
+        $this->app()->getContainer()->instance(\Psr\Log\LoggerInterface::class, new class($logged) extends \Psr\Log\AbstractLogger {
+            public function __construct(private array &$lines)
+            {
+            }
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->lines[] = (string) $message;
+            }
+        });
+
+        $theirs = $this->newCollection(3);
+        $item = (int) $this->json($this->item(3, $theirs, ['title' => 'Mad Max', 'pricePaid' => 30, 'priceCurrency' => 'EUR']))['data']['id'];
+
+        // A plain member: none of it, and no way in through the collection.
+        $this->assertSame(403, $this->patchItem(4, $item, ['title' => 'Defaced'])->getStatusCode());
+        $this->assertSame(403, $this->send($this->request('DELETE', "/api/curio-items/$item", ['authenticatedAs' => 4]))->getStatusCode());
+        $this->assertSame(403, $this->item(4, $theirs, ['title' => 'Planted'])->getStatusCode());
+        $this->assertFalse($this->json($this->get("/api/curio-items/$item", [], 4))['data']['attributes']['canEdit']);
+        $this->assertFalse($this->json($this->get("/api/curio-collections/$theirs", [], 4))['data']['attributes']['canAddItems']);
+        $this->assertSame('Mad Max', $this->database()->table('curio_items')->where('id', $item)->value('title'));
+
+        // A moderator: edits, adds (the item is the owner's) and removes.
+        $this->assertTrue($this->json($this->get("/api/curio-items/$item", [], 5))['data']['attributes']['canEdit']);
+        $this->assertTrue($this->json($this->get("/api/curio-collections/$theirs", [], 5))['data']['attributes']['canAddItems']);
+        // Settings and order stay the owner's.
+        $this->assertFalse($this->json($this->get("/api/curio-collections/$theirs", [], 5))['data']['attributes']['canEdit']);
+
+        $response = $this->patchItem(5, $item, ['title' => 'Mad Max (2015)', 'graded' => true]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        // What the owner paid is neither shown to the moderator nor changeable by them.
+        $this->assertArrayNotHasKey('pricePaid', $this->json($response)['data']['attributes']);
+        $this->assertNotSame(200, $this->patchItem(5, $item, ['pricePaid' => 0])->getStatusCode());
+        $this->assertSame('30.00', number_format((float) $this->database()->table('curio_items')->where('id', $item)->value('price_paid'), 2));
+
+        $response = $this->item(5, $theirs, ['title' => 'Fury Road']);
+        $this->assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        $added = (int) $this->json($response)['data']['id'];
+        $this->assertSame(3, (int) $this->database()->table('curio_items')->where('id', $added)->value('user_id'));
+
+        $this->assertSame(204, $this->send($this->request('DELETE', "/api/curio-items/$added", ['authenticatedAs' => 5]))->getStatusCode());
+        $this->assertNull($this->database()->table('curio_items')->where('id', $added)->value('id'));
+
+        // Each change to someone else's item leaves a line in the log; the owner's own do not.
+        $this->patchItem(3, $item, ['notes' => 'Mine.']);
+        $this->assertCount(3, $logged);
+        $this->assertStringContainsString('warden (#5) changed item #'.$item.' “Mad Max (2015)” in collection #'.$theirs.' of user #3', $logged[0]);
+        $this->assertStringContainsString('added item', $logged[1]);
+        $this->assertStringContainsString('removed item', $logged[2]);
+
+        // Without the permission, a moderator is back to removing only.
+        $this->database()->table('group_permission')->where('permission', 'ernestdefoe-curio.editItems')->delete();
+        $this->app()->getContainer()->make(\Flarum\Group\PermissionCache::class)->flush();
+        $this->assertSame(403, $this->patchItem(5, $item, ['title' => 'Again'])->getStatusCode());
+        $this->assertSame(403, $this->item(5, $theirs, ['title' => 'Again'])->getStatusCode());
+        $this->assertSame(204, $this->send($this->request('DELETE', "/api/curio-items/$item", ['authenticatedAs' => 5]))->getStatusCode());
     }
 }

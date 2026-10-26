@@ -9,7 +9,7 @@ use Flarum\Settings\SettingsRepositoryInterface;
 /** A collection as a spreadsheet, in the columns CsvImport reads back. */
 class Exporter
 {
-    private const COLUMNS = ['title', 'subtitle', 'year', 'status', 'condition', 'acquired_on', 'notes', 'barcode', 'price_paid', 'price_currency', 'favourite', 'rating', 'progress'];
+    private const COLUMNS = ['title', 'subtitle', 'year', 'status', 'condition', 'acquired_on', 'notes', 'barcode', 'price_paid', 'price_currency', 'favourite', 'rating', 'progress', 'graded'];
 
     public function __construct(private SettingsRepositoryInterface $settings)
     {
@@ -30,7 +30,7 @@ class Exporter
                 $row = [
                     $item->title, $item->subtitle, $item->year, $item->status, $item->condition, $item->acquired_on?->toDateString(),
                     $item->notes, $item->barcode, $item->price_paid, $item->price_currency, $item->favourite ? 'yes' : '',
-                    $item->rating ? $item->rating / 2 : '', $item->progress,
+                    $item->rating ? $item->rating / 2 : '', $item->progress, $item->graded ? 'yes' : '',
                 ];
 
                 foreach ($fields as $field) {

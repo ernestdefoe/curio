@@ -263,5 +263,10 @@ export const extend = [
     .permission(() => ({ icon: 'fas fa-plus', label: t('permissions.create'), permission: 'ernestdefoe-curio.create' }), 'start', 90)
     .permission(() => ({ icon: 'fas fa-file-import', label: t('permissions.import'), permission: 'ernestdefoe-curio.import' }), 'start', 89)
     .permission(() => ({ icon: 'fas fa-file-export', label: t('permissions.export'), permission: 'ernestdefoe-curio.export' }), 'start', 88)
-    .permission(() => ({ icon: 'fas fa-boxes-stacked', label: t('permissions.moderate'), permission: 'ernestdefoe-curio.moderate' }), 'moderate', 90),
+    .permission(() => ({ icon: 'fas fa-boxes-stacked', label: t('permissions.moderate'), permission: 'ernestdefoe-curio.moderate' }), 'moderate', 90)
+    .permission(
+      () => ({ icon: 'fas fa-pen-to-square', label: t('permissions.edit_items'), permission: 'ernestdefoe-curio.editItems' }),
+      'moderate',
+      89
+    ),
 ];

@@ -5,7 +5,7 @@ import Icon from 'flarum/common/components/Icon';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t, text, label, locale } from '../util';
 import { fieldValue, linkTo, reviewField, safeUrl } from '../../common/labels';
-import { typeBadge, statusPill, progressPill, owner, backdrop } from './bits';
+import { typeBadge, statusPill, progressPill, gradedBadge, conditionPill, owner, backdrop } from './bits';
 import ItemEditModal from './ItemEditModal';
 import Link from 'flarum/common/components/Link';
 import { startShowOff } from '../showOff';
@@ -103,6 +103,7 @@ export default class ItemModal extends Modal {
             {typeBadge(type)}
             {statusPill(item.status())}
             {progressPill(item, type)}
+            {gradedBadge(item, type)}
             {item.favourite() ? (
               <span className="CurioFav">
                 <Icon name="fas fa-star" /> {t('item.favourite')}
@@ -173,8 +174,7 @@ export default class ItemModal extends Modal {
       if (f === review && safeUrl(v)) return;
       rows.push([label(f.labels), f.kind === 'bool' ? t(v ? 'item.yes' : 'item.no') : fieldValue(f, v, locale())]);
     });
-    if (item.condition())
-      rows.push([t('item.condition'), <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span>]);
+    if (item.condition()) rows.push([t('item.condition'), conditionPill(type, item.condition())]);
     if (item.acquiredOn()) rows.push([t('item.acquired'), dayjs(item.acquiredOn()).format('LL')]);
     if (item.pricePaid() !== null && item.pricePaid() !== undefined) {
       rows.push([
@@ -294,18 +294,7 @@ export default class ItemModal extends Modal {
     if (mine) {
       return (
         <div className="CurioItem-actions">
-          <Button
-            className="Button Button--primary"
-            icon="fas fa-pen"
-            onclick={() =>
-              app.modal.show(ItemEditModal, {
-                item,
-                collection,
-                onsave: () => this.attrs.onchange && this.attrs.onchange(),
-                ondelete: () => this.attrs.onchange && this.attrs.onchange(),
-              })
-            }
-          >
+          <Button className="Button Button--primary" icon="fas fa-pen" onclick={() => this.edit(item, collection)}>
             {t('item.edit')}
           </Button>
           {discussed ||
@@ -320,6 +309,8 @@ export default class ItemModal extends Modal {
 
     const canAdd = app.forum.attribute('canCreateCurio') && app.session.user;
 
+    // Someone else's item: "I have this too" and "Add to my wishlist" stay for
+    // everyone; a moderator who edits anyone's items gets Edit beside them.
     return (
       <div className="CurioItem-actions">
         {canAdd ? (
@@ -332,9 +323,23 @@ export default class ItemModal extends Modal {
             {t('item.want_it')}
           </Button>
         ) : null}
+        {item.canEdit() ? (
+          <Button className="Button CurioItem-moderate" icon="fas fa-pen" onclick={() => this.edit(item, collection)}>
+            {t('item.edit')}
+          </Button>
+        ) : null}
         {discussed}
       </div>
     );
+  }
+
+  edit(item, collection) {
+    app.modal.show(ItemEditModal, {
+      item,
+      collection,
+      onsave: () => this.attrs.onchange && this.attrs.onchange(),
+      ondelete: () => this.attrs.onchange && this.attrs.onchange(),
+    });
   }
 
   /** "I have this too" / "Add to my wishlist": into any of my collections, those of the same type first. */

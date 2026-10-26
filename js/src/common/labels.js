@@ -1,17 +1,29 @@
-/**
- * Admin-made labels are kept per language ({en: "Platform", fr: "Plateforme"}).
- * The reader's language wins, then its base language, then English, then any.
- */
-export function pick(labels, locale) {
-  if (!labels || typeof labels !== 'object') return labels || '';
-  const base = (locale || 'en').split(/[-_]/)[0];
-  return labels[locale] || labels[base] || labels.en || Object.values(labels)[0] || '';
-}
+import { pick } from './pick.js';
 
-/** The label of a select field's option, by key. */
+export { pick };
+
+/** The label of a select field's option, by key; a card printing looked up on TCGdex names its parts. */
 export function optionLabel(field, key, locale) {
   const option = (field.options || []).find((o) => o.key === key);
-  return option ? pick(option.labels, locale) : key;
+  return option ? pick(option.labels, locale) : PRINTING.test(key) ? printingLabel(key) : key;
+}
+
+/** A card printing's key: its finish, then foil, stamps or size ("holo.cosmos.trick-or-trade"). */
+export const PRINTING = /^(normal|holo|reverse|metal|lenticular)(\.[a-z0-9]+(-[a-z0-9]+)*){0,5}$/;
+
+/** "holo.cosmos.trick-or-trade" → "Holo · Cosmos · Trick or Trade", in the reader's language where Curio has the word. */
+export function printingLabel(key) {
+  return String(key)
+    .split('.')
+    .map((part) => {
+      // window.app (set by the forum), so this file also runs in plain Node tests.
+      const translator = globalThis.app?.translator;
+      const known = 'ernestdefoe-curio.forum.printing.' + part;
+      if (translator?.translations?.[known]) return translator.trans(known);
+      const words = part.replace(/-/g, ' ');
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    })
+    .join(' · ');
 }
 
 /**

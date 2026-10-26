@@ -74,6 +74,8 @@ class TypeResource extends AbstractDatabaseResource
         // Flarum's models do not take the column defaults, so a new row states its own.
         $model->enabled ??= true;
         $model->progress ??= false;
+        $model->conditions ??= 'general';
+        $model->grading ??= false;
 
         return $model;
     }
@@ -144,6 +146,14 @@ class TypeResource extends AbstractDatabaseResource
             // Whether its items track progress: not started, in progress, completed.
             Schema\Boolean::make('progress')
                 ->writable(),
+            // Which condition scale its items use: the general one, or trading cards'.
+            Schema\Str::make('conditionScale')
+                ->property('conditions')
+                ->writable()
+                ->in(Type::CONDITION_SCALES),
+            // Whether its items can be ticked "Graded" (slabbed cards, comics, games).
+            Schema\Boolean::make('grading')
+                ->writable(),
             // Whether a title search exists for it here (films, TV and games need Marquee).
             Schema\Boolean::make('searchable')
                 ->get(fn (Type $type) => $this->sources->searchable($type)),
@@ -196,7 +206,11 @@ class TypeResource extends AbstractDatabaseResource
      */
     private static function key(mixed $sent, array $labels, string $sep, int $max, string $fallback, array &$seen): string
     {
-        $base = mb_substr(Str::slug(self::str($sent) ?: ($labels['en'] ?? reset($labels) ?: ''), $sep) ?: $fallback, 0, $max - 3);
+        // A key already made here is kept as it is: re-slugging turned "first_edition" into "first-edition", and items lost their choice.
+        $sent = self::str($sent);
+        $base = preg_match('/^[a-z0-9]+([_-][a-z0-9]+)*$/', $sent) && strlen($sent) <= $max - 3
+            ? $sent
+            : mb_substr(Str::slug($sent ?: ($labels['en'] ?? reset($labels) ?: ''), $sep) ?: $fallback, 0, $max - 3);
         for ($key = $base, $n = 2; isset($seen[$key]); $n++) {
             $key = $base.$sep.$n;
         }

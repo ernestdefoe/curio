@@ -7,6 +7,7 @@ use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Storage\RemoteImage;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Translation\WorkTexts;
+use Ernestdefoe\Curio\Type;
 use Ernestdefoe\Curio\Work;
 use Illuminate\Database\QueryException;
 use Psr\Log\LoggerInterface;
@@ -147,6 +148,12 @@ class WorkResolver
         $variants = array_values(array_intersect(self::VARIANTS, is_array($facts['card']['variants'] ?? null) ? $facts['card']['variants'] : []));
         if ($variants) {
             $card['variants'] = $variants;
+        }
+        // Every printing TCGdex lists (Trick or Trade stamps, cosmos holos…), as Variant keys.
+        $printings = array_values(array_filter(array_slice(is_array($facts['card']['printings'] ?? null) ? $facts['card']['printings'] : [], 0, 30),
+            fn ($key) => is_string($key) && strlen($key) <= 100 && preg_match(Type::PRINTING, $key)));
+        if ($printings) {
+            $card['printings'] = $printings;
         }
         if ($card) {
             $clean['card'] = $card;

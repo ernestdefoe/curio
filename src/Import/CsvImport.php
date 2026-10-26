@@ -28,6 +28,15 @@ class CsvImport
         'abandoned' => 'abandoned', 'abandonné' => 'abandoned', 'dropped' => 'abandoned', 'did-not-finish' => 'abandoned', 'did not finish' => 'abandoned',
     ];
 
+    /** Card conditions by their usual codes and names (TCGplayer's, and French ones). */
+    private const CARD_CONDITION_WORDS = [
+        'm' => 'mint', 'mint' => 'mint', 'neuf' => 'mint', 'nm' => 'near_mint', 'near mint' => 'near_mint', 'quasi neuf' => 'near_mint',
+        'lp' => 'light_played', 'light played' => 'light_played', 'lightly played' => 'light_played', 'légèrement joué' => 'light_played',
+        'mp' => 'moderately_played', 'moderately played' => 'moderately_played', 'moyennement joué' => 'moderately_played',
+        'hp' => 'heavily_played', 'heavily played' => 'heavily_played', 'très joué' => 'heavily_played',
+        'dmg' => 'damaged', 'damaged' => 'damaged', 'abîmé' => 'damaged', 'endommagé' => 'damaged',
+    ];
+
     private const DISCOGS_CONDITIONS = [
         'mint (m)' => 'mint', 'near mint (nm or m-)' => 'mint', 'very good plus (vg+)' => 'very_good',
         'very good (vg)' => 'very_good', 'good plus (g+)' => 'good', 'good (g)' => 'good', 'fair (f)' => 'fair', 'poor (p)' => 'poor',
@@ -118,6 +127,7 @@ class CsvImport
             'favourite' => in_array(mb_strtolower($raw['favourite'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
             'rating' => $raw['rating'] ?? null,
             'progress' => $raw['progress'] ?? null,
+            'graded' => in_array(mb_strtolower($raw['graded'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
         ], $fields);
     }
 
@@ -193,6 +203,15 @@ class CsvImport
         return self::PROGRESS_WORDS[mb_strtolower(trim((string) $text))] ?? null;
     }
 
+    /** A condition on the type's own scale, by key, or for cards by code or name ("NM", "Near Mint"). */
+    public static function condition(Type $type, mixed $text): ?string
+    {
+        $text = mb_strtolower(trim((string) $text));
+        $condition = $type->conditions === 'cards' ? (self::CARD_CONDITION_WORDS[$text] ?? $text) : $text;
+
+        return in_array($condition, $type->conditionList(), true) ? $condition : null;
+    }
+
     /** A select field's value from its key or any of its labels. */
     private function value(array $field, string $text): mixed
     {
@@ -206,7 +225,8 @@ class CsvImport
             }
         }
 
-        return null;
+        // A card printing as exported ("holo.cosmos.trick-or-trade").
+        return Type::allows($field, $text) ? $text : null;
     }
 
     /**
@@ -228,7 +248,7 @@ class CsvImport
         }
 
         $status = in_array($v['status'] ?? null, Item::STATUSES, true) ? $v['status'] : 'owned';
-        $condition = in_array($v['condition'] ?? null, Item::CONDITIONS, true) ? $v['condition'] : null;
+        $condition = self::condition($type, $v['condition'] ?? null);
 
         return [
             'title' => mb_substr(trim((string) $v['title']), 0, 255),
@@ -244,6 +264,7 @@ class CsvImport
             'favourite' => (bool) ($v['favourite'] ?? false),
             'rating' => self::rating($v['rating'] ?? null),
             'progress' => $type->progress && $status !== 'wishlist' ? self::progress($v['progress'] ?? null) : null,
+            'graded' => $type->grading && ! empty($v['graded']),
             'fields' => ItemResource::cleanFields($type, array_filter($fields, fn ($x) => $x !== null && $x !== '')),
         ];
     }

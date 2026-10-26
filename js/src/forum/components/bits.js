@@ -3,7 +3,7 @@ import Icon from 'flarum/common/components/Icon';
 import Link from 'flarum/common/components/Link';
 import Avatar from 'flarum/common/components/Avatar';
 import username from 'flarum/common/helpers/username';
-import { t, label, collectionUrl } from '../util';
+import { t, label, collectionUrl, CONDITIONS } from '../util';
 
 export function typeBadge(type, extra = '') {
   if (!type) return null;
@@ -37,6 +37,16 @@ export function progressPill(item, type) {
   return (
     <span className={'CurioProgress CurioProgress--' + progress}>
       <Icon name={PROGRESS_ICONS[progress]} /> {t('progress.' + progress)}
+    </span>
+  );
+}
+
+/** "Graded": a professionally graded copy, where the item's type offers it. Its photos show by whom and the score. */
+export function gradedBadge(item, type) {
+  if (!type?.grading() || !item.graded()) return null;
+  return (
+    <span className="CurioGraded">
+      <Icon name="fas fa-certificate" /> {t('item.graded')}
     </span>
   );
 }
@@ -101,3 +111,18 @@ export function collectionCard(collection, attrs = {}) {
     </Link>
   );
 }
+
+/** Trading cards' own scale (TCGplayer's), each shown with its short code: "Near Mint (NM)". */
+export const CARD_CONDITIONS = ['mint', 'near_mint', 'light_played', 'moderately_played', 'heavily_played', 'damaged'];
+
+/** The conditions an item of this type can be in. */
+export const conditionsFor = (type) => (type?.conditionScale() === 'cards' ? CARD_CONDITIONS : CONDITIONS);
+
+/** A condition's name on its type's scale (one kept from another scale still reads right). */
+export const conditionText = (type, value) => {
+  const cards = type?.conditionScale() === 'cards' ? CARD_CONDITIONS.includes(value) : !CONDITIONS.includes(value);
+  return t((cards ? 'card_condition.' : 'condition.') + value);
+};
+
+/** The condition as a small coloured word, or null. */
+export const conditionPill = (type, value) => (value ? <span className={'CurioCond CurioCond--' + value}>{conditionText(type, value)}</span> : null);

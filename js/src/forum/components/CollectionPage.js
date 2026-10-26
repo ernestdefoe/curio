@@ -8,7 +8,7 @@ import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Placeholder from 'flarum/common/components/Placeholder';
 import { t, text, label, collectionUrl, PROGRESS } from '../util';
 import { optionLabel } from '../../common/labels';
-import { typeBadge, statusPill, progressPill, owner, cover } from './bits';
+import { typeBadge, statusPill, progressPill, gradedBadge, conditionPill, owner, cover } from './bits';
 import GridSort from '../../common/gridSort';
 import ItemModal from './ItemModal';
 import ItemEditModal from './ItemEditModal';
@@ -19,6 +19,22 @@ import Stars from './Stars';
 const PAGE = 48;
 const FILTERS = ['all', 'owned', 'wishlist', 'trade'];
 const SORTS = { position: 'position', recent: '-createdAt', title: 'title', year: '-year', rating: '-rating' };
+const VIEW_KEY = 'curio.collectionView';
+
+/**
+ * Grid or list: the one last picked on this device, else the list on a
+ * phone (one item a row, easy to tap and to drag into order) and the grid
+ * elsewhere.
+ */
+function startView() {
+  try {
+    const saved = localStorage.getItem(VIEW_KEY);
+    if (saved === 'grid' || saved === 'list') return saved;
+  } catch (e) {
+    // Storage blocked: the screen decides.
+  }
+  return window.matchMedia && window.matchMedia('(max-width: 767px)').matches ? 'list' : 'grid';
+}
 
 /** One member's collection: a hero built from their own covers, then the shelf. */
 export default class CollectionPage extends Page {
@@ -33,7 +49,7 @@ export default class CollectionPage extends Page {
     this.progress = '';
     this.sort = 'position';
     this.q = '';
-    this.view_ = 'grid';
+    this.view_ = startView();
     this.arranging = false;
     this.sorter = new GridSort(
       () => this.items,
@@ -183,7 +199,7 @@ export default class CollectionPage extends Page {
               </div>
             </div>
             <div className="CurioHero-buttons">
-              {mine ? (
+              {c.canAddItems() ? (
                 <Button
                   className="Button Button--primary"
                   icon="fas fa-plus"
@@ -329,14 +345,14 @@ export default class CollectionPage extends Page {
               icon="fas fa-grip"
               aria-label={text('page.view_grid')}
               aria-pressed={this.view_ === 'grid' ? 'true' : 'false'}
-              onclick={() => (this.view_ = 'grid')}
+              onclick={() => this.setView('grid')}
             />
             <Button
               className={'Button Button--icon' + (this.view_ === 'list' ? ' active' : '')}
               icon="fas fa-list"
               aria-label={text('page.view_list')}
               aria-pressed={this.view_ === 'list' ? 'true' : 'false'}
-              onclick={() => (this.view_ = 'list')}
+              onclick={() => this.setView('list')}
             />
           </div>
           {this.arranging ? (
@@ -358,9 +374,18 @@ export default class CollectionPage extends Page {
     );
   }
 
+  setView(view) {
+    this.view_ = view;
+    try {
+      localStorage.setItem(VIEW_KEY, view);
+    } catch (e) {
+      // Kept for this visit only.
+    }
+  }
+
+  /** Arranging works in either view: covers in the grid, rows in the list (handier on a phone). */
   arrange(on) {
     this.arranging = on;
-    this.view_ = 'grid';
     if (on && this.more) this.load(false);
   }
 
@@ -406,8 +431,10 @@ export default class CollectionPage extends Page {
   state(item, type) {
     const status = statusPill(item.status());
     const progress = progressPill(item, type);
-    return status || progress ? (
+    const graded = gradedBadge(item, type);
+    return status || progress || graded ? (
       <div className="CurioItemCard-state">
+        {graded}
         {progress}
         {status}
       </div>
@@ -420,7 +447,7 @@ export default class CollectionPage extends Page {
 
     return (
       <div className="CurioTableWrap">
-        <table className="CurioTable">
+        <table className={'CurioTable' + (this.arranging ? ' is-arranging-rows' : '')}>
           <thead>
             <tr>
               <th colSpan="2">{t('table.title')}</th>
@@ -433,26 +460,34 @@ export default class CollectionPage extends Page {
               <th className="CurioTable-more">{t('table.status')}</th>
             </tr>
           </thead>
-          <tbody>
-            {this.items.map((item) => {
+          <tbody className={this.arranging ? 'is-arranging' : undefined} data-sortable={this.arranging ? 'true' : undefined}>
+            {this.items.map((item, index) => {
               const values = fields.map((f) => {
                 const v = (item.fields() || {})[f.key];
                 if (v === undefined || v === '') return null;
                 return f.kind === 'select' ? optionLabel(f, v, app.translator.getLocale()) : v;
               });
               // Each is drawn twice (column and phone stack): Mithril needs a fresh vnode per place.
-              const condition = () =>
-                item.condition() ? <span className={'CurioCond CurioCond--' + item.condition()}>{t('condition.' + item.condition())}</span> : null;
+              const condition = () => conditionPill(type, item.condition());
               const stars = () => (item.rating() ? <Stars value={item.rating()} small /> : null);
               const progress = () => (type?.progress() ? progressPill(item, type) : null);
               const status = () => statusPill(item.status());
-              const pills = [condition(), stars(), progress(), status()].filter(Boolean);
+              const pills = [condition(), gradedBadge(item, type), stars(), progress(), status()].filter(Boolean);
+              const attrs = this.arranging ? this.sorter.attrs(index) : { onclick: () => this.open(item.id()) };
 
               return (
-                <tr key={item.id()} onclick={() => this.open(item.id())}>
-                  <td className="CurioTable-thumb">{cover(item.coverUrl(), shape, item.status() === 'wishlist')}</td>
+                <tr key={item.id()} className={this.sorter.dragging === index ? 'is-dragging' : undefined} {...attrs}>
+                  <td className="CurioTable-thumb">
+                    {this.arranging ? <Icon name="fas fa-grip-vertical" className="CurioTable-grip" /> : null}
+                    {cover(item.coverUrl(), shape, item.status() === 'wishlist')}
+                  </td>
                   <td className="CurioTable-main">
-                    <button type="button" className="CurioTable-title" onclick={(e) => (e.stopPropagation(), this.open(item.id()))}>
+                    <button
+                      type="button"
+                      className="CurioTable-title"
+                      tabindex={this.arranging ? -1 : 0}
+                      onclick={(e) => (e.stopPropagation(), !this.arranging && this.open(item.id()))}
+                    >
                       {item.displayTitle()}
                     </button>
                     <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>

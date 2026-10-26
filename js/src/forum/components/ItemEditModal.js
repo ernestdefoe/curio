@@ -6,14 +6,25 @@ import Select from 'flarum/common/components/Select';
 import Switch from 'flarum/common/components/Switch';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Stream from 'flarum/common/utils/Stream';
-import { t, text, label, locale, STATUSES, CONDITIONS, PROGRESS, lookup, closeThen, barcodesOn } from '../util';
-import { pick, onlyOption } from '../../common/labels';
+import extractText from 'flarum/common/utils/extractText';
+import { t, text, label, locale, STATUSES, PROGRESS, lookup, closeThen, barcodesOn } from '../util';
+import { conditionsFor, conditionText } from './bits';
+import { pick, onlyOption, optionLabel } from '../../common/labels';
+import username from 'flarum/common/helpers/username';
 import Stars from './Stars';
 import { canScan, scan } from '../scanner';
 import useStyles from '../styles';
 
 const MAX_PHOTOS = 6;
 const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
+/** Words in a card search that name a printing, and the part of its key each means. */
+const PRINTING_HINTS = [
+  [/trick[\s-]*or[\s-]*trade/i, 'trick-or-trade'],
+  [/cosmos/i, 'cosmos'],
+  [/reverse/i, 'reverse'],
+  [/(?<!reverse\s)holo/i, 'holo'],
+  [/(1st|first)\s+edition/i, '1st-edition'],
+];
 /** Details that describe one member's own copy: never copied from someone else's. */
 const OWN_DETAILS = ['grade', 'cib'];
 /** The languages each card source has printings in (TCGdex's codes; the server maps them to Scryfall's). */
@@ -94,6 +105,10 @@ export default class ItemEditModal extends FormModal {
     this.fields = item ? Object.assign({}, item.fields() || {}) : from ? this.copiedFields(from) : {};
     this.notes = Stream(item ? item.notes() || '' : '');
     this.favourite = Stream(item ? !!item.favourite() : false);
+    this.graded = Stream(item ? !!item.graded() : false);
+    // A moderator changing someone else's item: what they paid stays private to them.
+    this.owner = this.collection.user();
+    this.isOwner = !this.owner || (!!app.session.user && this.owner.id() === app.session.user.id());
     this.rating = Stream(item ? item.rating() || null : null);
     this.progress = Stream(item ? item.progress() || '' : '');
     this.pricePaid = Stream(item && item.pricePaid() !== null && item.pricePaid() !== undefined ? String(item.pricePaid()) : '');
@@ -519,7 +534,7 @@ export default class ItemEditModal extends FormModal {
         this.subtitle(work.creator() || '');
         this.year(work.year() ? String(work.year()) : '');
         if (this.barcode) Object.assign(this.fields, this.barcode.fields || {});
-        this.prefillFromFacts(work.facts());
+        this.prefillFromFacts(work.facts(), this.query());
         // The version clicked, or the only one there is.
         const only = variant || ((result.variants || []).length === 1 ? result.variants[0] : null);
         if (only) this.applyFields(only.fields, only.label);
@@ -537,7 +552,7 @@ export default class ItemEditModal extends FormModal {
    * option here, it is chosen. A card names its set, number, rarity and
    * language: each fills the detail of that name, if the type has one.
    */
-  prefillFromFacts(facts) {
+  prefillFromFacts(facts, asked = '') {
     if (!facts) return;
     if (facts.platforms) {
       (this.type.fields() || [])
@@ -549,11 +564,14 @@ export default class ItemEditModal extends FormModal {
     }
     if (facts.card) {
       this.applyFields(facts.card, null, false);
-      // Printed in one finish only: that one.
-      const variants = facts.card.variants || [];
+      // Printed one way only, or the search named the printing ("trick or trade"): that one.
+      const printings = this.printings(facts);
+      const hints = PRINTING_HINTS.filter(([words]) => words.test(asked)).map(([, part]) => part);
+      const hinted = hints.length ? printings.filter((key) => hints.every((part) => key.split('.').includes(part))) : [];
+      const only = printings.length === 1 ? printings : hinted.length === 1 ? hinted : [];
       (this.type.fields() || [])
-        .filter((f) => f.kind === 'select' && f.key === 'variant' && !this.fields.variant && variants.length === 1)
-        .forEach((f) => (f.options || []).some((o) => o.key === variants[0]) && (this.fields.variant = variants[0]));
+        .filter((f) => f.kind === 'select' && f.key === 'variant' && !this.fields.variant && only.length)
+        .forEach((f) => ((f.options || []).some((o) => o.key === only[0]) || only[0].includes('.')) && (this.fields.variant = only[0]));
     }
   }
 
@@ -568,9 +586,18 @@ export default class ItemEditModal extends FormModal {
       return (facts.platforms || []).map((name) => [name, onlyOption(f, [name])]).filter(([, key]) => key);
     }
     if (f.key === 'variant') {
-      return (f.options || []).filter((o) => (facts.card?.variants || []).includes(o.key)).map((o) => [pick(o.labels, locale()), o.key]);
+      // Each printing TCGdex lists (a Trick or Trade stamp, a cosmos holo), else the finishes this type has a choice for.
+      return this.printings(facts)
+        .filter((key) => key.includes('.') || (f.options || []).some((o) => o.key === key))
+        .map((key) => [optionLabel(f, key, locale()), key]);
     }
     return [];
+  }
+
+  /** A card's printings as Variant keys: TCGdex's detailed list when it has one, else its plain finishes. */
+  printings(facts) {
+    const card = facts?.card || {};
+    return card.printings && card.printings.length ? card.printings : card.variants || [];
   }
 
   /**
@@ -699,6 +726,12 @@ export default class ItemEditModal extends FormModal {
         </div>
 
         <div className="CurioDetails-fields" onpaste={(e) => this.pasted(e)}>
+          {this.isOwner || !this.owner ? null : (
+            <p className="CurioModNote">
+              <Icon name="fas fa-user-shield" />
+              <span>{t('item_edit.someone_elses', { name: username(this.owner) })}</span>
+            </p>
+          )}
           <div className="Form-group">
             <label for="curio-title">{t('item_edit.title')}</label>
             <input id="curio-title" name="title" className="FormControl" maxlength="255" bidi={this.itemTitle} />
@@ -758,7 +791,10 @@ export default class ItemEditModal extends FormModal {
                   id="curio-condition"
                   value={this.condition()}
                   onchange={this.condition}
-                  options={{ '': text('item_edit.condition_none'), ...Object.fromEntries(CONDITIONS.map((c) => [c, text('condition.' + c)])) }}
+                  options={{
+                    '': text('item_edit.condition_none'),
+                    ...Object.fromEntries(conditionsFor(this.type).map((c) => [c, extractText(conditionText(this.type, c))])),
+                  }}
                 />
               </div>
               <div className="Form-group">
@@ -788,7 +824,16 @@ export default class ItemEditModal extends FormModal {
             />
           </div>
 
-          {this.status() === 'wishlist' ? null : (
+          {this.type.grading() && this.status() !== 'wishlist' ? (
+            <div className="Form-group">
+              <Switch state={this.graded()} onchange={this.graded}>
+                <Icon name="fas fa-certificate" /> {t('item_edit.graded')}
+              </Switch>
+              <small className="CurioHint">{t('item_edit.graded_help')}</small>
+            </div>
+          ) : null}
+
+          {this.status() === 'wishlist' || !this.isOwner ? null : (
             <div className="Form-group">
               <label for="curio-price">
                 {t('item_edit.price')}{' '}
@@ -950,11 +995,17 @@ export default class ItemEditModal extends FormModal {
       fields: this.fields,
       notes: this.notes().trim() || null,
       favourite: this.favourite(),
+      graded: !wanted && this.type.grading() ? this.graded() : !!item?.graded(),
       rating: wanted ? null : this.rating(),
       progress: wanted ? null : this.type.progress() ? this.progress() || null : item?.progress() || null,
       pricePaid: wanted || price === '' || isNaN(Number(price)) ? null : Number(price),
       priceCurrency: wanted || price === '' ? null : this.priceCurrency(),
     };
+    // Someone else's item: what they paid is theirs alone (never sent, never cleared).
+    if (!this.isOwner) {
+      delete attrs.pricePaid;
+      delete attrs.priceCurrency;
+    }
 
     if (!item) {
       attrs.relationships = { collection: this.collection };

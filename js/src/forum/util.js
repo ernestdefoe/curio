@@ -1,6 +1,6 @@
 import app from 'flarum/forum/app';
 import extractText from 'flarum/common/utils/extractText';
-import { pick } from '../common/labels';
+import { pick } from '../common/pick';
 
 export const t = (key, params) => app.translator.trans(`ernestdefoe-curio.forum.${key}`, params);
 export const text = (key, params) => extractText(t(key, params));
@@ -11,7 +11,6 @@ export const label = (labels) => pick(labels, locale());
 export const STATUSES = ['owned', 'wishlist', 'trade'];
 export const PROGRESS = ['pending', 'in_progress', 'completed', 'abandoned'];
 export const CONDITIONS = ['sealed', 'mint', 'very_good', 'good', 'fair', 'poor'];
-
 export const collectionUrl = (collection) => app.route('curio.collection', { id: `${collection.id()}-${collection.slug()}` });
 
 /** Every type, loaded once per page view and kept in the store. */

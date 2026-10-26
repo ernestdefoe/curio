@@ -189,14 +189,13 @@ class CollectionResource extends AbstractDatabaseResource
     private function retype(Collection $collection): void
     {
         $field = Type::query()->find($collection->type_id)?->facetField();
-        $choices = array_column($field['options'] ?? [], 'key');
 
-        $this->db->transaction(function () use ($collection, $field, $choices) {
+        $this->db->transaction(function () use ($collection, $field) {
             Item::query()->where('collection_id', $collection->id)->select(['id', 'fields', 'facet'])
-                ->each(function (Item $item) use ($field, $choices) {
+                ->each(function (Item $item) use ($field) {
                     $facet = $field ? ($item->fields[$field['key']] ?? null) : null;
-                    // Only a value the new field offers; anything else would show as a raw key.
-                    $facet = in_array($facet, $choices, true) ? $facet : null;
+                    // Only a value the new field offers (or a card printing); anything else would show as a raw key.
+                    $facet = $field && Type::allows($field, $facet) ? $facet : null;
                     if ($item->facet !== $facet) {
                         Item::query()->whereKey($item->id)->update(['facet' => $facet]);
                     }
@@ -275,6 +274,9 @@ class CollectionResource extends AbstractDatabaseResource
                 ->get(fn (Collection $c) => $this->db->table('curio_follows')->where('collection_id', $c->id)->count()),
             Schema\Boolean::make('canEdit')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('update', $c)),
+            // Its owner, or a moderator who edits anyone's items.
+            Schema\Boolean::make('canAddItems')
+                ->get(fn (Collection $c, Context $context) => $context->getActor()->can('addItems', $c)),
             Schema\Boolean::make('canDelete')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('delete', $c)),
             // Whether the owner may bring a spreadsheet in or take one out (two permissions).

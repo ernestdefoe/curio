@@ -19,6 +19,34 @@ ernestdefoe-curio:
       good: Bon
       fair: Correct
       poor: Abîmé
+    card_condition:
+      mint: Mint (M)
+      near_mint: Near Mint (NM)
+      light_played: Légèrement joué (LP)
+      moderately_played: Moyennement joué (MP)
+      heavily_played: Très joué (HP)
+      damaged: Abîmé (DMG)
+    printing:
+      normal: Normale
+      holo: Holo
+      reverse: Reverse
+      metal: Métal
+      lenticular: Lenticulaire
+      cosmos: Cosmos
+      galaxy: Galaxie
+      cracked-ice: Glace brisée
+      trick-or-trade: Trick or Trade
+      1st-edition: 1re édition
+      w-promo: Tampon W promo
+      pre-release: Tampon avant-première
+      staff: Tampon Staff
+      pokemon-center: Tampon Pokémon Center
+      snowflake: Tampon flocon
+      set-logo: Tampon logo de l'extension
+      player-rewards-program: Pack de récompenses Play! Pokémon
+      jumbo: Jumbo
+      shadowless: Sans ombre
+      unlimited: Unlimited
     visibility:
       public: Tout le monde
       public_help: Toute personne qui peut voir les collections de ce forum.
@@ -42,7 +70,7 @@ ernestdefoe-curio:
       position: Ordre du propriétaire
       recent: Ajouts récents
       title: Titre
-      year: Plus récents d'abord
+      year: Date de sortie
       rating: Mieux notés
     table:
       title: Titre
@@ -130,6 +158,9 @@ ernestdefoe-curio:
       notes_placeholder: Où vous l'avez trouvé, ce qu'il y a dans la boîte…
       price: Prix payé
       price_private: Visible par vous seul
+      graded: Gradé
+      graded_help: "Noté et mis sous coque par un professionnel. Ajoutez une photo de l'étiquette pour qu'on voie qui l'a gradé et la note."
+      someone_elses: "Vous modifiez un objet de {name}."
       favourite: Favori
       choose: Choisir…
       other_choice: Autre…
@@ -146,6 +177,7 @@ ernestdefoe-curio:
       photo_n: "Photo {n}"
       "yes": Oui
       read_review: Lire mon avis
+      graded: Gradé
       "no": Non
       condition: État
       acquired: Acquis le
@@ -384,6 +416,12 @@ ernestdefoe-curio:
       "off": Désactivé
       progress: Suivre l'avancement
       progress_help: "Chaque objet peut être marqué Pas commencé, En cours, Terminé ou Abandonné : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
+      conditions: Échelle d'état
+      conditions_general: "Générale (Scellé, Neuf, Très bon… Abîmé)"
+      conditions_cards: "Cartes à collectionner (Mint, Near Mint, Légèrement joué… Abîmé)"
+      conditions_help: "Les états proposés pour les objets de ce type. Les cartes à collectionner suivent l'échelle des boutiques de cartes, avec ses codes (NM, LP…)."
+      grading: Case « Gradé »
+      grading_help: "Les membres peuvent indiquer qu'un objet a été gradé par un professionnel : un petit badge dessus. Leurs photos montrent qui l'a gradé et la note."
       export: Exporter
       export_all: Tout exporter
       import: Importer
@@ -419,6 +457,7 @@ ernestdefoe-curio:
       import: Importer des tableurs dans leurs collections
       export: Exporter leurs collections en tableur
       moderate: Retirer les collections des autres et les mettre à la une
+      edit_items: Ajouter, modifier et retirer les objets de n'importe quelle collection
   email:
     match:
       subject: "{title} est proposé à l’échange"

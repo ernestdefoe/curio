@@ -79,6 +79,7 @@ class Importer
                 $item->favourite = $row['favourite'];
                 $item->rating = $row['rating'];
                 $item->progress = $row['progress'];
+                $item->graded = $row['graded'];
                 $item->fields = $row['fields'];
                 $item->facet = $facet ? ($row['fields'][$facet['key']] ?? null) : null;
                 $item->position = ++$position;

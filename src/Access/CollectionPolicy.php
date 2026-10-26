@@ -7,17 +7,35 @@ use Ernestdefoe\Curio\Item;
 use Flarum\User\Access\AbstractPolicy;
 use Flarum\User\User;
 
-/** Members change only their own collections and items; moderators may remove anything and feature collections. */
+/**
+ * Members change only their own collections and items. Moderators may remove
+ * anything and feature collections; with "Edit anyone's items" they also add,
+ * change and remove the items in anyone's collection (never its settings).
+ */
 class CollectionPolicy extends AbstractPolicy
 {
+    public const EDIT_ITEMS = 'ernestdefoe-curio.editItems';
+
     public function update(User $actor, Collection|Item $model): ?string
     {
-        return $model->user_id === $actor->id && $actor->hasPermission('ernestdefoe-curio.create') ? $this->allow() : $this->deny();
+        if ($model->user_id === $actor->id && $actor->hasPermission('ernestdefoe-curio.create')) {
+            return $this->allow();
+        }
+
+        return $model instanceof Item && $actor->hasPermission(self::EDIT_ITEMS) ? $this->allow() : $this->deny();
     }
 
     public function delete(User $actor, Collection|Item $model): ?string
     {
-        return $model->user_id === $actor->id || $actor->hasPermission('ernestdefoe-curio.moderate') ? $this->allow() : $this->deny();
+        return $model->user_id === $actor->id || $actor->hasPermission('ernestdefoe-curio.moderate')
+            || ($model instanceof Item && $actor->hasPermission(self::EDIT_ITEMS)) ? $this->allow() : $this->deny();
+    }
+
+    /** Putting a new item in this collection: its owner, or someone who edits anyone's items. */
+    public function addItems(User $actor, Collection $model): ?string
+    {
+        return ($model->user_id === $actor->id && $actor->hasPermission('ernestdefoe-curio.create')) || $actor->hasPermission(self::EDIT_ITEMS)
+            ? $this->allow() : $this->deny();
     }
 
     public function feature(User $actor, Collection $model): ?string

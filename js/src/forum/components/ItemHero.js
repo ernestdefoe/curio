@@ -6,7 +6,7 @@ import Link from 'flarum/common/components/Link';
 import listItems from 'flarum/common/helpers/listItems';
 import { t, label, locale, collectionUrl } from '../util';
 import { fieldValue } from '../../common/labels';
-import { typeBadge, backdrop } from './bits';
+import { typeBadge, backdrop, conditionText } from './bits';
 import ItemModal from './ItemModal';
 import addToMyCollection from '../copyItem';
 import useStyles from '../styles';
@@ -33,7 +33,8 @@ export default class ItemHero extends Component {
     const canAdd = !mine && app.session.user && app.forum.attribute('canCreateCurio');
     const facts = [];
 
-    if (item.condition()) facts.push([t('item.condition'), t('condition.' + item.condition())]);
+    if (item.condition()) facts.push([t('item.condition'), conditionText(type, item.condition())]);
+    if (type?.grading() && item.graded()) facts.push([t('item.graded'), t('item.yes')]);
     if (item.acquiredOn()) facts.push([t('item.acquired'), dayjs(item.acquiredOn()).format('LL')]);
     if (item.ownersCount()) facts.push([t('hero.here'), t('hero.members', { count: item.ownersCount() })]);
 

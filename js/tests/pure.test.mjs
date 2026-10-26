@@ -94,3 +94,18 @@ test('featuring a collection adds the featured list and keeps the ranking', () =
   // An unknown or missing setting keeps the default.
   assert.deepEqual(browseSections(undefined, 0), ['top']);
 });
+
+import { printingLabel } from '../src/common/labels.js';
+
+test('a card printing from TCGdex reads as its parts, and only well-formed keys do', () => {
+  const field = { kind: 'select', key: 'variant', options: [{ key: 'holo', labels: { en: 'Holo' } }] };
+  assert.equal(optionLabel(field, 'holo', 'en'), 'Holo');
+  assert.equal(optionLabel(field, 'holo.cosmos.trick-or-trade', 'en'), 'Holo · Cosmos · Trick or trade');
+  assert.equal(optionLabel(field, 'normal.1st-edition', 'en'), 'Normal · 1st edition');
+  assert.equal(optionLabel(field, 'shiny.whatever', 'en'), 'shiny.whatever');
+  globalThis.app = {
+    translator: { translations: { 'ernestdefoe-curio.forum.printing.trick-or-trade': 'Trick or Trade' }, trans: () => 'Trick or Trade' },
+  };
+  assert.equal(printingLabel('holo.trick-or-trade'), 'Holo · Trick or Trade');
+  delete globalThis.app;
+});

@@ -89,6 +89,21 @@
 
 // Under the cover, never on it: progress, then wishlist or open to trade, as
 // quiet coloured text like the progress line.
+// "Graded": a small outlined badge in the type's colour.
+.CurioGraded {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--curio-accent, var(--primary-color));
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 5px;
+  line-height: 16px;
+}
+
 .CurioItemCard-state {
   display: flex;
   flex-wrap: wrap;
@@ -1125,11 +1140,20 @@ button.CurioChip {
   font-weight: 600;
 }
 
-.CurioCond--sealed {
+.CurioCond--sealed,
+.CurioCond--near_mint {
   color: #15803d;
 }
+.CurioCond--light_played {
+  color: #2563eb;
+}
+.CurioCond--moderately_played {
+  color: #b45309;
+}
 .CurioCond--fair,
-.CurioCond--poor {
+.CurioCond--poor,
+.CurioCond--heavily_played,
+.CurioCond--damaged {
   color: #b91c1c;
 }
 
@@ -1937,6 +1961,50 @@ button.CurioChip {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.6) !important;
   }
+}
+
+// Arranging the list: rows drag up and down (no wiggle), a grip on each cover.
+.CurioTable tbody.is-arranging > tr {
+  animation: none;
+
+  // touch-action does nothing on a table row, so the cells carry it: a finger drags instead of scrolling.
+  td {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+}
+
+.CurioTable-thumb {
+  position: relative;
+}
+
+.CurioTable-grip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  padding: 4px 5px;
+  font-size: 12px;
+  pointer-events: none;
+  // Above the cover drawn after it.
+  z-index: 1;
+}
+
+// A moderator editing someone else's item is told whose it is.
+.CurioModNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-color);
+  background: var(--control-bg);
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  margin: 0 0 14px;
 }
 
 // List view: the extra columns fold under the title on phones.
