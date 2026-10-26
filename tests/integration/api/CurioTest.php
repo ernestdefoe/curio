@@ -2325,15 +2325,15 @@ class CurioTest extends TestCase
     public function the_old_grade_detail_becomes_the_graded_box_and_its_words_move_to_the_notes(): void
     {
         $cards = $this->newCollection(3, [], 'cards');
-        $migration = include __DIR__.'/../../../migrations/2026_10_26_000001_add_curio_card_conditions_and_graded.php';
+        // Data only (no schema change), so it runs again inside the test's transaction on MySQL too.
+        $migration = include __DIR__.'/../../../migrations/2026_10_26_000003_move_curio_grades_to_graded.php';
         $schema = $this->database()->getSchemaBuilder();
-        $migration['down']($schema);
 
         // As it was before: a free-text Grade on the seeded cards type, and a card on the general scale.
         $type = $this->database()->table('curio_types')->where('slug', 'cards')->first();
         $fields = json_decode((string) $type->fields, true);
         array_splice($fields, 3, 0, [['key' => 'grade', 'kind' => 'text', 'labels' => ['en' => 'Grade', 'fr' => 'Note']]]);
-        $this->database()->table('curio_types')->where('id', $type->id)->update(['fields' => json_encode($fields), 'source' => 'pokemon']);
+        $this->database()->table('curio_types')->where('id', $type->id)->update(['fields' => json_encode($fields), 'source' => 'pokemon', 'conditions' => 'general', 'grading' => false]);
         $now = Carbon::now();
         $this->database()->table('curio_items')->insert([
             ['collection_id' => $cards, 'user_id' => 3, 'title' => 'Charizard', 'status' => 'owned', 'condition' => 'very_good', 'fields' => json_encode(['number' => '4', 'grade' => 'PSA 9']), 'notes' => 'Base set.', 'favourite' => false, 'position' => 1, 'created_at' => $now, 'updated_at' => $now],
