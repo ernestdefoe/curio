@@ -8,6 +8,7 @@ import { fieldValue, linkTo, reviewField, safeUrl } from '../../common/labels';
 import { typeBadge, statusPill, progressPill, gradedBadge, conditionPill, owner, backdrop } from './bits';
 import ItemEditModal from './ItemEditModal';
 import Link from 'flarum/common/components/Link';
+import Tooltip from 'flarum/common/components/Tooltip';
 import { startShowOff } from '../showOff';
 import addToMyCollection from '../copyItem';
 import useStyles from '../styles';
@@ -94,6 +95,19 @@ export default class ItemModal extends Modal {
                   <img src={p.small} alt="" />
                 </button>
               ))}
+            </div>
+          ) : null}
+          {!mine && item.canEdit() ? (
+            // A moderator's Edit on someone else's item, kept apart from what members do with it.
+            <div className="CurioItem-moderate">
+              <Tooltip text={text('item.edit_this')}>
+                <Button
+                  className="Button Button--icon Button--rounded"
+                  icon="fas fa-pen"
+                  aria-label={text('item.edit_this')}
+                  onclick={() => this.edit(item, collection)}
+                />
+              </Tooltip>
             </div>
           ) : null}
         </div>
@@ -310,7 +324,7 @@ export default class ItemModal extends Modal {
     const canAdd = app.forum.attribute('canCreateCurio') && app.session.user;
 
     // Someone else's item: "I have this too" and "Add to my wishlist" stay for
-    // everyone; a moderator who edits anyone's items gets Edit beside them.
+    // everyone; a moderator's Edit sits under the cover.
     return (
       <div className="CurioItem-actions">
         {canAdd ? (
@@ -321,11 +335,6 @@ export default class ItemModal extends Modal {
         {canAdd ? (
           <Button className="Button" icon="far fa-heart" onclick={() => this.copy(item, 'wishlist')}>
             {t('item.want_it')}
-          </Button>
-        ) : null}
-        {item.canEdit() ? (
-          <Button className="Button CurioItem-moderate" icon="fas fa-pen" onclick={() => this.edit(item, collection)}>
-            {t('item.edit')}
           </Button>
         ) : null}
         {discussed}

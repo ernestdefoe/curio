@@ -9,6 +9,7 @@ import Placeholder from 'flarum/common/components/Placeholder';
 import Button from 'flarum/common/components/Button';
 import Link from 'flarum/common/components/Link';
 import Tooltip from 'flarum/common/components/Tooltip';
+import Select from 'flarum/common/components/Select';
 import username from 'flarum/common/helpers/username';
 import humanTime from 'flarum/common/helpers/humanTime';
 import textContrastClass from 'flarum/common/helpers/textContrastClass';
@@ -99,8 +100,9 @@ export default class BrowsePage extends Page {
   }
 
   /** A row of standard buttons switching between lists. */
-  tabs(keys, current, choose) {
-    return (
+  tabs(keys, current, choose, heading) {
+    // Phones get one drop-down instead, so the choice stays on the heading's line (CSS picks which shows).
+    return [
       <div className="CurioListTabs" role="tablist">
         {keys.map((key) => (
           <Button
@@ -112,8 +114,15 @@ export default class BrowsePage extends Page {
             {t('browse.tab_' + key)}
           </Button>
         ))}
-      </div>
-    );
+      </div>,
+      <Select
+        aria-label={heading}
+        wrapperAttrs={{ className: 'CurioListTabs-select' }}
+        options={Object.fromEntries(keys.map((key) => [key, text('browse.tab_' + key)]))}
+        value={current}
+        onchange={choose}
+      />,
+    ];
   }
 
   /** The chosen type's collections, biggest first. Without a type, the home lists load as they are drawn. */
@@ -207,8 +216,8 @@ export default class BrowsePage extends Page {
                   className="FormControl"
                   type="search"
                   value={this.q}
-                  placeholder={text('browse.search')}
                   aria-label={text('browse.search')}
+                  title={text('browse.search')}
                   oncreate={(vnode) => vnode.dom.focus()}
                   onblur={() => (this.searching = false)}
                   onkeydown={(e) => {
@@ -269,7 +278,7 @@ export default class BrowsePage extends Page {
           <>
             <div className="CurioSection-heading">
               <h2>{t('browse.recent')}</h2>
-              {this.tabs(['owned', 'wishlist', 'trade'], this.recentTab, (key) => this.list((this.recentTab = key)))}
+              {this.tabs(['owned', 'wishlist', 'trade'], this.recentTab, (key) => this.list((this.recentTab = key)), text('browse.recent'))}
             </div>
             {this.shown(this.recentTab, (items) => this.strip(items))}
           </>
@@ -279,7 +288,7 @@ export default class BrowsePage extends Page {
           <>
             <div className="CurioSection-heading">
               <h2>{t('browse.latest')}</h2>
-              {this.tabs(['progress', 'ratings'], this.latestTab, (key) => this.list((this.latestTab = key)))}
+              {this.tabs(['progress', 'ratings'], this.latestTab, (key) => this.list((this.latestTab = key)), text('browse.latest'))}
             </div>
             {this.shown(this.latestTab, (items) => this.changes(items))}
           </>

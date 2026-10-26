@@ -868,6 +868,13 @@
     margin-top: 10px;
   }
 
+  // A moderator's Edit on someone else's item: round, under the cover.
+  &-moderate {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+  }
+
   &-thumb {
     width: 56px;
     height: 56px;
@@ -1994,17 +2001,21 @@ button.CurioChip {
   z-index: 1;
 }
 
-// A moderator editing someone else's item is told whose it is.
+// A moderator editing someone else's item is told whose it is, lined up with the field labels.
 .CurioModNote {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  line-height: 1.4;
   color: var(--muted-color);
-  background: var(--control-bg);
-  border-radius: var(--border-radius);
-  padding: 8px 12px;
   margin: 0 0 14px;
+
+  .icon {
+    flex: none;
+    width: 16px;
+    text-align: center;
+  }
 }
 
 // List view: the extra columns fold under the title on phones.
@@ -2622,6 +2633,34 @@ button.CurioChip {
 
   .Button {
     margin: 0;
+  }
+}
+
+// Phones: the same choice as one drop-down, on the heading's line.
+.CurioListTabs-select {
+  display: none;
+}
+
+@media @phone {
+  .CurioSection-heading:has(.CurioListTabs-select) {
+    flex-wrap: nowrap;
+
+    h2 {
+      min-width: 0;
+    }
+  }
+
+  .CurioListTabs {
+    display: none;
+  }
+
+  .CurioListTabs-select {
+    display: inline-block;
+    flex: none;
+
+    .Select-input {
+      width: auto;
+    }
   }
 }
 

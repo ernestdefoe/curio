@@ -729,7 +729,7 @@ export default class ItemEditModal extends FormModal {
           {this.isOwner || !this.owner ? null : (
             <p className="CurioModNote">
               <Icon name="fas fa-user-shield" />
-              <span>{t('item_edit.someone_elses', { name: username(this.owner) })}</span>
+              <span>{t('item_edit.someone_elses', { name: extractText(username(this.owner)) })}</span>
             </p>
           )}
           <div className="Form-group">

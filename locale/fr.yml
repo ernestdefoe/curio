@@ -194,6 +194,7 @@ ernestdefoe-curio:
       languages: "{count, plural, one {# langue} other {# langues}}"
       offers: "{count, plural, one {# membre le propose à l’échange} other {# membres le proposent à l’échange}}"
       edit: Modifier
+      edit_this: Modifier cet objet
       have_too: Je l'ai aussi
       want_it: Ajouter à ma liste de souhaits
       choose_collection: Dans quelle collection ?
