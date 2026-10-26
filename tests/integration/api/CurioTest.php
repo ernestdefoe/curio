@@ -1088,8 +1088,8 @@ class CurioTest extends TestCase
         $types = explode(',', trim(\Ernestdefoe\Curio\Lookup\Sources\Igdb::GAME_TYPES, '()'));
         $this->assertContains('3', $types);
         $this->assertEmpty(array_intersect(['1', '2', '5', '13'], $types));
-        // Shovel Knight: Treasure Trove is a bundle that is also an edition of Shovel Knight (version_parent set).
-        $this->assertStringContainsString('(version_parent = null | game_type = 3)', \Ernestdefoe\Curio\Lookup\Sources\Igdb::WHERE);
+        // Editions of another game (version_parent set) are searched: Shovel Knight: Treasure Trove, Romancing SaGa ... International Special Edition.
+        $this->assertStringNotContainsString('version_parent', \Ernestdefoe\Curio\Lookup\Sources\Igdb::WHERE);
 
         $titles = fn (string $q, array $games) => array_column(\Ernestdefoe\Curio\Lookup\Sources\Igdb::rank($games, $q), 'name');
 
@@ -1112,6 +1112,35 @@ class CurioTest extends TestCase
             ['id' => 2, 'name' => 'Fated Souls', 'game_type' => 0],
             ['id' => 3, 'name' => 'Dark Souls', 'game_type' => 0, 'total_rating_count' => 1741],
             ['id' => 4, 'name' => 'Dark Souls Trilogy', 'game_type' => 3],
+        ]));
+    }
+
+    #[Test]
+    public function igdb_editions_come_after_their_game_unless_named_exactly(): void
+    {
+        $titles = fn (string $q, array $games) => array_column(\Ernestdefoe\Curio\Lookup\Sources\Igdb::rank($games, $q), 'name');
+
+        // IGDB's answers (2026-10-26). An edition never leads a plain search ...
+        $this->assertSame(['Shovel Knight', 'Shovel Knight: Treasure Trove', 'Shovel Knight: Specter of Torment', 'Unnamed Shovel Knight Sequel'], $titles('Shovel Knight', [
+            ['id' => 26848, 'name' => 'Shovel Knight: Treasure Trove', 'game_type' => 3, 'version_parent' => 7444, 'total_rating_count' => 123],
+            ['id' => 305758, 'name' => 'Unnamed Shovel Knight Sequel', 'game_type' => 0],
+            ['id' => 23910, 'name' => 'Shovel Knight: Specter of Torment', 'game_type' => 4, 'total_rating_count' => 50],
+            ['id' => 7444, 'name' => 'Shovel Knight', 'game_type' => 0, 'total_rating_count' => 549],
+        ]));
+        // ... nor comes before its game when it has more ratings, or the same.
+        $this->assertSame(['Mass Effect 2', 'Mass Effect 2: Ultimate Edition', 'Mass Effect 2: Collector\'s Edition'], $titles('mass effect 2', [
+            ['id' => 99959, 'name' => 'Mass Effect 2: Ultimate Edition', 'game_type' => 0, 'version_parent' => 74, 'total_rating_count' => 3000],
+            ['id' => 43957, 'name' => 'Mass Effect 2: Collector\'s Edition', 'game_type' => 0, 'version_parent' => 74],
+            ['id' => 74, 'name' => 'Mass Effect 2', 'game_type' => 0, 'total_rating_count' => 2799],
+        ]));
+        $this->assertSame(['Scott Pilgrim Versus', 'Scott Pilgrim Versus: Deluxe'], $titles('scott pilgrim', [
+            ['id' => 2, 'name' => 'Scott Pilgrim Versus: Deluxe', 'game_type' => 0, 'version_parent' => 1],
+            ['id' => 1, 'name' => 'Scott Pilgrim Versus', 'game_type' => 0],
+        ]));
+        // The edition's own title finds it first, punctuation aside.
+        $this->assertSame(['Romancing SaGa: Minstrel Song Remastered International Special Edition', 'Romancing SaGa: Minstrel Song Remastered'], $titles('Romancing SaGa Minstrel Song Remastered International Special Edition', [
+            ['id' => 203315, 'name' => 'Romancing SaGa: Minstrel Song Remastered', 'game_type' => 9, 'total_rating_count' => 3],
+            ['id' => 391997, 'name' => 'Romancing SaGa: Minstrel Song Remastered International Special Edition', 'game_type' => 0, 'version_parent' => 203315],
         ]));
     }
 

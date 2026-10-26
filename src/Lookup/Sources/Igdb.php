@@ -34,11 +34,12 @@ class Igdb implements Source
     public const GAME_TYPES = '(0,3,4,8,9,10,11)';
 
     /**
-     * Editions of another game are left out, except bundles: IGDB files some
-     * real releases as a bundle that is an edition of its game, such as
-     * "Shovel Knight: Treasure Trove" (Wlork, Discuss d/40107 #73).
+     * Editions of another game are searched too: IGDB files some real releases
+     * as an edition, such as "Shovel Knight: Treasure Trove" and "Romancing
+     * SaGa: Minstrel Song Remastered International Special Edition" (Wlork,
+     * Discuss d/40107 #73, #83); rank() keeps them under their game.
      */
-    public const WHERE = 'where game_type = '.self::GAME_TYPES.' & (version_parent = null | game_type = 3);';
+    public const WHERE = 'where game_type = '.self::GAME_TYPES.';';
 
     private const BUNDLE = 3;
 
@@ -64,9 +65,9 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.4.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return $this->cache->remember('curio.igdb.search.5.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
             // IGDB ranks hits by text alone: take 50 and put the well-known ones first.
-            $games = $this->query('games', 'search "'.$query.'"; fields name,game_type,first_release_date,total_rating_count,cover.image_id,'
+            $games = $this->query('games', 'search "'.$query.'"; fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,'
                 .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer; '
                 .self::WHERE.' limit 50;');
 
@@ -83,27 +84,43 @@ class Igdb implements Source
     }
 
     /**
-     * The exact title first, then the well-known (most rated) first. A bundle
-     * nobody has rated ("Halo 3 + Halo Wars", "Dark Souls Trilogy Box") is a
-     * shop listing, not a game people know, so it comes after every game; a
-     * rated one (UFO 50, Mass Effect Trilogy) ranks like any game. Public so it
-     * is tested without credentials.
+     * The exact title first (punctuation aside), then the well-known (most
+     * rated) first. A bundle nobody has rated ("Halo 3 + Halo Wars", "Dark
+     * Souls Trilogy Box") is a shop listing, not a game people know, so it
+     * comes after every game; a rated one (UFO 50, Mass Effect Trilogy) ranks
+     * like any game. An edition (Deluxe, Collector's, GOTY) never comes before
+     * the game it is an edition of. Public so it is tested without credentials.
      *
      * @param list<mixed> $games
      * @return list<array<string, mixed>>
      */
     public static function rank(array $games, string $query): array
     {
-        $exact = mb_strtolower(trim($query));
-        $key = fn (array $g) => [
-            mb_strtolower((string) $g['name']) !== $exact,
-            ($g['game_type'] ?? null) === self::BUNDLE && empty($g['total_rating_count']),
-            -($g['total_rating_count'] ?? 0),
-        ];
         $games = array_values(array_filter($games, fn ($g) => is_array($g) && isset($g['id'], $g['name'])));
+        $exact = self::plain($query);
+        $ratings = array_combine(array_column($games, 'id'), array_map(fn ($g) => (int) ($g['total_rating_count'] ?? 0), $games));
+        $key = function (array $g) use ($exact, $ratings) {
+            $count = (int) ($g['total_rating_count'] ?? 0);
+            $parent = $g['version_parent'] ?? null;
+            $edition = $parent !== null && self::plain((string) $g['name']) !== $exact;
+
+            return [
+                self::plain((string) $g['name']) !== $exact,
+                ($g['game_type'] ?? null) === self::BUNDLE && $count === 0,
+                // An edition ranks by its own ratings, but below its game.
+                -($edition && array_key_exists($parent, $ratings) ? min($count, $ratings[$parent]) : $count),
+                $edition,
+            ];
+        };
         usort($games, fn ($a, $b) => $key($a) <=> $key($b));
 
         return $games;
+    }
+
+    /** "Romancing SaGa: Minstrel Song" and "romancing saga minstrel song" are the same title. */
+    private static function plain(string $title): string
+    {
+        return (string) preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($title));
     }
 
     public function details(string $id): array
