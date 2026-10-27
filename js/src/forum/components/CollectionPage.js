@@ -61,6 +61,7 @@ export default class CollectionPage extends Page {
       .find('curio-collections', String(id))
       .then((collection) => {
         this.collection = collection;
+        this.sort = SORTS[collection.defaultSort()] ? collection.defaultSort() : 'position';
         app.setTitle(collection.name());
         app.history.push('curio.collection', collection.name());
         this.load(true);
@@ -147,7 +148,7 @@ export default class CollectionPage extends Page {
 
   hero(c, type, facetField, facets) {
     const backdrop = c.preview() || [];
-    const mine = c.canEdit();
+    const mine = !!app.session.user && c.user() === app.session.user;
 
     return (
       <header className="Hero CurioHero">
@@ -218,7 +219,7 @@ export default class CollectionPage extends Page {
                   {c.followed() ? t('page.following') : t('page.follow')}
                 </Button>
               ) : null}
-              {mine || c.canFeature() ? (
+              {c.canEdit() || c.canFeature() ? (
                 <Button
                   className="Button CurioHero-ghost"
                   icon="fas fa-gear"
@@ -339,6 +340,16 @@ export default class CollectionPage extends Page {
             aria-label={text('page.sort_label')}
             options={Object.fromEntries(Object.keys(SORTS).map((k) => [k, text('sort.' + k)]))}
           />
+          {c.canEdit() && this.sort !== (c.defaultSort() || 'position') ? (
+            <Tooltip text={text('page.sort_default')}>
+              <Button
+                className="Button Button--icon"
+                icon="fas fa-thumbtack"
+                aria-label={text('page.sort_default')}
+                onclick={() => c.save({ defaultSort: this.sort === 'position' ? null : this.sort })}
+              />
+            </Tooltip>
+          ) : null}
           <div className="ButtonGroup" role="group" aria-label={text('page.view_label')}>
             <Button
               className={'Button Button--icon' + (this.view_ === 'grid' ? ' active' : '')}
@@ -418,7 +429,7 @@ export default class CollectionPage extends Page {
               <div className="CurioItemCard-title">{item.displayTitle()}</div>
               <div className="CurioItemCard-sub">{[item.subtitle(), item.year()].filter(Boolean).join(' · ')}</div>
               {facet ? <span className="CurioItemCard-field">{facet}</span> : null}
-              {item.rating() ? <Stars value={item.rating()} small /> : null}
+              {item.rating() != null ? <Stars value={item.rating()} small /> : null}
               {this.state(item, type)}
             </li>
           );
@@ -469,7 +480,7 @@ export default class CollectionPage extends Page {
               });
               // Each is drawn twice (column and phone stack): Mithril needs a fresh vnode per place.
               const condition = () => conditionPill(type, item.condition());
-              const stars = () => (item.rating() ? <Stars value={item.rating()} small /> : null);
+              const stars = () => (item.rating() != null ? <Stars value={item.rating()} small /> : null);
               const progress = () => (type?.progress() ? progressPill(item, type) : null);
               const status = () => statusPill(item.status());
               const pills = [condition(), gradedBadge(item, type), stars(), progress(), status()].filter(Boolean);

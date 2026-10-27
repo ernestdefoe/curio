@@ -97,19 +97,7 @@ export default class ItemModal extends Modal {
               ))}
             </div>
           ) : null}
-          {!mine && item.canEdit() ? (
-            // A moderator's Edit on someone else's item, kept apart from what members do with it.
-            <div className="CurioItem-moderate">
-              <Tooltip text={text('item.edit_this')}>
-                <Button
-                  className="Button Button--icon Button--rounded"
-                  icon="fas fa-pen"
-                  aria-label={text('item.edit_this')}
-                  onclick={() => this.edit(item, collection)}
-                />
-              </Tooltip>
-            </div>
-          ) : null}
+          {this.under(item, collection, mine)}
         </div>
 
         <div className="CurioItem-info">
@@ -152,11 +140,11 @@ export default class ItemModal extends Modal {
   ratingLine(item, type) {
     const review = reviewField(type ? type.fields() : []);
     const url = review && safeUrl((item.fields() || {})[review.key]);
-    if (!item.rating() && !url) return null;
+    if (item.rating() == null && !url) return null;
 
     return (
       <div className="CurioItem-rating">
-        {item.rating() ? <Stars value={item.rating()} /> : null}
+        {item.rating() != null ? <Stars value={item.rating()} /> : null}
         {url ? (
           <span className="CurioItem-review">
             {linkTo(url.href, [<Icon name="fas fa-arrow-up-right-from-square" />, ' ', t('item.read_review')])}
@@ -311,12 +299,10 @@ export default class ItemModal extends Modal {
           <Button className="Button Button--primary" icon="fas fa-pen" onclick={() => this.edit(item, collection)}>
             {t('item.edit')}
           </Button>
-          {discussed ||
-            (item.status() !== 'wishlist' ? (
-              <Button className="Button" icon="fas fa-bullhorn" onclick={() => startShowOff(item)}>
-                {t('item.show_off')}
-              </Button>
-            ) : null)}
+          <Button className="Button" icon="fas fa-arrow-right-arrow-left" onclick={() => this.move(item, collection)}>
+            {t('item.move')}
+          </Button>
+          {discussed}
         </div>
       );
     }
@@ -339,6 +325,57 @@ export default class ItemModal extends Modal {
         ) : null}
         {discussed}
       </div>
+    );
+  }
+
+  /**
+   * One round button under the cover: the owner's "Show it off" (until it has
+   * a discussion), or a moderator's Edit on someone else's item, kept apart
+   * from what members do with it.
+   */
+  under(item, collection, mine) {
+    const [label, icon, onclick] = mine
+      ? !item.discussionId() && item.status() !== 'wishlist'
+        ? [text('item.show_off'), 'fas fa-bullhorn', () => startShowOff(item)]
+        : []
+      : item.canEdit()
+        ? [text('item.edit_this'), 'fas fa-pen', () => this.edit(item, collection)]
+        : [];
+    if (!label) return null;
+
+    return (
+      <div className="CurioItem-under">
+        <Tooltip text={label}>
+          <Button className="Button Button--icon Button--rounded" icon={icon} aria-label={label} onclick={onclick} />
+        </Tooltip>
+      </div>
+    );
+  }
+
+  /** Into another of my collections (or a new one), where it goes to the end. */
+  move(item, collection) {
+    const typeId = collection.type()?.id();
+    const into = (target) =>
+      item
+        .save({ relationships: { collection: target } })
+        .then(() => {
+          app.modal.close();
+          app.alerts.show({ type: 'success' }, t('item.moved', { collection: target.name() }));
+          this.attrs.onchange && this.attrs.onchange();
+        })
+        .catch(() => m.redraw());
+
+    Promise.all([import('./ChooseCollectionModal'), import('./CollectionEditModal')]).then(
+      ([{ default: ChooseCollectionModal }, { default: CollectionEditModal }]) =>
+        app.store.find('curio-collections', { filter: { user: app.session.user.id() }, page: { limit: 50 } }).then((mine) =>
+          app.modal.show(ChooseCollectionModal, {
+            title: text('item.move_to'),
+            collections: mine.filter((c) => c !== collection),
+            typeIds: typeId ? [typeId] : [],
+            onchoose: into,
+            onnew: () => app.modal.show(CollectionEditModal, { typeId, onsave: into }),
+          })
+        )
     );
   }
 

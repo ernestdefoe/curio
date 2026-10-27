@@ -126,6 +126,8 @@ class CsvImport
             'price_currency' => $raw['price_currency'] ?? null,
             'favourite' => in_array(mb_strtolower($raw['favourite'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
             'rating' => $raw['rating'] ?? null,
+            // Curio's own export writes 0 for a rating of no stars; elsewhere 0 means unrated.
+            'rating_zero' => true,
             'progress' => $raw['progress'] ?? null,
             'graded' => in_array(mb_strtolower($raw['graded'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
         ], $fields);
@@ -183,8 +185,8 @@ class CsvImport
         ], []);
     }
 
-    /** Stars out of five ("4", "4.5", "3,75") as half stars 1–10; 0, blank or nonsense is unrated. */
-    public static function rating(mixed $stars): ?int
+    /** Stars out of five ("4", "4.5", "3,75") as half stars 1–10 (0 with `$zero`); blank or nonsense is unrated. */
+    public static function rating(mixed $stars, bool $zero = false): ?int
     {
         $stars = str_replace(',', '.', trim((string) $stars));
 
@@ -194,7 +196,7 @@ class CsvImport
 
         $halves = (int) round((float) $stars * 2);
 
-        return $halves >= 1 && $halves <= 10 ? $halves : null;
+        return $halves >= ($zero ? 0 : 1) && $halves <= 10 ? $halves : null;
     }
 
     /** Progress from its key, its English or French label, or a reading app's shelf name. */
@@ -262,7 +264,7 @@ class CsvImport
             'price_paid' => is_numeric($price) && (float) $price >= 0 && (float) $price < 1e8 && $status !== 'wishlist' ? round((float) $price, 2) : null,
             'price_currency' => is_numeric($price) && preg_match('/^[A-Z]{3}$/', (string) ($v['price_currency'] ?? '')) ? $v['price_currency'] : null,
             'favourite' => (bool) ($v['favourite'] ?? false),
-            'rating' => self::rating($v['rating'] ?? null),
+            'rating' => self::rating($v['rating'] ?? null, ! empty($v['rating_zero'])),
             'progress' => $type->progress && $status !== 'wishlist' ? self::progress($v['progress'] ?? null) : null,
             'graded' => $type->grading && ! empty($v['graded']),
             'fields' => ItemResource::cleanFields($type, array_filter($fields, fn ($x) => $x !== null && $x !== '')),

@@ -868,8 +868,8 @@
     margin-top: 10px;
   }
 
-  // A moderator's Edit on someone else's item: round, under the cover.
-  &-moderate {
+  // Round buttons under the cover: the owner's "Show it off", a moderator's Edit.
+  &-under {
     display: flex;
     justify-content: center;
     margin-top: 14px;
@@ -2198,14 +2198,23 @@ button.CurioChip {
     }
   }
 
+  // One compact row of five.
   .CurioUserStats {
-    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 20px;
 
-    > div:nth-child(4) {
-      border-left: 0;
+    > div {
+      padding: 8px 4px;
+      text-align: center;
     }
-    > div:nth-child(n + 4) {
-      border-top: 1px solid var(--control-bg);
+
+    b {
+      font-size: 17px;
+    }
+
+    span {
+      display: block;
+      font-size: 10.5px;
+      line-height: 1.25;
     }
   }
 
@@ -2600,6 +2609,31 @@ button.CurioChip {
 
   small {
     color: var(--muted-color);
+  }
+
+  // "No stars": a rating of 0 out of 5, apart from leaving it unrated.
+  &-zero {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border-radius: 50%;
+    border: 1px solid var(--control-bg);
+    background: none;
+    color: var(--muted-color);
+    font-weight: bold;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--muted-color);
+    }
+
+    &.active {
+      background: var(--control-bg);
+      color: var(--control-color);
+      border-color: var(--control-color);
+    }
   }
 }
 

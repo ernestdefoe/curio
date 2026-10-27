@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $wishlist_public
  * @property Carbon|null $featured_at
  * @property int $position
+ * @property string|null $default_sort
  * @property int $owned_count
  * @property int $wish_count
  * @property int $trade_count
@@ -39,6 +40,9 @@ class Collection extends AbstractModel
     use ScopeVisibilityTrait;
 
     public const VISIBILITIES = ['public', 'members', 'private'];
+
+    /** Orders a collection can open in besides its owner's own (null). */
+    public const SORTS = ['recent', 'title', 'year', 'rating'];
 
     public const MAX_PER_USER = 50;
 

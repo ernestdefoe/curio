@@ -1,6 +1,7 @@
 import app from 'flarum/forum/app';
 import FormModal from 'flarum/common/components/FormModal';
 import Button from 'flarum/common/components/Button';
+import Tooltip from 'flarum/common/components/Tooltip';
 import Icon from 'flarum/common/components/Icon';
 import Select from 'flarum/common/components/Select';
 import Switch from 'flarum/common/components/Switch';
@@ -109,7 +110,7 @@ export default class ItemEditModal extends FormModal {
     // A moderator changing someone else's item: what they paid stays private to them.
     this.owner = this.collection.user();
     this.isOwner = !this.owner || (!!app.session.user && this.owner.id() === app.session.user.id());
-    this.rating = Stream(item ? item.rating() || null : null);
+    this.rating = Stream(item ? (item.rating() ?? null) : null);
     this.progress = Stream(item ? item.progress() || '' : '');
     this.pricePaid = Stream(item && item.pricePaid() !== null && item.pricePaid() !== undefined ? String(item.pricePaid()) : '');
     this.priceCurrency = Stream(item ? item.priceCurrency() || defaultCurrency() : defaultCurrency());
@@ -852,8 +853,19 @@ export default class ItemEditModal extends FormModal {
             <div className="Form-group">
               <label>{t('item_edit.rating')}</label>
               <div className="CurioRating">
+                <Tooltip text={text('item_edit.rating_zero')}>
+                  <button
+                    type="button"
+                    className={'CurioRating-zero' + (this.rating() === 0 ? ' active' : '')}
+                    aria-label={text('item_edit.rating_zero')}
+                    aria-pressed={this.rating() === 0 ? 'true' : 'false'}
+                    onclick={() => this.rating(this.rating() === 0 ? null : 0)}
+                  >
+                    0
+                  </button>
+                </Tooltip>
                 <Stars value={this.rating()} onchange={this.rating} label={text('item_edit.rating')} />
-                <small>{this.rating() ? t('item_edit.rating_value', { stars: this.rating() / 2 }) : t('item_edit.rating_none')}</small>
+                <small>{this.rating() != null ? t('item_edit.rating_value', { stars: this.rating() / 2 }) : t('item_edit.rating_none')}</small>
               </div>
             </div>
           )}

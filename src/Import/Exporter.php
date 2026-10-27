@@ -30,7 +30,7 @@ class Exporter
                 $row = [
                     $item->title, $item->subtitle, $item->year, $item->status, $item->condition, $item->acquired_on?->toDateString(),
                     $item->notes, $item->barcode, $item->price_paid, $item->price_currency, $item->favourite ? 'yes' : '',
-                    $item->rating ? $item->rating / 2 : '', $item->progress, $item->graded ? 'yes' : '',
+                    $item->rating !== null ? $item->rating / 2 : '', $item->progress, $item->graded ? 'yes' : '',
                 ];
 
                 foreach ($fields as $field) {

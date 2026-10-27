@@ -96,6 +96,7 @@ ernestdefoe-curio:
       view_grid: Grille
       view_list: Liste
       arrange: Réorganiser
+      sort_default: Ouvrir cette collection dans cet ordre
       arrange_done: Terminé
       load_more: Afficher plus
     edit:
@@ -171,6 +172,7 @@ ernestdefoe-curio:
       rating: Votre note
       rating_value: "{stars} sur 5"
       rating_none: Pas noté. Touchez une étoile ; touchez-la à nouveau pour effacer.
+      rating_zero: Aucune étoile (0 sur 5)
     item:
       missing: Cet objet n'existe pas, ou vous ne pouvez pas le voir.
       favourite: Favori
@@ -201,6 +203,9 @@ ernestdefoe-curio:
       choose_none: "Vous n'avez pas encore de collection. Créez-en une et l'objet y sera ajouté directement."
       choose_new: Nouvelle collection…
       show_off: Le montrer
+      move: Déplacer
+      move_to: Vers quelle collection ?
+      moved: "Déplacé dans {collection}."
       discussed: Discussion
       cancel: Annuler
       developer: Développeur

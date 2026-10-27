@@ -672,10 +672,14 @@ class CurioTest extends TestCase
         $high = $this->json($this->item(3, $id, ['title' => 'Great game', 'rating' => 9]))['data']['id'];
 
         $this->assertSame(422, $this->item(3, $id, ['title' => 'Too good', 'rating' => 11])->getStatusCode());
-        $this->assertSame(422, $this->item(3, $id, ['title' => 'Too bad', 'rating' => 0])->getStatusCode());
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Too bad', 'rating' => -1])->getStatusCode());
+        // No stars at all is a rating too, and comes after every other one but before the unrated.
+        $zero = $this->json($this->item(3, $id, ['title' => 'Awful game', 'rating' => 0]))['data']['id'];
+        $this->assertSame(0, (int) $this->database()->table('curio_items')->where('id', $zero)->value('rating'));
 
         $list = $this->json($this->get('/api/curio-items', ['filter' => ['collection' => $id], 'sort' => '-rating'], 4))['data'];
-        $this->assertSame([$high, $low], array_slice(array_column($list, 'id'), 0, 2));
+        $this->assertSame([$high, $low, $zero], array_slice(array_column($list, 'id'), 0, 3));
+        $this->assertSame(0, $list[2]['attributes']['rating']);
         $this->assertSame(9, $list[0]['attributes']['rating']);
 
         // Only the owner changes it.
@@ -691,7 +695,8 @@ class CurioTest extends TestCase
         $this->assertStringContainsString(',4.5', $csv);
         $to = $this->newCollection(3, ['name' => 'Copy']);
         $this->upload(3, $to, $csv);
-        $this->assertEqualsCanonicalizing([10, 9, null], $this->database()->table('curio_items')->where('collection_id', $to)->pluck('rating')->map(fn ($r) => $r === null ? null : (int) $r)->all());
+        // A rating of no stars comes back as 0, not as unrated.
+        $this->assertEqualsCanonicalizing([10, 9, 0, null], $this->database()->table('curio_items')->where('collection_id', $to)->pluck('rating')->map(fn ($r) => $r === null ? null : (int) $r)->all());
     }
 
     #[Test]
@@ -2497,8 +2502,9 @@ class CurioTest extends TestCase
         // A moderator: edits, adds (the item is the owner's) and removes.
         $this->assertTrue($this->json($this->get("/api/curio-items/$item", [], 5))['data']['attributes']['canEdit']);
         $this->assertTrue($this->json($this->get("/api/curio-collections/$theirs", [], 5))['data']['attributes']['canAddItems']);
-        // Settings and order stay the owner's.
-        $this->assertFalse($this->json($this->get("/api/curio-collections/$theirs", [], 5))['data']['attributes']['canEdit']);
+        // Moderators change the collection's settings too (members do not).
+        $this->assertTrue($this->json($this->get("/api/curio-collections/$theirs", [], 5))['data']['attributes']['canEdit']);
+        $this->assertFalse($this->json($this->get("/api/curio-collections/$theirs", [], 4))['data']['attributes']['canEdit']);
 
         $response = $this->patchItem(5, $item, ['title' => 'Mad Max (2015)', 'graded' => true]);
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
@@ -2528,5 +2534,99 @@ class CurioTest extends TestCase
         $this->assertSame(403, $this->patchItem(5, $item, ['title' => 'Again'])->getStatusCode());
         $this->assertSame(403, $this->item(5, $theirs, ['title' => 'Again'])->getStatusCode());
         $this->assertSame(204, $this->send($this->request('DELETE', "/api/curio-items/$item", ['authenticatedAs' => 5]))->getStatusCode());
+    }
+
+    #[Test]
+    public function moderators_edit_anyones_collection_settings_and_members_cannot(): void
+    {
+        $this->prepareDatabase([
+            User::class => [['id' => 5, 'username' => 'warden', 'email' => 'warden@machine.local', 'is_email_confirmed' => 1]],
+            'group_user' => [['user_id' => 5, 'group_id' => 4], ['user_id' => 5, 'group_id' => 3]],
+        ]);
+        $theirs = $this->newCollection(3, ['name' => 'Bad word']);
+
+        $this->assertSame(403, $this->patchCollection(4, $theirs, ['name' => 'Defaced'])->getStatusCode());
+        $this->assertSame('Bad word', $this->database()->table('curio_collections')->where('id', $theirs)->value('name'));
+
+        $response = $this->patchCollection(5, $theirs, ['name' => 'Fixed', 'description' => 'Tidied up.', 'visibility' => 'members']);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $row = $this->database()->table('curio_collections')->where('id', $theirs)->first();
+        $this->assertSame(['Fixed', 'Tidied up.', 'members', 3], [$row->name, $row->description, $row->visibility, (int) $row->user_id]);
+    }
+
+    #[Test]
+    public function a_collection_opens_in_its_saved_order_until_it_is_arranged_again(): void
+    {
+        $id = $this->newCollection(3);
+        $a = (int) $this->json($this->item(3, $id, ['title' => 'A']))['data']['id'];
+        $b = (int) $this->json($this->item(3, $id, ['title' => 'B']))['data']['id'];
+
+        $this->assertNull($this->json($this->get("/api/curio-collections/$id"))['data']['attributes']['defaultSort']);
+        $this->assertSame(422, $this->patchCollection(3, $id, ['defaultSort' => 'price'])->getStatusCode());
+        $this->assertSame(403, $this->patchCollection(4, $id, ['defaultSort' => 'title'])->getStatusCode());
+
+        $response = $this->patchCollection(3, $id, ['defaultSort' => 'title']);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame('title', $this->json($this->get("/api/curio-collections/$id"))['data']['attributes']['defaultSort']);
+
+        // Arranging by hand makes the owner's own order the one it opens in again.
+        $response = $this->patchCollection(3, $id, ['order' => [$b, $a]]);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertNull($this->json($response)['data']['attributes']['defaultSort']);
+        $this->assertNull($this->database()->table('curio_collections')->where('id', $id)->value('default_sort'));
+
+        $this->assertSame(200, $this->patchCollection(3, $id, ['defaultSort' => 'rating'])->getStatusCode());
+        $this->assertSame(200, $this->patchCollection(3, $id, ['defaultSort' => null])->getStatusCode());
+        $this->assertNull($this->database()->table('curio_collections')->where('id', $id)->value('default_sort'));
+    }
+
+    private function moveItem(int $as, int $item, int $to): ResponseInterface
+    {
+        return $this->send($this->request('PATCH', "/api/curio-items/$item", [
+            'authenticatedAs' => $as,
+            'json' => ['data' => ['type' => 'curio-items', 'id' => (string) $item, 'relationships' => ['collection' => ['data' => ['type' => 'curio-collections', 'id' => (string) $to]]]]],
+        ]));
+    }
+
+    #[Test]
+    public function an_item_moves_to_another_of_its_owners_collections_only(): void
+    {
+        $ps = $this->newCollection(3, ['name' => 'PlayStation']);
+        $switch = $this->newCollection(3, ['name' => 'Switch']);
+        $this->item(3, $switch, ['title' => 'Already there']);
+        $item = (int) $this->json($this->item(3, $ps, ['title' => 'Hades', 'rating' => 9, 'notes' => 'Wrong shelf.']))['data']['id'];
+        $someoneElses = $this->newCollection(4);
+
+        // Not into someone else's collection, and not by someone else.
+        $this->assertSame(403, $this->moveItem(3, $item, $someoneElses)->getStatusCode());
+        $this->assertSame(403, $this->moveItem(4, $item, $someoneElses)->getStatusCode());
+        $this->assertSame(403, $this->moveItem(4, $item, $switch)->getStatusCode());
+        $this->assertSame($ps, (int) $this->database()->table('curio_items')->where('id', $item)->value('collection_id'));
+
+        $response = $this->moveItem(3, $item, $switch);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $row = $this->database()->table('curio_items')->where('id', $item)->first();
+        $this->assertSame([$switch, 9, 'Wrong shelf.', 3], [(int) $row->collection_id, (int) $row->rating, $row->notes, (int) $row->user_id]);
+        // At the end of its new collection, and both collections count again.
+        $this->assertSame((int) $this->database()->table('curio_items')->where('collection_id', $switch)->max('position'), (int) $row->position);
+        $counts = $this->database()->table('curio_collections')->whereIn('id', [$ps, $switch])->pluck('owned_count', 'id');
+        $this->assertSame([0, 2], [(int) $counts[$ps], (int) $counts[$switch]]);
+    }
+
+    #[Test]
+    public function an_item_moved_to_another_type_keeps_only_what_that_type_has(): void
+    {
+        $games = $this->newCollection(3, ['name' => 'Games']);
+        $cards = $this->newCollection(3, ['name' => 'Cards'], 'cards');
+        $item = (int) $this->json($this->item(3, $games, ['title' => 'Odd one', 'condition' => 'very_good', 'fields' => ['platform' => 'nintendo-switch']]))['data']['id'];
+
+        $response = $this->moveItem(3, $item, $cards);
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $row = $this->database()->table('curio_items')->where('id', $item)->first();
+        $this->assertSame($cards, (int) $row->collection_id);
+        $this->assertArrayNotHasKey('platform', json_decode($row->fields ?? '[]', true) ?? []);
+        $this->assertNull($row->facet);
+        // "Very good" is not on the card scale.
+        $this->assertNull($row->condition);
     }
 }

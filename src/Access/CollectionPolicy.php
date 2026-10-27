@@ -8,9 +8,9 @@ use Flarum\User\Access\AbstractPolicy;
 use Flarum\User\User;
 
 /**
- * Members change only their own collections and items. Moderators may remove
- * anything and feature collections; with "Edit anyone's items" they also add,
- * change and remove the items in anyone's collection (never its settings).
+ * Members change only their own collections and items. Moderators may change,
+ * remove and feature anyone's collection; with "Edit anyone's items" they also
+ * add, change and remove the items in anyone's collection.
  */
 class CollectionPolicy extends AbstractPolicy
 {
@@ -22,7 +22,7 @@ class CollectionPolicy extends AbstractPolicy
             return $this->allow();
         }
 
-        return $model instanceof Item && $actor->hasPermission(self::EDIT_ITEMS) ? $this->allow() : $this->deny();
+        return $actor->hasPermission($model instanceof Item ? self::EDIT_ITEMS : 'ernestdefoe-curio.moderate') ? $this->allow() : $this->deny();
     }
 
     public function delete(User $actor, Collection|Item $model): ?string

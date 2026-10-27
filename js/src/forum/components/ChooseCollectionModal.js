@@ -21,7 +21,7 @@ export default class ChooseCollectionModal extends Modal {
   }
 
   title() {
-    return t('item.choose_collection');
+    return this.attrs.title || t('item.choose_collection');
   }
 
   groups() {

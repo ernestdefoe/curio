@@ -45,6 +45,9 @@ class ItemResource extends AbstractDatabaseResource
     /** @var array<int, mixed> raw field values waiting for the item's type */
     private array $pendingFields = [];
 
+    /** @var array<int, int> the collection an item was moved out of, by item object */
+    private array $movedFrom = [];
+
     public function __construct(
         private Images $images,
         private Titles $titles,
@@ -153,7 +156,11 @@ class ItemResource extends AbstractDatabaseResource
             $model->progress_changed_at = $model->progress ? Carbon::now() : null;
         }
         if ($model->isDirty('rating')) {
-            $model->rating_changed_at = $model->rating ? Carbon::now() : null;
+            $model->rating_changed_at = $model->rating !== null ? Carbon::now() : null;
+        }
+
+        if ($model->exists && $model->isDirty('collection_id')) {
+            $this->move($model, $context->getActor());
         }
 
         // Each type keeps its own condition scale: cards are Near Mint, records Very good.
@@ -188,6 +195,10 @@ class ItemResource extends AbstractDatabaseResource
         if ($model->collection) {
             $this->stats->refresh($model->collection);
         }
+        if ($from = Collection::query()->find($this->movedFrom[spl_object_id($model)] ?? null)) {
+            $this->stats->refresh($from);
+        }
+        unset($this->movedFrom[spl_object_id($model)]);
 
         // Newly up for trade: the members who want it hear about it.
         if ($model->status === 'trade' && $model->work_id && ($model->wasRecentlyCreated || $model->wasChanged('status') || $model->wasChanged('work_id'))) {
@@ -204,7 +215,7 @@ class ItemResource extends AbstractDatabaseResource
         if (! $model->wasRecentlyCreated && $model->wasChanged('progress') && $model->progress) {
             $kinds[] = 'progress';
         }
-        if (! $model->wasRecentlyCreated && $model->wasChanged('rating') && $model->rating) {
+        if (! $model->wasRecentlyCreated && $model->wasChanged('rating') && $model->rating !== null) {
             $kinds[] = 'rating';
         }
         foreach (array_filter($kinds) as $kind) {
@@ -290,12 +301,12 @@ class ItemResource extends AbstractDatabaseResource
                 ->rule('max:2000'),
             Schema\Boolean::make('favourite')
                 ->writable(),
-            // The owner's rating in half stars, 1 (½ ★) to 10 (★★★★★); null when unrated.
+            // The owner's rating in half stars, 0 (no stars at all) to 10 (★★★★★); null when unrated.
             Schema\Integer::make('rating')
                 ->nullable()
                 ->writable()
                 ->rule('integer')
-                ->rule('between:1,10'),
+                ->rule('between:0,10'),
             // Not started, in progress, completed or abandoned; shown where the item's type tracks it.
             Schema\Str::make('progress')
                 ->nullable()
@@ -361,10 +372,11 @@ class ItemResource extends AbstractDatabaseResource
             Schema\Boolean::make('canEdit')
                 ->get(fn (Item $item, Context $context) => $context->getActor()->can('update', $item)),
 
+            // Afterwards, moving it to another of the owner's collections (checked in move()).
             Schema\Relationship\ToOne::make('collection')
                 ->type('curio-collections')
                 ->includable()
-                ->writableOnCreate()
+                ->writable()
                 ->requiredOnCreate(),
             Schema\Relationship\ToOne::make('work')
                 ->type('curio-works')
@@ -493,6 +505,37 @@ class ItemResource extends AbstractDatabaseResource
      * A moderator's change to someone else's item goes in the forum's log,
      * so there is a trail of who touched what.
      */
+    /**
+     * Into another of the same member's collections, at its end. Another type
+     * keeps only the details it has too, and a condition on its own scale.
+     */
+    private function move(Item $item, User $actor): void
+    {
+        $from = (int) $item->getOriginal('collection_id');
+        $to = $item->collection;
+
+        if (! $to || $to->user_id !== $item->user_id || $actor->cannot('addItems', $to)) {
+            throw new PermissionDeniedException();
+        }
+        if (Item::query()->where('collection_id', $to->id)->count() >= Collection::MAX_ITEMS) {
+            throw new ValidationException(['collection' => $this->translator->trans('ernestdefoe-curio.api.collection_full', ['count' => Collection::MAX_ITEMS])]);
+        }
+
+        $item->position = (int) Item::query()->where('collection_id', $to->id)->max('position') + 1;
+        $this->movedFrom[spl_object_id($item)] = $from;
+
+        $type = $to->type;
+        if ($type && $type->id !== Collection::query()->whereKey($from)->value('type_id')) {
+            $item->fields = self::cleanFields($type, $item->fields ?? []);
+            $facet = $type->facetField();
+            $value = $facet ? ($item->fields[$facet['key']] ?? null) : null;
+            $item->facet = $facet && Type::allows($facet, $value) ? $value : null;
+            if ($item->condition !== null && ! in_array($item->condition, $type->conditionList(), true)) {
+                $item->condition = null;
+            }
+        }
+    }
+
     private function audit(User $actor, Item $item, string $action): void
     {
         if ($actor->isGuest() || $actor->id === $item->user_id) {

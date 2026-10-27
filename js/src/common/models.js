@@ -26,6 +26,7 @@ Object.assign(CurioCollection.prototype, {
   wishlistPublic: Model.attribute('wishlistPublic'),
   featured: Model.attribute('featured'),
   position: Model.attribute('position'),
+  defaultSort: Model.attribute('defaultSort'),
   ownedCount: Model.attribute('ownedCount'),
   wishCount: Model.attribute('wishCount'),
   tradeCount: Model.attribute('tradeCount'),

@@ -226,8 +226,8 @@ class CollectionResource extends AbstractDatabaseResource
 
     public function fields(): array
     {
-        // Writable while creating, and afterwards by the owner only.
-        $owner = fn (Collection $c, Context $context) => ! $c->exists || $c->isOwnedBy($context->getActor());
+        // Writable while creating, and afterwards by the owner or a moderator.
+        $owner = fn (Collection $c, Context $context) => ! $c->exists || $context->getActor()->can('update', $c);
 
         return [
             Schema\Str::make('name')
@@ -289,12 +289,22 @@ class CollectionResource extends AbstractDatabaseResource
             Schema\Boolean::make('canFeature')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('feature', $c)),
 
-            // Write-only: the new order of the collection's items.
+            // The order the page opens in: null for the owner's own arrangement.
+            Schema\Str::make('defaultSort')
+                ->property('default_sort')
+                ->nullable()
+                ->writable($owner)
+                ->in(Collection::SORTS),
+            // Write-only: the new order of the collection's items. Arranging them
+            // makes that arrangement the order the page opens in again.
             Schema\Arr::make('order')
                 ->hidden()
-                ->writable(fn (Collection $c, Context $context) => $c->exists && $c->isOwnedBy($context->getActor()))
+                ->writable(fn (Collection $c, Context $context) => $c->exists && $context->getActor()->can('update', $c))
                 ->rule('max:'.Collection::MAX_ITEMS)
-                ->set(fn (Collection $c, $value) => $this->orders[spl_object_id($c)] = array_map('intval', array_slice((array) $value, 0, Collection::MAX_ITEMS))),
+                ->set(function (Collection $c, $value) {
+                    $this->orders[spl_object_id($c)] = array_map('intval', array_slice((array) $value, 0, Collection::MAX_ITEMS));
+                    $c->default_sort = null;
+                }),
 
             Schema\Relationship\ToOne::make('user')
                 ->type('users')

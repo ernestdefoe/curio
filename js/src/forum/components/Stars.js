@@ -11,7 +11,7 @@ const at = (e) => {
  * Five stars in half steps (the owner's rating). Read-only, or an input. As
  * an input, the row of stars takes every tap, slide and click itself; a
  * transparent range input underneath gives the keyboard and screen readers a
- * real slider. `value` is 1-10 or null; `onchange` gets 1-10, or null when
+ * real slider. `value` is 0-10 or null; `onchange` gets 0-10, or null when
  * the same rating is tapped again (cleared).
  *
  * 🚨 Until 1.14.1 the range input took the pointer too, and no rating could
@@ -35,8 +35,8 @@ export default class Stars extends Component {
       <span
         className={'CurioStars' + (small ? ' CurioStars--small' : '') + (input ? ' CurioStars--input' : '')}
         style={{ '--curio-fill': `${shown * 10}%` }}
-        title={value ? starsLabel(value) + ' / 5' : undefined}
-        aria-label={!input && value ? starsLabel(value) + ' / 5' : undefined}
+        title={value != null ? starsLabel(value) + ' / 5' : undefined}
+        aria-label={!input && value != null ? starsLabel(value) + ' / 5' : undefined}
         role={input ? undefined : 'img'}
         {...(input ? this.pointer(value, onchange) : {})}
       >
@@ -52,10 +52,10 @@ export default class Stars extends Component {
             step="1"
             value={value || 0}
             aria-label={label}
-            aria-valuetext={value ? starsLabel(value) + ' / 5' : '0'}
+            aria-valuetext={value != null ? starsLabel(value) + ' / 5' : undefined}
             onkeyup={(e) => {
               if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) return;
-              onchange(Number(e.currentTarget.value) || null);
+              onchange(Number(e.currentTarget.value));
             }}
           />
         ) : null}
