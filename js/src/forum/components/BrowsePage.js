@@ -616,8 +616,9 @@ export default class BrowsePage extends Page {
 
   /**
    * Item cards in a row. Search results are grouped (Wlork, d/40107 #91): a
-   * title several members have shows once, with how many, and opens "Who has
-   * this" instead of one member's copy.
+   * title several members have shows once, with how many. It opens the title's
+   * details first (the reader's own copy when they have one), where "Who has
+   * this" sits under the cover (d/40107 #94).
    */
   strip(items, grouped = false) {
     const groups = [];
@@ -637,10 +638,8 @@ export default class BrowsePage extends Page {
           const members = new Set(group.map((i) => i.collection()?.user()?.id())).size;
           const user = item.collection()?.user();
           const facet = group.length === 1 ? this.facet(item) : null;
-          const open =
-            members > 1
-              ? () => app.modal.show(OwnersModal, { workId: item.workId(), title: item.displayTitle() })
-              : () => app.modal.show(ItemModal, { itemId: item.id() });
+          const shown = group.find((i) => i.collection()?.user() === app.session.user) || item;
+          const open = () => app.modal.show(ItemModal, { itemId: shown.id() });
           return (
             <li>
               <button type="button" onclick={open}>

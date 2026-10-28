@@ -33,7 +33,7 @@ export default class OwnersModal extends Modal {
   }
 
   className() {
-    return 'CurioOwnersModal Modal--small';
+    return 'CurioOwnersModal';
   }
 
   title() {
