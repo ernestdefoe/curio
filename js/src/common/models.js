@@ -76,6 +76,7 @@ Object.assign(CurioItem.prototype, {
   canEdit: Model.attribute('canEdit'),
   discussionId: Model.attribute('discussionId'),
   collectionId: Model.attribute('collectionId'),
+  workId: Model.attribute('workId'),
   tradeOffers: Model.attribute('tradeOffers'),
   ownersCount: Model.attribute('ownersCount'),
   collection: Model.hasOne('collection'),

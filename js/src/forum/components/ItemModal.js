@@ -13,6 +13,7 @@ import { startShowOff } from '../showOff';
 import addToMyCollection from '../copyItem';
 import useStyles from '../styles';
 import Stars from './Stars';
+import OwnersModal from './OwnersModal';
 
 const LONG = 600;
 
@@ -334,20 +335,29 @@ export default class ItemModal extends Modal {
    * from what members do with it.
    */
   under(item, collection, mine) {
-    const [label, icon, onclick] = mine
-      ? !item.discussionId() && item.status() !== 'wishlist'
-        ? [text('item.show_off'), 'fas fa-bullhorn', () => startShowOff(item)]
-        : []
-      : item.canEdit()
-        ? [text('item.edit_this'), 'fas fa-pen', () => this.edit(item, collection)]
-        : [];
-    if (!label) return null;
+    const buttons = [];
+    if (mine && !item.discussionId() && item.status() !== 'wishlist') {
+      buttons.push([text('item.show_off'), 'fas fa-bullhorn', () => startShowOff(item)]);
+    } else if (!mine && item.canEdit()) {
+      buttons.push([text('item.edit_this'), 'fas fa-pen', () => this.edit(item, collection)]);
+    }
+    // Everyone's: which members have this title, on every item that is a looked-up title.
+    if (item.workId()) {
+      buttons.push([
+        text('item.who_has'),
+        'fas fa-users',
+        () => app.modal.show(OwnersModal, { workId: item.workId(), title: item.displayTitle() }, true),
+      ]);
+    }
+    if (!buttons.length) return null;
 
     return (
       <div className="CurioItem-under">
-        <Tooltip text={label}>
-          <Button className="Button Button--icon Button--rounded" icon={icon} aria-label={label} onclick={onclick} />
-        </Tooltip>
+        {buttons.map(([label, icon, onclick]) => (
+          <Tooltip text={label}>
+            <Button className="Button Button--icon Button--rounded" icon={icon} aria-label={label} onclick={onclick} />
+          </Tooltip>
+        ))}
       </div>
     );
   }

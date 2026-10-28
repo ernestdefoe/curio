@@ -868,9 +868,11 @@
     margin-top: 10px;
   }
 
-  // Round buttons under the cover: the owner's "Show it off", a moderator's Edit.
+  // Round buttons under the cover: the owner's "Show it off", a moderator's
+  // Edit, and everyone's "Who has this".
   &-under {
     display: flex;
+    gap: 10px;
     justify-content: center;
     margin-top: 14px;
   }
@@ -2992,5 +2994,96 @@ button.CurioChip--more {
         width: 100%;
       }
     }
+  }
+}
+
+
+// "Who has this": one member a line.
+.CurioOwners {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li + li {
+    border-top: 1px solid var(--control-bg);
+  }
+}
+
+.CurioOwners-row {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 10px;
+  padding: 8px 6px;
+  text-align: start;
+  width: 100%;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--control-bg);
+  }
+
+  .Avatar {
+    --size: 32px;
+    flex: none;
+  }
+}
+
+.CurioOwners-name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.CurioOwners-facet,
+.CurioOwners-trade {
+  background: var(--control-bg);
+  border-radius: 999px;
+  color: var(--muted-color);
+  flex: none;
+  font-size: 12px;
+  padding: 1px 8px;
+}
+
+.CurioOwners-rating {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.CurioOwners-empty {
+  color: var(--muted-color);
+  margin: 0;
+}
+
+// A title more than one member has, in search results.
+.CurioStrip-count {
+  color: var(--muted-color);
+  font-size: 12px;
+}
+
+// Most owned: a small cover beside the title.
+.CurioMostOwned-title {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 10px;
+  padding: 0;
+  text-align: start;
+
+  .CurioCover {
+    border-radius: 4px;
+    flex: none;
+    width: 32px;
   }
 }

@@ -19,6 +19,7 @@ import { browseSections } from '../../common/ranking';
 import addToMyCollection from '../copyItem';
 import { collectionCard, cover, progressPill } from './bits';
 import ItemModal from './ItemModal';
+import OwnersModal from './OwnersModal';
 import Stars from './Stars';
 import useStyles from '../styles';
 
@@ -262,7 +263,7 @@ export default class BrowsePage extends Page {
         <div className="CurioSection-heading">
           <h2>{t('browse.results', { q: this.q })}</h2>
         </div>
-        {this.found.length ? this.strip(this.found) : <Placeholder text={t('browse.no_results')} />}
+        {this.found.length ? this.strip(this.found, true) : <Placeholder text={t('browse.no_results')} />}
       </>
     );
   }
@@ -310,14 +311,97 @@ export default class BrowsePage extends Page {
 
   section(key) {
     const icon = { featured: 'fas fa-award', top: 'fas fa-ranking-star', collectors: 'fas fa-trophy' }[key];
+    const ranking = key === 'collectors';
+    const mostOwned = ranking && this.rankTab === 'most_owned';
     return (
       <>
         <div className="CurioSection-heading">
           <h2>
-            <Icon name={icon} /> {t({ featured: 'browse.featured', top: 'browse.largest', collectors: 'browse.collectors' }[key])}
+            <Icon name={icon} />{' '}
+            {t({ featured: 'browse.featured', top: 'browse.largest', collectors: mostOwned ? 'browse.tab_most_owned' : 'browse.collectors' }[key])}
           </h2>
+          {ranking
+            ? this.tabs(['collectors', 'most_owned'], this.rankTab || 'collectors', (tab) => this.chooseRanking(tab), text('browse.collectors'))
+            : null}
         </div>
-        {key === 'collectors' ? this.collectorTable() : this.cards(key === 'featured' ? this.featured : this.top)}
+        {ranking ? (mostOwned ? this.mostOwnedTable() : this.collectorTable()) : this.cards(key === 'featured' ? this.featured : this.top)}
+      </>
+    );
+  }
+
+  /** Top collectors, or the titles the most members have (Wlork, d/40107 #91). */
+  chooseRanking(tab) {
+    this.rankTab = tab;
+    if (tab === 'most_owned' && !this.mostOwned) {
+      this.mostOwned = { rows: [], more: false, loading: false };
+      this.loadMostOwned();
+    }
+  }
+
+  /** The next ten titles and how many members have each, then those copies' titles and covers in one request. */
+  loadMostOwned() {
+    const state = this.mostOwned;
+    state.loading = true;
+    app
+      .request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/curio/most-owned`, params: { offset: state.rows.length } })
+      .then((found) => {
+        state.more = found.more;
+        if (!found.data.length) return;
+        return app.store
+          .find('curio-items', { filter: { ids: found.data.map((row) => row.itemId).join(',') }, include: 'collection.type', page: { limit: 50 } })
+          .then(() => {
+            state.rows = state.rows.concat(
+              found.data.map((row) => ({ ...row, item: app.store.getById('curio-items', row.itemId) })).filter((row) => row.item)
+            );
+          });
+      })
+      .finally(() => {
+        state.loading = false;
+        m.redraw();
+      });
+  }
+
+  /** Most owned: rank, cover and title (opens "Who has this"), members. */
+  mostOwnedTable() {
+    const { rows, more, loading } = this.mostOwned;
+    if (!rows.length) return loading ? <LoadingIndicator display="block" /> : <Placeholder text={t('browse.none_most_owned')} />;
+    const number = new Intl.NumberFormat(locale());
+    return (
+      <>
+        <table className="CurioCollectors CurioMostOwned">
+          <thead>
+            <tr>
+              <th className="CurioCollectors-rank">#</th>
+              <th>{t('browse.most_owned_title')}</th>
+              <th className="CurioCollectors-n">{t('browse.most_owned_owners')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.workId}>
+                <td className="CurioCollectors-rank">{i + 1}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="CurioCollectors-member CurioMostOwned-title"
+                    onclick={() => app.modal.show(OwnersModal, { workId: row.workId, title: row.item.displayTitle() })}
+                  >
+                    {cover(row.item.coverUrl(), row.item.collection()?.type()?.shape(), false, row.item.displayTitle())}
+                    <span>{row.item.displayTitle()}</span>
+                  </button>
+                </td>
+                <td className="CurioCollectors-n">{number.format(row.owners)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {more ? (
+          <div className="CurioBrowse-more">
+            <Button className="Button" loading={loading} onclick={() => this.loadMostOwned()}>
+              {t('browse.more')}
+            </Button>
+          </div>
+        ) : null}
       </>
     );
   }
@@ -530,19 +614,44 @@ export default class BrowsePage extends Page {
     return field && item.facet() ? optionLabel(field, item.facet(), locale()) : null;
   }
 
-  strip(items) {
+  /**
+   * Item cards in a row. Search results are grouped (Wlork, d/40107 #91): a
+   * title several members have shows once, with how many, and opens "Who has
+   * this" instead of one member's copy.
+   */
+  strip(items, grouped = false) {
+    const groups = [];
+    const byWork = new Map();
+    items.forEach((item) => {
+      const work = grouped && item.workId();
+      if (work && byWork.has(work)) return byWork.get(work).push(item);
+      const group = [item];
+      if (work) byWork.set(work, group);
+      groups.push(group);
+    });
+
     return (
       <ul className="CurioStrip">
-        {items.map((item) => {
+        {groups.map((group) => {
+          const item = group[0];
+          const members = new Set(group.map((i) => i.collection()?.user()?.id())).size;
           const user = item.collection()?.user();
-          const facet = this.facet(item);
+          const facet = group.length === 1 ? this.facet(item) : null;
+          const open =
+            members > 1
+              ? () => app.modal.show(OwnersModal, { workId: item.workId(), title: item.displayTitle() })
+              : () => app.modal.show(ItemModal, { itemId: item.id() });
           return (
             <li>
-              <button type="button" onclick={() => app.modal.show(ItemModal, { itemId: item.id() })}>
+              <button type="button" onclick={open}>
                 {cover(item.coverUrl(), item.collection()?.type()?.shape(), false, item.displayTitle())}
                 <span className="CurioItemCard-title">{item.displayTitle()}</span>
                 {facet ? <span className="CurioStrip-facet">{facet}</span> : null}
-                {user ? (
+                {members > 1 ? (
+                  <span className="CurioStrip-count">
+                    <Icon name="fas fa-users" /> {t('browse.owned_by', { count: members })}
+                  </span>
+                ) : user ? (
                   <span className="CurioStrip-owner">
                     <Avatar user={user} /> {username(user)}
                   </span>

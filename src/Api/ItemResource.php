@@ -353,6 +353,8 @@ class ItemResource extends AbstractDatabaseResource
                 ->visible(fn (Item $item, Context $context) => $item->discussion_id && self::alone($context))
                 ->get(fn (Item $item, Context $context) => Discussion::query()->whereVisibleTo($context->getActor())->whereKey($item->discussion_id)->exists() ? $item->discussion_id : null),
             Schema\Integer::make('collectionId')->property('collection_id'),
+            // Which looked-up title it is: "Who has this" and grouping search results.
+            Schema\Integer::make('workId')->property('work_id')->nullable(),
             // On a wanted item's own page: how many others have it open to trade, and the first such offer.
             Schema\Arr::make('tradeOffers')
                 ->nullable()
@@ -368,7 +370,8 @@ class ItemResource extends AbstractDatabaseResource
             // How many members have it (owned or to trade), on the item's own page.
             Schema\Integer::make('ownersCount')
                 ->visible(fn (Item $item, Context $context) => $item->work_id && self::alone($context))
-                ->get(fn (Item $item) => (int) Item::query()->where('work_id', $item->work_id)->where('status', '!=', 'wishlist')->distinct()->count('user_id')),
+                ->get(fn (Item $item, Context $context) => (int) Item::query()->whereVisibleTo($context->getActor())
+                    ->where('work_id', $item->work_id)->where('status', '!=', 'wishlist')->distinct()->count('user_id')),
             Schema\Boolean::make('canEdit')
                 ->get(fn (Item $item, Context $context) => $context->getActor()->can('update', $item)),
 

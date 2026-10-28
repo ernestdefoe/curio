@@ -174,6 +174,10 @@ ernestdefoe-curio:
       rating_none: Pas noté. Touchez une étoile ; touchez-la à nouveau pour effacer.
       rating_zero: Aucune étoile (0 sur 5)
     item:
+      who_has: Qui l’a
+      owners_title: "Qui possède {title}"
+      owners_none: Personne de visible ne l’a encore.
+      for_trade: À échanger
       missing: Cet objet n'existe pas, ou vous ne pouvez pas le voir.
       favourite: Favori
       photo_n: "Photo {n}"
@@ -226,6 +230,12 @@ ernestdefoe-curio:
       empty_own: Commencez votre première collection et montrez ce que vous avez.
       wishlist_heading: Liste de souhaits
     browse:
+      tab_collectors: Top collectionneurs
+      tab_most_owned: Les plus possédés
+      most_owned_title: Titre
+      most_owned_owners: Membres
+      none_most_owned: Personne ne possède encore rien.
+      owned_by: "{count, plural, one {# membre} other {# membres}}"
       title: Collections
       lead: "{items, plural, one {# objet} other {# objets}} dans les collections de {members, plural, one {# membre} other {# membres}}."
       search: Chercher dans toutes les collections…

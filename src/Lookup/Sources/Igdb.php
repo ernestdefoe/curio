@@ -65,11 +65,27 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.5.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return $this->cache->remember('curio.igdb.search.6.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+            $fields = 'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,'
+                .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer;';
+
             // IGDB ranks hits by text alone: take 50 and put the well-known ones first.
-            $games = $this->query('games', 'search "'.$query.'"; fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,'
-                .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer; '
-                .self::WHERE.' limit 50;');
+            $games = $this->query('games', 'search "'.$query.'"; '.$fields.' '.self::WHERE.' limit 50;');
+
+            // IGDB's search stems some titles to nothing like them: "Going Under"
+            // comes back as fifty "Go! Go!" games and never the game itself
+            // (Wlork, Discuss d/40107 #91). When nothing found is the title
+            // typed, the titles that contain it are asked for too.
+            $exact = self::plain($query);
+            if (! array_filter($games, fn ($g) => is_array($g) && self::plain((string) ($g['name'] ?? '')) === $exact)) {
+                $named = $this->query('games', $fields.' where name ~ *"'.$query.'"* & game_type = '.self::GAME_TYPES.'; limit 20;');
+                $seen = array_column($games, 'id');
+                foreach ($named as $g) {
+                    if (is_array($g) && isset($g['id']) && ! in_array($g['id'], $seen, true)) {
+                        $games[] = $g;
+                    }
+                }
+            }
 
             return array_map(fn (array $g) => [
                 'id' => (string) $g['id'],

@@ -108,7 +108,8 @@ return [
     (new Extend\Routes('api'))
         ->post('/curio/lookup', 'curio.lookup', Api\LookupController::class)
         ->get('/curio/overview', 'curio.overview', Api\OverviewController::class)
-        ->get('/curio/collectors', 'curio.collectors', Api\CollectorsController::class),
+        ->get('/curio/collectors', 'curio.collectors', Api\CollectorsController::class)
+        ->get('/curio/most-owned', 'curio.most-owned', Api\MostOwnedController::class),
 
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(Collection::class, Search\CollectionSearcher::class)
@@ -122,7 +123,9 @@ return [
         ->addFilter(Search\ItemSearcher::class, Search\Filter\ProgressFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\FacetFilter::class)
         ->addFilter(Search\ItemSearcher::class, Search\Filter\TitleFilter::class)
-        ->addFilter(Search\ItemSearcher::class, Search\Filter\ChangedFilter::class),
+        ->addFilter(Search\ItemSearcher::class, Search\Filter\ChangedFilter::class)
+        ->addFilter(Search\ItemSearcher::class, Search\Filter\WorkFilter::class)
+        ->addFilter(Search\ItemSearcher::class, Search\Filter\IdsFilter::class),
 
     (new Extend\ModelVisibility(Collection::class))
         ->scope(Access\ScopeCollectionVisibility::class),

@@ -829,6 +829,83 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function who_has_a_title_and_the_most_owned_count_only_what_the_reader_may_open(): void
+    {
+        $now = Carbon::now()->toDateTimeString();
+        foreach ([2 => 'Going Under', 3 => 'Hades'] as $id => $title) {
+            $this->database()->table('curio_works')->insert(['id' => $id, 'source' => 'igdb', 'source_id' => (string) (900 + $id), 'title' => $title, 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 0]);
+        }
+
+        $mine = $this->newCollection(2);
+        $theirs = $this->newCollection(3);
+        $hidden = $this->newCollection(4, ['visibility' => 'private']);
+        $add = fn (int $as, int $c, int $work, array $more = []) => $this->assertSame(201, $this->item($as, $c, $more + ['title' => 'x', 'status' => 'owned'], $work)->getStatusCode());
+        $add(2, $mine, 2, ['rating' => 8]);
+        $add(3, $theirs, 2, ['status' => 'trade']);
+        $add(3, $theirs, 3);
+        $add(4, $hidden, 2);
+        $add(4, $hidden, 3);
+        $add(2, $mine, 3, ['status' => 'wishlist']);
+
+        // Who has Going Under: the two in collections anyone may open; the private one stays out.
+        $owners = $this->json($this->get('/api/curio-items', ['filter' => ['work' => '2', 'status' => 'owned'], 'include' => 'collection.user']));
+        $this->assertSame([2, 3], collect($owners['data'])->map(fn ($i) => (int) $i['relationships']['collection']['data']['id'])->map(fn ($c) => $c === $mine ? 2 : 3)->sort()->values()->all());
+        $this->assertSame([2, 2], collect($owners['data'])->pluck('attributes.workId')->all());
+
+        // Most owned: Going Under (2 members), then Hades (1: the private copy and the wishlist don't count).
+        $ranking = $this->json($this->get('/api/curio/most-owned'));
+        $this->assertSame([['2', 2], ['3', 1]], array_map(fn ($r) => [$r['workId'], $r['owners']], $ranking['data']));
+        $this->assertFalse($ranking['more']);
+
+        // Its owner sees their private copy counted.
+        $this->assertSame([['2', 3], ['3', 2]], array_map(fn ($r) => [$r['workId'], $r['owners']], $this->json($this->get('/api/curio/most-owned', [], 4))['data']));
+
+        // The rows' items load by id, and only those the reader may open.
+        $hiddenItem = (int) $this->database()->table('curio_items')->where('collection_id', $hidden)->value('id');
+        $ids = implode(',', array_merge(array_column($ranking['data'], 'itemId'), [$hiddenItem]));
+        $this->assertCount(2, $this->json($this->get('/api/curio-items', ['filter' => ['ids' => $ids]]))['data']);
+
+        // An item's own page counts the members the reader can see, not the private shelf.
+        $item = (int) $ranking['data'][0]['itemId'];
+        $this->assertSame(2, $this->json($this->get("/api/curio-items/$item"))['data']['attributes']['ownersCount']);
+    }
+
+    #[Test]
+    public function a_title_igdb_search_cannot_find_is_found_by_its_name(): void
+    {
+        $this->put('ernestdefoe-curio.igdb_client_id', 'client');
+        $this->put('ernestdefoe-curio.igdb_client_secret', 'secret');
+        $container = $this->app()->getContainer();
+        $fake = new class($container->make(\Illuminate\Contracts\Cache\Repository::class), $container->make(\Flarum\Http\UrlGenerator::class)) extends \Ernestdefoe\Curio\Lookup\Http {
+            public array $bodies = [];
+
+            public function post(string $service, string $url, array $query = [], array $headers = [], ?string $body = null, float $timeout = 6): array
+            {
+                if ($service === 'twitch') {
+                    return ['access_token' => 'tok', 'expires_in' => 5000000];
+                }
+                $this->bodies[] = (string) $body;
+
+                // What IGDB really answers for "Going Under": a search stemmed to "go".
+                return str_starts_with((string) $body, 'search')
+                    ? [['id' => 1, 'name' => 'Go! Go! Nippon! 2016', 'game_type' => 4], ['id' => 2, 'name' => 'Go Go Muffin', 'game_type' => 0]]
+                    : [['id' => 3, 'name' => 'Going Under', 'game_type' => 0, 'total_rating_count' => 27], ['id' => 2, 'name' => 'Go Go Muffin', 'game_type' => 0]];
+            }
+        };
+        $container->instance(\Ernestdefoe\Curio\Lookup\Http::class, $fake);
+
+        $results = $this->json($this->send($this->request('POST', '/api/curio/lookup', [
+            'authenticatedAs' => 3,
+            'json' => ['type' => $this->typeId('games'), 'q' => 'Going Under'],
+        ])))['results'];
+
+        $this->assertSame('Going Under', $results[0]['title']);
+        $this->assertCount(3, $results, 'merged, each game once');
+        $this->assertCount(2, $fake->bodies);
+        $this->assertStringContainsString('where name ~ *"Going Under"*', $fake->bodies[1]);
+    }
+
+    #[Test]
     public function european_barcodes_are_found_on_icecat_and_a_miss_is_learned_from_the_title_picked(): void
     {
         $this->put('ernestdefoe-curio.igdb_client_id', 'client');
