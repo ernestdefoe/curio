@@ -142,8 +142,12 @@ function extendMarquee() {
   extend(MediaHero.prototype, 'actionItems', function (items) {
     const media = this.attrs.link?.media;
     if (!media || !app.forum.attribute('canViewCurio')) return;
-    const discussion = this.attrs.discussion;
+    // What the page says about the reader's copy is for the linked title. A related
+    // title shown in its place (a series) is looked up afresh, like any other.
+    const main = this.attrs.discussion?.marqueeMedia?.();
+    const discussion = !main || media === main ? this.attrs.discussion : null;
     const card = discussion?.attribute('curioMarquee');
+    const source = this.attrs.discussion?.attribute('curioMarquee')?.source;
     // Already in one of the reader's collections: edit that copy instead of adding another.
     // A copy only on their wishlist shows as a filled heart; the editor moves it to the shelf.
     const editing = !!(card?.itemId && app.session.user);
@@ -158,7 +162,7 @@ function extendMarquee() {
           icon={wished ? 'fas fa-heart' : editing ? 'fas fa-pen' : 'fas fa-boxes-stacked'}
           onpointerenter={warm}
           onfocus={warm}
-          onclick={() => later(editing ? 'edit' : 'add', media, discussion)}
+          onclick={() => later(editing ? 'edit' : 'add', media, discussion, 'owned', source)}
         >
           {t(wished ? 'marquee.on_wishlist' : editing ? 'marquee.edit' : 'marquee.add')}
         </Button>,
@@ -175,7 +179,7 @@ function extendMarquee() {
             aria-label={t('marquee.wish')}
             onpointerenter={warm}
             onfocus={warm}
-            onclick={() => later('add', media, discussion, 'wishlist')}
+            onclick={() => later('add', media, discussion, 'wishlist', source)}
           />,
           65
         );

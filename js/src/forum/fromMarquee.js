@@ -44,11 +44,11 @@ function remember(discussion, patch) {
  * once; the title loads behind it (already stored when the card says so,
  * otherwise looked up once) and is ready by the time one is picked.
  */
-export function add(media, discussion, status = 'owned') {
+export function add(media, discussion, status = 'owned', preferred = null) {
   const [kindSource, sources] = KINDS[media.kind()] || [];
   if (!kindSource) return Promise.resolve();
-  // Games go under Curio's own IGDB key when it is set up (the card says which).
-  const source = card(discussion)?.source || kindSource;
+  // Games go under Curio's own IGDB key when it is set up (the linked title's card says which).
+  const source = card(discussion)?.source || (kindSource === 'marquee-game' && preferred) || kindSource;
   const known = card(discussion)?.workId;
 
   const work = (known ? Promise.resolve(known) : lookup({ source, id: media.externalId() }, true).then((found) => found.workId)).then(
