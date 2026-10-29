@@ -17,7 +17,7 @@ export function startShowOff(item) {
   // start, so the discussion is tagged, titled and opens with the title's card.
   const title = item.marquee();
   const marqueeTags = app.forum.attribute('marqueeTags') || {};
-  const mod = title && Object.values(marqueeTags).includes(title.kind) && flarum.reg?.get?.('ernestdefoe-marquee', 'forum/startDiscussion');
+  const mod = title && Object.values(marqueeTags).includes(title.kind) && flarum.reg?.get?.('ernestdefoe-marquee', 'forum/utils/startDiscussion');
   if (mod?.startDiscussion) {
     const { kind, externalId, title: name, year, artist } = title;
     return mod
