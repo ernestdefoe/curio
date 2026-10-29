@@ -12,6 +12,19 @@ let pending = null;
 export function startShowOff(item) {
   pending = { id: item.id(), title: item.displayTitle(), cover: item.coverUrl() };
   app.modal.close();
+
+  // A title Marquee knows, on a forum with a tag for its kind: Marquee's own
+  // start, so the discussion is tagged, titled and opens with the title's card.
+  const title = item.marquee();
+  const marqueeTags = app.forum.attribute('marqueeTags') || {};
+  const mod = title && Object.values(marqueeTags).includes(title.kind) && flarum.reg?.get?.('ernestdefoe-marquee', 'forum/startDiscussion');
+  if (mod?.startDiscussion) {
+    const { kind, externalId, title: name, year, artist } = title;
+    return mod
+      .startDiscussion({ id: null, kind, externalId, title: name, year, poster: null, artist, seasons: null, season: null, episode: null })
+      .catch(() => (pending = null));
+  }
+
   return IndexSidebar.prototype.newDiscussionAction.call({}).catch(() => (pending = null));
 }
 

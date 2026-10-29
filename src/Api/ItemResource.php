@@ -352,6 +352,11 @@ class ItemResource extends AbstractDatabaseResource
                 ->nullable()
                 ->visible(fn (Item $item, Context $context) => $item->discussion_id && self::alone($context))
                 ->get(fn (Item $item, Context $context) => Discussion::query()->whereVisibleTo($context->getActor())->whereKey($item->discussion_id)->exists() ? $item->discussion_id : null),
+            // Its title as Marquee knows it, and the discussion that title already has (Show it off).
+            Schema\Arr::make('marquee')
+                ->nullable()
+                ->visible(fn (Item $item, Context $context) => $item->work_id && $context->showing(self::class))
+                ->get(fn (Item $item, Context $context) => MarqueeTitle::for($item, $context->getActor())),
             Schema\Integer::make('collectionId')->property('collection_id'),
             // Which looked-up title it is: "Who has this" and grouping search results.
             Schema\Integer::make('workId')->property('work_id')->nullable(),

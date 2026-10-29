@@ -75,6 +75,7 @@ Object.assign(CurioItem.prototype, {
   ratingChangedAt: Model.attribute('ratingChangedAt', Model.transformDate),
   canEdit: Model.attribute('canEdit'),
   discussionId: Model.attribute('discussionId'),
+  marquee: Model.attribute('marquee'),
   collectionId: Model.attribute('collectionId'),
   workId: Model.attribute('workId'),
   tradeOffers: Model.attribute('tradeOffers'),

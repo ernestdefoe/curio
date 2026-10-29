@@ -287,8 +287,11 @@ export default class ItemModal extends Modal {
   }
 
   actions(item, collection, mine) {
-    const discussed = item.discussionId() ? (
-      <Link className="Button CurioItem-discussed" href={app.route('discussion', { id: item.discussionId() })} onclick={() => app.modal.close()}>
+    // The discussion it was shown off in, or the one its title already has (Marquee).
+    const marqueeDiscussion = item.marquee()?.discussion;
+    const discussionId = item.discussionId() || (marqueeDiscussion && `${marqueeDiscussion.id}-${marqueeDiscussion.slug}`);
+    const discussed = discussionId ? (
+      <Link className="Button CurioItem-discussed" href={app.route('discussion', { id: discussionId })} onclick={() => app.modal.close()}>
         <Icon name="far fa-comments" className="Button-icon" />
         <span className="Button-label">{t('item.discussed')}</span>
       </Link>
@@ -336,7 +339,7 @@ export default class ItemModal extends Modal {
    */
   under(item, collection, mine) {
     const buttons = [];
-    if (mine && !item.discussionId() && item.status() !== 'wishlist') {
+    if (mine && !item.discussionId() && !item.marquee()?.discussion && item.status() !== 'wishlist') {
       buttons.push([text('item.show_off'), 'fas fa-bullhorn', () => startShowOff(item)]);
     } else if (!mine && item.canEdit()) {
       buttons.push([text('item.edit_this'), 'fas fa-pen', () => this.edit(item, collection)]);
