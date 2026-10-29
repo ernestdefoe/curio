@@ -40,11 +40,11 @@ function remember(discussion, patch) {
 }
 
 /**
- * "Add to collection" on a Marquee card. The collection choice opens at
+ * "Add to collection" (or the heart: add to the wishlist) on a Marquee card. The collection choice opens at
  * once; the title loads behind it (already stored when the card says so,
  * otherwise looked up once) and is ready by the time one is picked.
  */
-export function add(media, discussion) {
+export function add(media, discussion, status = 'owned') {
   const [kindSource, sources] = KINDS[media.kind()] || [];
   if (!kindSource) return Promise.resolve();
   // Games go under Curio's own IGDB key when it is set up (the card says which).
@@ -69,7 +69,7 @@ export function add(media, discussion) {
 
   const onsave = (item) => remember(discussion, { itemId: item.id(), workId: item.work()?.id() || known || null, owning: owning(item) });
 
-  return addToMyCollection({ work, typeIds, onsave }).catch(failed);
+  return addToMyCollection({ work, status, typeIds, onsave }).catch(failed);
 }
 
 /** "Edit in collection" once the reader has the title: their copy, in the usual editor. */

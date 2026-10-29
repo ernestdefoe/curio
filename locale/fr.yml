@@ -300,6 +300,8 @@ ernestdefoe-curio:
     marquee:
       add: Ajouter à une collection
       edit: Modifier dans la collection
+      wish: Ajouter à ma liste de souhaits
+      on_wishlist: Dans votre liste de souhaits
     hero:
       here: Sur ce forum
       members: "{count, plural, one {# membre l’a} other {# membres l’ont}}"

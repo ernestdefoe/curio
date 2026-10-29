@@ -145,23 +145,41 @@ function extendMarquee() {
     const discussion = this.attrs.discussion;
     const card = discussion?.attribute('curioMarquee');
     // Already in one of the reader's collections: edit that copy instead of adding another.
+    // A copy only on their wishlist shows as a filled heart; the editor moves it to the shelf.
     const editing = !!(card?.itemId && app.session.user);
+    const wished = editing && !card.owning;
 
     if (editing || (app.session.user && app.forum.attribute('canCreateCurio'))) {
       const warm = () => later('warm', editing);
       items.add(
         'curio',
         <Button
-          className="Button CurioMarqueeButton"
-          icon={editing ? 'fas fa-pen' : 'fas fa-boxes-stacked'}
+          className={'Button CurioMarqueeButton' + (wished ? ' CurioMarqueeButton--wished' : '')}
+          icon={wished ? 'fas fa-heart' : editing ? 'fas fa-pen' : 'fas fa-boxes-stacked'}
           onpointerenter={warm}
           onfocus={warm}
           onclick={() => later(editing ? 'edit' : 'add', media, discussion)}
         >
-          {t(editing ? 'marquee.edit' : 'marquee.add')}
+          {t(wished ? 'marquee.on_wishlist' : editing ? 'marquee.edit' : 'marquee.add')}
         </Button>,
         65
       );
+
+      if (!editing) {
+        items.add(
+          'curioWish',
+          <Button
+            className="Button Button--icon CurioMarqueeButton"
+            icon="far fa-heart"
+            title={t('marquee.wish')}
+            aria-label={t('marquee.wish')}
+            onpointerenter={warm}
+            onfocus={warm}
+            onclick={() => later('add', media, discussion, 'wishlist')}
+          />,
+          65
+        );
+      }
     }
 
     if (card?.workId && card.owners) {

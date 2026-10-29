@@ -300,6 +300,8 @@ ernestdefoe-curio:
     marquee:
       add: Add to collection
       edit: Edit in collection
+      wish: Add to my wishlist
+      on_wishlist: On your wishlist
     hero:
       here: On this forum
       members: "{count, plural, one {# member has it} other {# members have it}}"
