@@ -28,7 +28,11 @@ function remember(discussion, patch) {
   const was = card(discussion) || { owners: 0, owning: 0 };
   const now = { ...was, ...patch };
   now.owners = Math.max(0, (was.owners || 0) + (now.owning || 0) - (was.owning || 0));
-  const ids = new Set(String(was.workIds || '').split(',').filter(Boolean));
+  const ids = new Set(
+    String(was.workIds || '')
+      .split(',')
+      .filter(Boolean)
+  );
   if (now.workId) ids.add(String(now.workId));
   now.workIds = [...ids].join(',') || null;
   discussion.pushAttributes({ curioMarquee: now });

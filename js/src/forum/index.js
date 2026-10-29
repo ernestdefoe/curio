@@ -167,7 +167,11 @@ function extendMarquee() {
     if (card?.workId && card.owners) {
       items.add(
         'curioOwners',
-        <Button className="Button CurioMarqueeButton" icon="fas fa-users" onclick={() => later('ownersOf', card.workIds || card.workId, media.title())}>
+        <Button
+          className="Button CurioMarqueeButton"
+          icon="fas fa-users"
+          onclick={() => later('ownersOf', card.workIds || card.workId, media.title())}
+        >
           {t('hero.members', { count: card.owners })}
         </Button>,
         64
