@@ -299,6 +299,7 @@ ernestdefoe-curio:
       remove: Don't link this item
     marquee:
       add: Add to collection
+      edit: Edit in collection
     hero:
       here: On this forum
       members: "{count, plural, one {# member has it} other {# members have it}}"

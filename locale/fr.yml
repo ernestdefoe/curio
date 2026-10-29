@@ -299,6 +299,7 @@ ernestdefoe-curio:
       remove: Ne pas lier cet objet
     marquee:
       add: Ajouter à une collection
+      edit: Modifier dans la collection
     hero:
       here: Sur ce forum
       members: "{count, plural, one {# membre l’a} other {# membres l’ont}}"

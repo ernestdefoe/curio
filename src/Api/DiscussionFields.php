@@ -30,6 +30,16 @@ class DiscussionFields
                 ->visible(fn (Discussion $d, Context $context) => $d->curio_item_id && $context->showing(DiscussionResource::class))
                 ->get(fn (Discussion $d, Context $context) => Item::query()->whereVisibleTo($context->getActor())->find($d->curio_item_id)),
 
+            // Marquee's card on the discussion page: what Curio's buttons on it need (see MarqueeCard).
+            // Marquee loads the title with the page; without Marquee the relation is never there.
+            Schema\Arr::make('curioMarquee')
+                ->nullable()
+                ->visible(fn (Discussion $d, Context $context) => $context->showing(DiscussionResource::class)
+                    && $d->relationLoaded('marqueeMedia')
+                    && $d->getRelation('marqueeMedia')
+                    && $context->getActor()->hasPermission('ernestdefoe-curio.view'))
+                ->get(fn (Discussion $d, Context $context) => MarqueeCard::for($d->getRelation('marqueeMedia'), $context->getActor())),
+
             // Write-only, when starting the discussion: the id of one of the starter's own items.
             Schema\Integer::make('curioItemId')
                 ->hidden()

@@ -127,31 +127,51 @@ app.initializers.add('ernestdefoe-curio', () => {
 });
 
 /**
- * With Marquee installed, its cards get "Add to collection". Found at run
- * time, so Curio works the same without it.
+ * With Marquee installed, its cards get "Add to collection" (or "Edit" once
+ * the reader has the title) and how many members have it. Found at run time,
+ * so Curio works the same without it. What the reader has comes with the
+ * discussion page (curioMarquee); the windows load on hover or click.
  */
 function extendMarquee() {
   const mod = globalThis.flarum?.reg?.get?.('ernestdefoe-marquee', 'forum/components/MediaHero');
   const MediaHero = mod?.default ?? mod;
   if (!MediaHero?.prototype?.actionItems) return;
 
+  const later = (name, ...args) => import('./fromMarquee').then((module) => module[name](...args));
+
   extend(MediaHero.prototype, 'actionItems', function (items) {
     const media = this.attrs.link?.media;
-    if (!media || !app.session.user || !app.forum.attribute('canCreateCurio')) return;
-    items.add(
-      'curio',
-      <Button
-        className="Button CurioMarqueeButton"
-        icon="fas fa-boxes-stacked"
-        onclick={(e) => {
-          const button = e.currentTarget;
-          button.disabled = true;
-          import('./fromMarquee').then((module) => module.default(media)).finally(() => (button.disabled = false));
-        }}
-      >
-        {t('marquee.add')}
-      </Button>,
-      65
-    );
+    if (!media || !app.forum.attribute('canViewCurio')) return;
+    const discussion = this.attrs.discussion;
+    const card = discussion?.attribute('curioMarquee');
+    // Already in one of the reader's collections: edit that copy instead of adding another.
+    const editing = !!(card?.itemId && app.session.user);
+
+    if (editing || (app.session.user && app.forum.attribute('canCreateCurio'))) {
+      const warm = () => later('warm', editing);
+      items.add(
+        'curio',
+        <Button
+          className="Button CurioMarqueeButton"
+          icon={editing ? 'fas fa-pen' : 'fas fa-boxes-stacked'}
+          onpointerenter={warm}
+          onfocus={warm}
+          onclick={() => later(editing ? 'edit' : 'add', media, discussion)}
+        >
+          {t(editing ? 'marquee.edit' : 'marquee.add')}
+        </Button>,
+        65
+      );
+    }
+
+    if (card?.workId && card.owners) {
+      items.add(
+        'curioOwners',
+        <Button className="Button CurioMarqueeButton" icon="fas fa-users" onclick={() => later('ownersOf', card.workId, media.title())}>
+          {t('hero.members', { count: card.owners })}
+        </Button>,
+        64
+      );
+    }
   });
 }

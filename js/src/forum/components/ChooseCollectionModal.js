@@ -1,6 +1,7 @@
 import app from 'flarum/forum/app';
 import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
+import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t } from '../util';
 import { typeBadge } from './bits';
 import useStyles from '../styles';
@@ -9,11 +10,22 @@ import useStyles from '../styles';
  * Which of your collections should it go in? Grouped by type: the types it
  * came from first, then types looked up the same way (another console's
  * games), then the rest. "New collection" starts one of the first type.
+ * `collections` is the list, or the promise of it: the window opens at once
+ * and fills in when they arrive.
  */
 export default class ChooseCollectionModal extends Modal {
   oninit(vnode) {
     super.oninit(vnode);
     useStyles();
+    this.collections = Array.isArray(this.attrs.collections) ? this.attrs.collections : null;
+    if (!this.collections) {
+      Promise.resolve(this.attrs.collections)
+        .then(
+          (list) => (this.collections = list),
+          () => (this.collections = [])
+        )
+        .finally(() => m.redraw());
+    }
   }
 
   className() {
@@ -29,7 +41,7 @@ export default class ChooseCollectionModal extends Modal {
     // Looked up the same way as the types it came from (an Xbox game and a PlayStation shelf both use the games look-up).
     const sources = new Set(wanted.map((id) => app.store.getById('curio-types', id)?.source()).filter((source) => source && source !== 'none'));
     const groups = new Map();
-    this.attrs.collections.forEach((c) => {
+    this.collections.forEach((c) => {
       const type = c.type();
       const key = type ? type.id() : '';
       if (!groups.has(key)) groups.set(key, { type, collections: [] });
@@ -45,6 +57,13 @@ export default class ChooseCollectionModal extends Modal {
   }
 
   content() {
+    if (!this.collections)
+      return (
+        <div className="Modal-body">
+          <LoadingIndicator />
+        </div>
+      );
+
     const groups = this.groups();
 
     return (

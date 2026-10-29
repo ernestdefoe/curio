@@ -87,7 +87,10 @@ return [
         ->fields(Api\DiscussionFields::class)
         ->endpoint('show', fn (Endpoint\Show $endpoint) => $endpoint->addDefaultInclude([
             'curioItem', 'curioItem.work', 'curioItem.collection', 'curioItem.collection.user', 'curioItem.collection.type',
-        ])),
+        ])
+            // Marquee's title, loaded before the fields are read so curioMarquee can use it (Marquee
+            // includes it anyway; this only loads it earlier). Not there without Marquee.
+            ->eagerLoad(fn () => (new Discussion())->isRelation('marqueeMedia') ? ['marqueeMedia'] : [])),
 
     (new Extend\Model(Discussion::class))
         ->cast('curio_item_id', 'integer'),

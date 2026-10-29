@@ -2706,4 +2706,42 @@ class CurioTest extends TestCase
         // "Very good" is not on the card scale.
         $this->assertNull($row->condition);
     }
+
+    #[Test]
+    public function a_marquee_card_knows_the_readers_copy_and_how_many_members_have_it_in_two_queries(): void
+    {
+        $users = $this->app()->getContainer()->make(\Flarum\User\UserRepository::class);
+        $card = fn (?int $as, string $kind = 'music', string $id = '302127') => \Ernestdefoe\Curio\Api\MarqueeCard::for(
+            (object) ['kind' => $kind, 'external_id' => $id],
+            $as ? $users->findOrFail($as) : new \Flarum\User\Guest()
+        );
+
+        // Nobody has added it, or Marquee's kind has no Curio source: nothing to edit, nobody to list.
+        $this->assertSame(['workId' => null, 'itemId' => null, 'owning' => 0, 'owners' => 0], $card(3, 'movie', '1'));
+        $this->assertNull($card(3, 'podcast'));
+
+        $mine = $this->newCollection(3, [], 'music');
+        $wanted = (int) $this->json($this->item(3, $mine, ['title' => 'Discovery', 'status' => 'wishlist'], 1))['data']['id'];
+        $this->assertSame(['workId' => '1', 'itemId' => (string) $wanted, 'owning' => 0, 'owners' => 0], $card(3));
+
+        $owned = (int) $this->json($this->item(3, $mine, ['title' => 'Discovery'], 1))['data']['id'];
+        $other = $this->newCollection(4, ['visibility' => 'private'], 'music');
+        $this->item(4, $other, ['title' => 'Discovery', 'status' => 'trade'], 1);
+        $this->item(4, $other, ['title' => 'Discovery'], 1);
+
+        // A copy on the shelf before one on the wishlist; members counted once, only where the reader can see them.
+        $this->assertSame(['workId' => '1', 'itemId' => (string) $owned, 'owning' => 1, 'owners' => 1], $card(3));
+        $this->assertSame(['workId' => '1', 'itemId' => null, 'owning' => 0, 'owners' => 1], $card(null));
+        $this->assertSame(2, $card(4)['owners']);
+
+        // The reader is loaded with their groups before any page is served.
+        $reader = $users->findOrFail(3);
+        $reader->hasPermission('ernestdefoe-curio.view');
+        $db = $this->database();
+        $db->flushQueryLog();
+        $db->enableQueryLog();
+        \Ernestdefoe\Curio\Api\MarqueeCard::for((object) ['kind' => 'music', 'external_id' => '302127'], $reader);
+        $this->assertCount(2, $db->getQueryLog());
+        $db->disableQueryLog();
+    }
 }

@@ -14,6 +14,7 @@ use Ernestdefoe\Curio\Lookup\Sources\YgoProDeck;
 use Ernestdefoe\Curio\Type;
 use Flarum\Extension\ExtensionManager;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Database\ConnectionInterface;
 
 /**
  * Which source answers for a type, and which one a stored work came from.
@@ -88,6 +89,20 @@ class Sources
 
         $source = $this->container->make($registry)->get($kind);
 
-        return $source ? new Marquee($kind, fn (string $q) => $source->search($q), fn (string $id) => $source->details($id)) : null;
+        if (! $source) {
+            return null;
+        }
+
+        // A title someone linked a discussion to is stored by Marquee already: "Add to
+        // collection" on its card reads that copy instead of asking TMDB or IGDB again.
+        $details = function (string $id) use ($source, $kind) {
+            $stored = $this->container->make(ConnectionInterface::class)
+                ->table('marquee_media')->where('kind', $kind)->where('external_id', $id)->value('data');
+            $data = is_string($stored) ? json_decode($stored, true) : null;
+
+            return is_array($data) && isset($data['title']) ? $data : $source->details($id);
+        };
+
+        return new Marquee($kind, fn (string $q) => $source->search($q), $details);
     }
 }
