@@ -3,6 +3,7 @@
 namespace Ernestdefoe\Curio\Api;
 
 use Ernestdefoe\Curio\Item;
+use Ernestdefoe\Curio\Lookup\Sources\Igdb;
 use Ernestdefoe\Curio\Work;
 use Flarum\User\User;
 
@@ -11,6 +12,10 @@ use Flarum\User\User;
  * (never with lists): the title's stored work, the reader's own copy (their
  * "Add to collection" becomes "Edit") and how many members have it. Two
  * indexed queries, one when nobody has added the title yet.
+ *
+ * Marquee and Curio's own IGDB source use the same game ids, so a game can be
+ * stored under either key: both count. New copies go under Curio's key when
+ * Curio has IGDB set up, the same work Curio's own search adds to.
  */
 class MarqueeCard
 {
@@ -24,7 +29,7 @@ class MarqueeCard
     ];
 
     /**
-     * @return array{workId: string|null, itemId: string|null, owning: int, owners: int}|null
+     * @return array{source: string, workId: string|null, workIds: string|null, itemId: string|null, owning: int, owners: int}|null
      */
     public static function for(?object $media, User $actor): ?array
     {
@@ -34,14 +39,20 @@ class MarqueeCard
             return null;
         }
 
-        $card = ['workId' => null, 'itemId' => null, 'owning' => 0, 'owners' => 0];
-        $workId = Work::query()->where('source', $source)->where('source_id', (string) $media->external_id)->value('id');
+        $sources = [$source];
+        if ($source === 'marquee-game') {
+            $sources = resolve(Igdb::class)->configured() ? ['igdb', 'marquee-game'] : ['marquee-game', 'igdb'];
+        }
 
-        if (! $workId) {
+        $card = ['source' => $sources[0], 'workId' => null, 'workIds' => null, 'itemId' => null, 'owning' => 0, 'owners' => 0];
+        $works = Work::query()->whereIn('source', $sources)->where('source_id', (string) $media->external_id)->pluck('id', 'source');
+
+        if ($works->isEmpty()) {
             return $card;
         }
 
-        $query = Item::query()->whereVisibleTo($actor)->where('curio_items.work_id', $workId);
+        $workId = $works[$sources[0]] ?? $works->first();
+        $query = Item::query()->whereVisibleTo($actor)->whereIn('curio_items.work_id', $works->values()->all());
         $wrap = fn (string $column) => $query->getQuery()->getGrammar()->wrap($column);
         $status = $wrap('curio_items.status');
         $user = $wrap('curio_items.user_id');
@@ -57,7 +68,9 @@ class MarqueeCard
         $mine = $actor->isGuest() ? null : ($row->owned_id ?? $row->any_id ?? null);
 
         return [
+            'source' => $sources[0],
             'workId' => (string) $workId,
+            'workIds' => $works->values()->implode(','),
             'itemId' => $mine ? (string) $mine : null,
             'owning' => $mine && $row->owned_id ? 1 : 0,
             'owners' => (int) ($row->owners ?? 0),

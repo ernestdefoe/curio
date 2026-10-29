@@ -2717,12 +2717,12 @@ class CurioTest extends TestCase
         );
 
         // Nobody has added it, or Marquee's kind has no Curio source: nothing to edit, nobody to list.
-        $this->assertSame(['workId' => null, 'itemId' => null, 'owning' => 0, 'owners' => 0], $card(3, 'movie', '1'));
+        $this->assertSame(['source' => 'marquee-movie', 'workId' => null, 'workIds' => null, 'itemId' => null, 'owning' => 0, 'owners' => 0], $card(3, 'movie', '1'));
         $this->assertNull($card(3, 'podcast'));
 
         $mine = $this->newCollection(3, [], 'music');
         $wanted = (int) $this->json($this->item(3, $mine, ['title' => 'Discovery', 'status' => 'wishlist'], 1))['data']['id'];
-        $this->assertSame(['workId' => '1', 'itemId' => (string) $wanted, 'owning' => 0, 'owners' => 0], $card(3));
+        $this->assertSame(['source' => 'deezer', 'workId' => '1', 'workIds' => '1', 'itemId' => (string) $wanted, 'owning' => 0, 'owners' => 0], $card(3));
 
         $owned = (int) $this->json($this->item(3, $mine, ['title' => 'Discovery'], 1))['data']['id'];
         $other = $this->newCollection(4, ['visibility' => 'private'], 'music');
@@ -2730,14 +2730,28 @@ class CurioTest extends TestCase
         $this->item(4, $other, ['title' => 'Discovery'], 1);
 
         // A copy on the shelf before one on the wishlist; members counted once, only where the reader can see them.
-        $this->assertSame(['workId' => '1', 'itemId' => (string) $owned, 'owning' => 1, 'owners' => 1], $card(3));
-        $this->assertSame(['workId' => '1', 'itemId' => null, 'owning' => 0, 'owners' => 1], $card(null));
+        $this->assertSame(['source' => 'deezer', 'workId' => '1', 'workIds' => '1', 'itemId' => (string) $owned, 'owning' => 1, 'owners' => 1], $card(3));
+        $this->assertSame(['source' => 'deezer', 'workId' => '1', 'workIds' => '1', 'itemId' => null, 'owning' => 0, 'owners' => 1], $card(null));
         $this->assertSame(2, $card(4)['owners']);
+
+        // A game Curio's own IGDB source stored counts on Marquee's card: same ids (Wlork, d/40077 #58).
+        $now = \Carbon\Carbon::now();
+        $db = $this->database();
+        $db->table('curio_works')->insert(['id' => 50, 'source' => 'igdb', 'source_id' => '7346', 'title' => 'Zelda', 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 0]);
+        $shelf = $this->newCollection(3);
+        $zelda = (int) $this->json($this->item(3, $shelf, ['title' => 'Zelda'], 50))['data']['id'];
+        $this->assertSame(['source' => 'marquee-game', 'workId' => '50', 'workIds' => '50', 'itemId' => (string) $zelda, 'owning' => 1, 'owners' => 1], $card(3, 'game', '7346'));
+        // Also stored under Marquee's key: both copies count, the members once each.
+        $db->table('curio_works')->insert(['id' => 51, 'source' => 'marquee-game', 'source_id' => '7346', 'title' => 'Zelda', 'refreshed_at' => $now, 'created_at' => $now, 'languages' => 0]);
+        $this->item(4, $this->newCollection(4), ['title' => 'Zelda'], 51);
+        $this->item(3, $shelf, ['title' => 'Zelda'], 51);
+        $both = $card(3, 'game', '7346');
+        $this->assertSame(['51', 2], [$both['workId'], $both['owners']]);
+        $this->assertEqualsCanonicalizing(['50', '51'], explode(',', $both['workIds']));
 
         // The reader is loaded with their groups before any page is served.
         $reader = $users->findOrFail(3);
         $reader->hasPermission('ernestdefoe-curio.view');
-        $db = $this->database();
         $db->flushQueryLog();
         $db->enableQueryLog();
         \Ernestdefoe\Curio\Api\MarqueeCard::for((object) ['kind' => 'music', 'external_id' => '302127'], $reader);

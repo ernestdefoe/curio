@@ -28,6 +28,9 @@ function remember(discussion, patch) {
   const was = card(discussion) || { owners: 0, owning: 0 };
   const now = { ...was, ...patch };
   now.owners = Math.max(0, (was.owners || 0) + (now.owning || 0) - (was.owning || 0));
+  const ids = new Set(String(was.workIds || '').split(',').filter(Boolean));
+  if (now.workId) ids.add(String(now.workId));
+  now.workIds = [...ids].join(',') || null;
   discussion.pushAttributes({ curioMarquee: now });
   m.redraw();
 }
@@ -38,8 +41,10 @@ function remember(discussion, patch) {
  * otherwise looked up once) and is ready by the time one is picked.
  */
 export function add(media, discussion) {
-  const [source, sources] = KINDS[media.kind()] || [];
-  if (!source) return Promise.resolve();
+  const [kindSource, sources] = KINDS[media.kind()] || [];
+  if (!kindSource) return Promise.resolve();
+  // Games go under Curio's own IGDB key when it is set up (the card says which).
+  const source = card(discussion)?.source || kindSource;
   const known = card(discussion)?.workId;
 
   const work = (known ? Promise.resolve(known) : lookup({ source, id: media.externalId() }, true).then((found) => found.workId)).then(

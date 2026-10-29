@@ -9,7 +9,8 @@ use Flarum\Search\ValidateFilterTrait;
 
 /**
  * filter[work]=ID: every copy of one looked-up title, in whoever's collection
- * the reader may open ("Who has this").
+ * the reader may open ("Who has this"). A game stored under both IGDB keys
+ * passes both ids: filter[work]=ID,ID.
  *
  * @implements FilterInterface<DatabaseSearchState>
  */
@@ -25,6 +26,6 @@ class WorkFilter implements FilterInterface
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
         /** @var DatabaseSearchState $state */
-        $state->getQuery()->where('curio_items.work_id', $negate ? '!=' : '=', (int) $this->asString($value));
+        $state->getQuery()->{$negate ? 'whereNotIn' : 'whereIn'}('curio_items.work_id', $this->asIntArray($value));
     }
 }
