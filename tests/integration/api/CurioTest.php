@@ -1166,10 +1166,12 @@ class CurioTest extends TestCase
     #[Test]
     public function igdb_finds_games_filed_as_bundles_but_keeps_shop_bundles_under_the_games(): void
     {
-        // UFO 50 and Collection of SaGa are bundles on IGDB (game_type 3); DLC (1), expansions (2), mods (5) and packs (13) stay out.
+        // UFO 50 and Collection of SaGa are bundles on IGDB (game_type 3), Shadow of the Erdtree an expansion (2), story DLC is DLC (1); mods (5) and packs (13) stay out.
         $types = explode(',', trim(\Ernestdefoe\Curio\Lookup\Sources\Igdb::GAME_TYPES, '()'));
         $this->assertContains('3', $types);
-        $this->assertEmpty(array_intersect(['1', '2', '5', '13'], $types));
+        $this->assertContains('2', $types);
+        $this->assertContains('1', $types);
+        $this->assertEmpty(array_intersect(['5', '13'], $types));
         // Editions of another game (version_parent set) are searched: Shovel Knight: Treasure Trove, Romancing SaGa ... International Special Edition.
         $this->assertStringNotContainsString('version_parent', \Ernestdefoe\Curio\Lookup\Sources\Igdb::WHERE);
 
@@ -1187,6 +1189,13 @@ class CurioTest extends TestCase
             ['id' => 4, 'name' => 'Halo Beats!', 'game_type' => 0],
             ['id' => 5, 'name' => 'Halo 2', 'game_type' => 0, 'total_rating_count' => 298],
             ['name' => 'no id'],
+        ]));
+        // An expansion ranks by its ratings; unrated DLC comes after every game.
+        $this->assertSame(['Elden Ring', 'Elden Ring: Shadow of the Erdtree', 'Elden Ring Demake', 'Elden Ring: Tarnished Pack'], $titles('Elden Ring', [
+            ['id' => 1, 'name' => 'Elden Ring: Tarnished Pack', 'game_type' => 1],
+            ['id' => 2, 'name' => 'Elden Ring: Shadow of the Erdtree', 'game_type' => 2, 'total_rating_count' => 133],
+            ['id' => 3, 'name' => 'Elden Ring', 'game_type' => 0, 'total_rating_count' => 2338],
+            ['id' => 4, 'name' => 'Elden Ring Demake', 'game_type' => 0],
         ]));
         // An unrated bundle with the exact title still comes first.
         $this->assertSame(['Dark Souls Trilogy', 'Dark Souls', 'Fated Souls', 'Dark Souls Trilogy Box'], $titles('dark souls trilogy', [

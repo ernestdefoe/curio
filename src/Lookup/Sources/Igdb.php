@@ -26,12 +26,14 @@ class Igdb implements Source
     private const PER_DAY = 2000;
 
     /**
-     * Main games, bundles, standalone expansions, remakes, remasters, expanded
-     * games and ports: no DLC, packs or mods. Bundles are in because IGDB files
-     * real games as bundles too (UFO 50, Collection of SaGa, Mass Effect
-     * Legendary Edition); rank() keeps store bundles under the games.
+     * Main games, DLC, expansions, bundles, standalone expansions, remakes,
+     * remasters, expanded games and ports: no packs or mods. Expansions and
+     * story DLC (Shadow of the Erdtree) are collected too (Wlork, Discuss
+     * d/40077 #77). Bundles are in because IGDB files real games as bundles
+     * too (UFO 50, Collection of SaGa, Mass Effect Legendary Edition); rank()
+     * keeps store bundles and unrated DLC under the games.
      */
-    public const GAME_TYPES = '(0,3,4,8,9,10,11)';
+    public const GAME_TYPES = '(0,1,2,3,4,8,9,10,11)';
 
     /**
      * Editions of another game are searched too: IGDB files some real releases
@@ -40,6 +42,8 @@ class Igdb implements Source
      * Discuss d/40107 #73, #83); rank() keeps them under their game.
      */
     public const WHERE = 'where game_type = '.self::GAME_TYPES.';';
+
+    private const DLC = 1;
 
     private const BUNDLE = 3;
 
@@ -65,7 +69,7 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.6.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return $this->cache->remember('curio.igdb.search.7.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
             $fields = 'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,'
                 .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer;';
 
@@ -122,7 +126,7 @@ class Igdb implements Source
 
             return [
                 self::plain((string) $g['name']) !== $exact,
-                ($g['game_type'] ?? null) === self::BUNDLE && $count === 0,
+                in_array($g['game_type'] ?? null, [self::DLC, self::BUNDLE], true) && $count === 0,
                 // An edition ranks by its own ratings, but below its game.
                 -($edition && array_key_exists($parent, $ratings) ? min($count, $ratings[$parent]) : $count),
                 $edition,
