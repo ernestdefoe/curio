@@ -53,6 +53,8 @@ class Marquee implements Source
                 'creator' => $platforms ? (trim(explode(' · ', (string) $subtitle, 2)[1] ?? '') ?: null) : $subtitle,
                 'year' => $r['year'] ?? null,
                 'cover' => self::image($r['poster'] ?? null),
+                // Marquee 1.13.2+: Expansion, Bundle, Remake… for games.
+                'release' => is_string($r['type'] ?? null) ? $r['type'] : null,
                 'variants' => array_map(fn (string $short) => ['label' => $short, 'fields' => ['platform' => self::PLATFORMS[$short] ?? $short]], $platforms),
             ];
         }, array_slice($results, 0, 8));

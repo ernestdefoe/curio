@@ -346,6 +346,11 @@ export default class ItemEditModal extends FormModal {
                 <strong>
                   {r.title} {r.year ? <span className="CurioMuted">({r.year})</span> : null}
                 </strong>
+                {r.release && app.translator.translations[`ernestdefoe-curio.forum.item_edit.release.${r.release}`] ? (
+                  <span className="CurioResult-chips">
+                    <span className="CurioChip CurioChip--release">{t(`item_edit.release.${r.release}`)}</span>
+                  </span>
+                ) : null}
                 {r.creator || r.set || r.number ? (
                   <span className="CurioMuted">
                     {[r.name && r.name !== r.title ? r.name : null, r.creator, r.set, r.number].filter(Boolean).join(' · ')}

@@ -1190,6 +1190,12 @@ class CurioTest extends TestCase
             ['id' => 5, 'name' => 'Halo 2', 'game_type' => 0, 'total_rating_count' => 298],
             ['name' => 'no id'],
         ]));
+        // Each result says what it is, so the versions can be told apart.
+        $this->assertNull(\Ernestdefoe\Curio\Lookup\Sources\Igdb::release(['game_type' => 0]));
+        $this->assertSame('expansion', \Ernestdefoe\Curio\Lookup\Sources\Igdb::release(['game_type' => 2]));
+        $this->assertSame('edition', \Ernestdefoe\Curio\Lookup\Sources\Igdb::release(['game_type' => 0, 'version_parent' => 119133]));
+        $this->assertNull(\Ernestdefoe\Curio\Lookup\Sources\Igdb::release(['game_type' => 99]));
+
         // An expansion ranks by its ratings; unrated DLC comes after every game.
         $this->assertSame(['Elden Ring', 'Elden Ring: Shadow of the Erdtree', 'Elden Ring Demake', 'Elden Ring: Tarnished Pack'], $titles('Elden Ring', [
             ['id' => 1, 'name' => 'Elden Ring: Tarnished Pack', 'game_type' => 1],

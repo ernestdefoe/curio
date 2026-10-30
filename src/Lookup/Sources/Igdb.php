@@ -26,6 +26,16 @@ class Igdb implements Source
     private const PER_DAY = 2000;
 
     /**
+     * dlc, expansion, bundle…; edition for a main game filed under another; null for a game. Public for tests.
+     *
+     * @param array<string, mixed> $game
+     */
+    public static function release(array $game): ?string
+    {
+        return self::RELEASES[$game['game_type'] ?? 0] ?? (isset($game['version_parent']) ? 'edition' : null);
+    }
+
+    /**
      * Main games, DLC, expansions, bundles, standalone expansions, remakes,
      * remasters, expanded games and ports: no packs or mods. Expansions and
      * story DLC (Shadow of the Erdtree) are collected too (Wlork, Discuss
@@ -44,6 +54,9 @@ class Igdb implements Source
     public const WHERE = 'where game_type = '.self::GAME_TYPES.';';
 
     private const DLC = 1;
+
+    /** What a result is when it isn't a main game, so versions can be told apart (Wlork, Discuss d/40077 #80). */
+    private const RELEASES = [1 => 'dlc', 2 => 'expansion', 3 => 'bundle', 4 => 'standalone', 8 => 'remake', 9 => 'remaster', 10 => 'expanded', 11 => 'port'];
 
     private const BUNDLE = 3;
 
@@ -69,7 +82,7 @@ class Igdb implements Source
             return [];
         }
 
-        return $this->cache->remember('curio.igdb.search.7.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
+        return $this->cache->remember('curio.igdb.search.8.'.md5(mb_strtolower($query)), 86400, function () use ($query) {
             $fields = 'fields name,game_type,version_parent,first_release_date,total_rating_count,cover.image_id,'
                 .'platforms.name,platforms.abbreviation,involved_companies.company.name,involved_companies.developer;';
 
@@ -95,6 +108,7 @@ class Igdb implements Source
                 'id' => (string) $g['id'],
                 'title' => (string) $g['name'],
                 'creator' => self::companies($g, 'developer')[0] ?? null,
+                'release' => self::release($g),
                 'year' => isset($g['first_release_date']) ? (int) gmdate('Y', (int) $g['first_release_date']) : null,
                 'cover' => self::cover($g['cover']['image_id'] ?? null),
                 // Which machines it came out on, so the right copy can be picked.

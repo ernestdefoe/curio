@@ -123,6 +123,16 @@ ernestdefoe-curio:
       tab_details: Détails et photos
       search_placeholder: Titre, ou scannez ou saisissez un code-barres ou un ISBN
       barcode_placeholder: Scannez ou saisissez un code-barres ou un ISBN
+      release:
+        dlc: DLC
+        expansion: Extension
+        bundle: Bundle
+        standalone: Extension autonome
+        remake: Remake
+        remaster: Remaster
+        expanded: Version étendue
+        port: Portage
+        edition: Édition
       title_placeholder: Chercher par titre
       scan: Scanner
       scan_stop: Arrêter
