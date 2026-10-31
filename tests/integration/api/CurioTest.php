@@ -2773,4 +2773,52 @@ class CurioTest extends TestCase
         $this->assertCount(2, $db->getQueryLog());
         $db->disableQueryLog();
     }
+
+    #[Test]
+    public function a_work_nobody_has_any_more_is_deleted_with_its_texts_and_barcodes(): void
+    {
+        // Wlork, Discuss d/40107 #111: works stayed in curio_works after their items went.
+        $this->database()->table('curio_barcodes')->insert(['code' => '0724384960650', 'work_id' => 1, 'title' => 'Discovery', 'source' => 'deezer', 'created_at' => Carbon::now()]);
+        $mine = $this->newCollection(3, [], 'music');
+        $theirs = $this->newCollection(4, [], 'music');
+        $first = (int) $this->json($this->item(3, $mine, ['title' => 'Discovery'], 1))['data']['id'];
+        $second = (int) $this->json($this->item(4, $theirs, ['title' => 'Discovery'], 1))['data']['id'];
+
+        $this->assertSame(204, $this->send($this->request('DELETE', "/api/curio-items/$first", ['authenticatedAs' => 3]))->getStatusCode());
+        $this->assertSame(1, $this->database()->table('curio_works')->where('id', 1)->count());
+
+        $this->assertSame(204, $this->send($this->request('DELETE', "/api/curio-items/$second", ['authenticatedAs' => 4]))->getStatusCode());
+        $this->assertSame(0, $this->database()->table('curio_works')->where('id', 1)->count());
+        $this->assertSame(0, $this->database()->table('curio_work_texts')->where('work_id', 1)->count());
+        $this->assertSame(0, $this->database()->table('curio_barcodes')->where('code', '0724384960650')->count());
+    }
+
+    #[Test]
+    public function deleting_a_collection_deletes_the_works_only_it_had(): void
+    {
+        $mine = $this->newCollection(3, [], 'music');
+        $this->item(3, $mine, ['title' => 'Discovery'], 1);
+
+        $response = $this->send($this->request('DELETE', "/api/curio-collections/$mine", ['authenticatedAs' => 3]));
+        $this->assertSame(204, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertSame(0, $this->database()->table('curio_works')->where('id', 1)->count());
+    }
+
+    #[Test]
+    public function the_daily_prune_deletes_look_ups_nobody_added(): void
+    {
+        $pruner = $this->app()->getContainer()->make(\Ernestdefoe\Curio\Lookup\WorkPruner::class);
+        $old = Carbon::now()->subDays(2);
+        $this->database()->table('curio_works')->where('id', 1)->update(['created_at' => $old]);
+        $this->database()->table('curio_works')->insert([
+            ['id' => 2, 'source' => 'igdb', 'source_id' => '1', 'title' => 'Owned', 'refreshed_at' => $old, 'created_at' => $old, 'languages' => 0],
+            ['id' => 3, 'source' => 'igdb', 'source_id' => '2', 'title' => 'Just looked up', 'refreshed_at' => Carbon::now(), 'created_at' => Carbon::now(), 'languages' => 0],
+        ]);
+        $this->item(3, $this->newCollection(3), ['title' => 'Owned'], 2);
+
+        $this->assertSame(1, $pruner->prune());
+
+        // A look-up from today may be in someone's form still; an owned work stays however old.
+        $this->assertSame([2, 3], $this->database()->table('curio_works')->orderBy('id')->pluck('id')->map('intval')->all());
+    }
 }

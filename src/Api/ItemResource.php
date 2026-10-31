@@ -8,6 +8,7 @@ use Ernestdefoe\Curio\CollectionStats;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Lookup\Barcode;
 use Ernestdefoe\Curio\Lookup\BarcodeLookup;
+use Ernestdefoe\Curio\Lookup\WorkPruner;
 use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Storage\PhotoValidator;
 use Ernestdefoe\Curio\Translation\WorkTexts;
@@ -53,6 +54,7 @@ class ItemResource extends AbstractDatabaseResource
         private Titles $titles,
         private CollectionStats $stats,
         private BarcodeLookup $barcodes,
+        private WorkPruner $works,
         private WorkTexts $texts,
         private TranslatorInterface $translator,
         private Cache $cache,
@@ -200,6 +202,11 @@ class ItemResource extends AbstractDatabaseResource
         }
         unset($this->movedFrom[spl_object_id($model)]);
 
+        // Matched to another title: the old one goes once nobody else has it.
+        if (! $model->wasRecentlyCreated && $model->wasChanged('work_id')) {
+            $this->works->prune([$model->getPrevious()['work_id'] ?? null]);
+        }
+
         // Newly up for trade: the members who want it hear about it.
         if ($model->status === 'trade' && $model->work_id && ($model->wasRecentlyCreated || $model->wasChanged('status') || $model->wasChanged('work_id'))) {
             $this->queue->push(new NotifyWishlists($model->id));
@@ -236,6 +243,8 @@ class ItemResource extends AbstractDatabaseResource
         foreach ($model->photos ?? [] as $photo) {
             $this->images->delete($photo);
         }
+
+        $this->works->prune([$model->work_id]);
 
         if ($collection = Collection::query()->find($model->collection_id)) {
             $this->stats->refresh($collection);

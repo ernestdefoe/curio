@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\CollectionStats;
 use Ernestdefoe\Curio\Item;
+use Ernestdefoe\Curio\Lookup\WorkPruner;
 use Ernestdefoe\Curio\Type;
 use Ernestdefoe\Curio\Storage\Images;
 use Flarum\Api\Context;
@@ -37,7 +38,7 @@ class CollectionResource extends AbstractDatabaseResource
     /** @var array<int, list<int>> */
     private array $orders = [];
 
-    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db)
+    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db, private WorkPruner $works)
     {
     }
 
@@ -222,6 +223,14 @@ class CollectionResource extends AbstractDatabaseResource
         // Photos go with their items; the rows go by cascade.
         Item::query()->where('collection_id', $model->id)->whereNotNull('photos')->select(['id', 'photos'])
             ->each(fn (Item $item) => array_map($this->images->delete(...), $item->photos ?? []));
+
+        // So do the works only this collection had. The items go first where the
+        // database doesn't cascade (SQLite without foreign keys).
+        $works = Item::query()->where('collection_id', $model->id)->whereNotNull('work_id')->distinct()->pluck('work_id')->all();
+        $model->afterDelete(function () use ($model, $works) {
+            Item::query()->where('collection_id', $model->id)->delete();
+            $this->works->prune($works);
+        });
     }
 
     public function fields(): array

@@ -5,6 +5,7 @@ use Ernestdefoe\Curio\Api;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\Console\ImportShelf;
 use Ernestdefoe\Curio\Console\MatchWorks;
+use Ernestdefoe\Curio\Console\PruneWorks;
 use Ernestdefoe\Curio\Console\RefreshTexts;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Search;
@@ -143,10 +144,14 @@ return [
         ->command(RefreshTexts::class)
         ->command(ImportShelf::class)
         ->command(MatchWorks::class)
+        ->command(PruneWorks::class)
         ->schedule(MatchWorks::class, function (Event $event): void {
             $event->everyFiveMinutes()->withoutOverlapping();
         })
         ->schedule(RefreshTexts::class, function (Event $event): void {
+            $event->daily()->withoutOverlapping();
+        })
+        ->schedule(PruneWorks::class, function (Event $event): void {
             $event->daily()->withoutOverlapping();
         }),
 ];
