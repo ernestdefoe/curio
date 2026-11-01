@@ -139,11 +139,19 @@ function relatedCard(media) {
   if (!relatedCards.has(key)) {
     relatedCards.set(key, null);
     app
-      .request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/curio/marquee-card`, params: { kind: media.kind(), id: media.externalId() }, errorHandler() {} })
-      .then((payload) => {
-        relatedCards.set(key, payload.data);
-        m.redraw();
-      }, () => {});
+      .request({
+        method: 'GET',
+        url: `${app.forum.attribute('apiUrl')}/curio/marquee-card`,
+        params: { kind: media.kind(), id: media.externalId() },
+        errorHandler() {},
+      })
+      .then(
+        (payload) => {
+          relatedCards.set(key, payload.data);
+          m.redraw();
+        },
+        () => {}
+      );
   }
   // Stands in for the discussion, so adding or editing a copy updates this title's buttons.
   return { attribute: () => relatedCards.get(key), pushAttributes: ({ curioMarquee }) => relatedCards.set(key, curioMarquee) };
