@@ -2775,6 +2775,21 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function a_related_title_on_a_marquee_card_asks_for_its_own_card(): void
+    {
+        // Wlork, Discuss d/40077 #94: "Who has this" showed for the linked game only.
+        $mine = $this->newCollection(3, [], 'music');
+        $this->item(3, $mine, ['title' => 'Discovery'], 1);
+
+        $response = $this->send($this->request('GET', '/api/curio/marquee-card', ['authenticatedAs' => 4])->withQueryParams(['kind' => 'music', 'id' => '302127']));
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(['source' => 'deezer', 'workId' => '1', 'workIds' => '1', 'itemId' => null, 'owning' => 0, 'owners' => 1], $this->json($response)['data']);
+
+        $bad = $this->send($this->request('GET', '/api/curio/marquee-card', ['authenticatedAs' => 4])->withQueryParams(['kind' => 'podcast', 'id' => '1']));
+        $this->assertSame(422, $bad->getStatusCode());
+    }
+
+    #[Test]
     public function a_work_nobody_has_any_more_is_deleted_with_its_texts_and_barcodes(): void
     {
         // Wlork, Discuss d/40107 #111: works stayed in curio_works after their items went.

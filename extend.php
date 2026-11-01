@@ -113,7 +113,8 @@ return [
         ->post('/curio/lookup', 'curio.lookup', Api\LookupController::class)
         ->get('/curio/overview', 'curio.overview', Api\OverviewController::class)
         ->get('/curio/collectors', 'curio.collectors', Api\CollectorsController::class)
-        ->get('/curio/most-owned', 'curio.most-owned', Api\MostOwnedController::class),
+        ->get('/curio/most-owned', 'curio.most-owned', Api\MostOwnedController::class)
+        ->get('/curio/marquee-card', 'curio.marquee-card', Api\MarqueeCardController::class),
 
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(Collection::class, Search\CollectionSearcher::class)

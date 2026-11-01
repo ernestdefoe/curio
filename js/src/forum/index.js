@@ -132,6 +132,23 @@ app.initializers.add('ernestdefoe-curio', () => {
  * so Curio works the same without it. What the reader has comes with the
  * discussion page (curioMarquee); the windows load on hover or click.
  */
+/** A related title's card info, asked for once when a reader first switches Marquee's card to it. */
+const relatedCards = new Map();
+function relatedCard(media) {
+  const key = `${media.kind()}:${media.externalId()}`;
+  if (!relatedCards.has(key)) {
+    relatedCards.set(key, null);
+    app
+      .request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/curio/marquee-card`, params: { kind: media.kind(), id: media.externalId() }, errorHandler() {} })
+      .then((payload) => {
+        relatedCards.set(key, payload.data);
+        m.redraw();
+      }, () => {});
+  }
+  // Stands in for the discussion, so adding or editing a copy updates this title's buttons.
+  return { attribute: () => relatedCards.get(key), pushAttributes: ({ curioMarquee }) => relatedCards.set(key, curioMarquee) };
+}
+
 function extendMarquee() {
   const mod = globalThis.flarum?.reg?.get?.('ernestdefoe-marquee', 'forum/components/MediaHero');
   const MediaHero = mod?.default ?? mod;
@@ -143,9 +160,9 @@ function extendMarquee() {
     const media = this.attrs.link?.media;
     if (!media || !app.forum.attribute('canViewCurio')) return;
     // What the page says about the reader's copy is for the linked title. A related
-    // title shown in its place (a series) is looked up afresh, like any other.
+    // title shown in its place (a series) asks for its own.
     const main = this.attrs.discussion?.marqueeMedia?.();
-    const discussion = !main || media === main ? this.attrs.discussion : null;
+    const discussion = !main || media === main ? this.attrs.discussion : relatedCard(media);
     const card = discussion?.attribute('curioMarquee');
     const source = this.attrs.discussion?.attribute('curioMarquee')?.source;
     // Already in one of the reader's collections: edit that copy instead of adding another.
