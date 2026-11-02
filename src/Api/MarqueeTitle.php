@@ -12,7 +12,8 @@ use Flarum\User\User;
  * An item's title as Marquee knows it, for "Show it off": the discussion opens
  * with Marquee's card, and when the title already has a discussion the reader
  * can see, the button goes there instead of starting a second one. Only on the
- * item's own page, only with Marquee enabled: three indexed queries at most.
+ * item's own page, only with Marquee enabled: three indexed queries, and a
+ * fourth for a title that only appears among another card's related titles.
  */
 class MarqueeTitle
 {
@@ -45,8 +46,18 @@ class MarqueeTitle
         $media = Discussion::query()->getConnection()->table('marquee_media')
             ->where('kind', $kind)->where('external_id', $work->source_id)->value('id');
 
-        $discussion = $media ? Discussion::query()->whereVisibleTo($actor)
-            ->where('marquee_media_id', $media)->orderBy('id')->first(['id', 'slug']) : null;
+        // The discussion whose card is this title, else one that shows it among
+        // its related titles (the other games under the same banner). Marquee
+        // keeps those as a JSON list of ids, "[33,34]"; LIKE works on every
+        // database and prefix, where whereJsonContains does not.
+        $discussion = $media ? (Discussion::query()->whereVisibleTo($actor)
+            ->where('marquee_media_id', $media)->orderBy('id')->first(['id', 'slug'])
+            ?? Discussion::query()->whereVisibleTo($actor)
+                ->where(fn ($q) => $q->where('marquee_related', 'like', "[$media]")
+                    ->orWhere('marquee_related', 'like', "[$media,%")
+                    ->orWhere('marquee_related', 'like', "%,$media,%")
+                    ->orWhere('marquee_related', 'like', "%,$media]"))
+                ->orderBy('id')->first(['id', 'slug'])) : null;
 
         return [
             'kind' => $kind,
