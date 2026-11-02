@@ -2836,4 +2836,50 @@ class CurioTest extends TestCase
         // A look-up from today may be in someone's form still; an owned work stays however old.
         $this->assertSame([2, 3], $this->database()->table('curio_works')->orderBy('id')->pluck('id')->map('intval')->all());
     }
+
+    #[Test]
+    public function a_big_collection_is_reordered_and_retyped_in_a_few_queries(): void
+    {
+        // Floxum: one UPDATE per item timed out near the 2,000-item cap.
+        $id = $this->newCollection(3, [], 'lego');
+        $now = Carbon::now();
+        $rows = [];
+        for ($n = 0; $n < 600; $n++) {
+            $platform = ['nintendo-switch', 'pc', 'not-a-platform'][$n % 3];
+            $rows[] = ['collection_id' => $id, 'user_id' => 3, 'title' => "Game $n", 'status' => 'owned', 'fields' => json_encode(['platform' => $platform]), 'favourite' => false, 'position' => $n, 'created_at' => $now, 'updated_at' => $now];
+        }
+        foreach (array_chunk($rows, 100) as $chunk) {
+            $this->database()->table('curio_items')->insert($chunk);
+        }
+        $ids = $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->pluck('id')->map('intval')->all();
+
+        $db = $this->database();
+        $updates = function (callable $run, string $table = 'curio_items') use ($db): int {
+            $db->flushQueryLog();
+            $db->enableQueryLog();
+            $run();
+            $count = collect($db->getQueryLog())->filter(fn ($q) => preg_match("/^update \\S*$table/i", $q['query']))->count();
+            $db->disableQueryLog();
+
+            return $count;
+        };
+
+        // Reversed, with someone else's item slipped in: two UPDATEs (500 rows each at most), the stranger's untouched.
+        $theirs = (int) $this->json($this->item(4, $this->newCollection(4), ['title' => 'Not yours']))['data']['id'];
+        $before = $this->database()->table('curio_items')->where('id', $theirs)->value('position');
+        $this->assertSame(2, $updates(fn () => $this->assertSame(200, $this->patchCollection(3, $id, ['order' => [...array_reverse($ids), $theirs]])->getStatusCode())));
+        $this->assertSame(array_reverse($ids), $this->database()->table('curio_items')->where('collection_id', $id)->orderBy('position')->pluck('id')->map('intval')->all());
+        $this->assertSame($before, $this->database()->table('curio_items')->where('id', $theirs)->value('position'));
+
+        // To games: one UPDATE per platform that changes (Switch, PC); the unknown one stays without a facet.
+        $this->assertSame(2, $updates(fn () => $this->assertSame(200, $this->retype(3, $id, 'games')->getStatusCode())));
+        $facets = $this->database()->table('curio_items')->where('collection_id', $id)->get()->countBy(fn ($row) => $row->facet ?? 'none')->all();
+        $this->assertEquals(['nintendo-switch' => 200, 'pc' => 200, 'none' => 200], $facets);
+        $this->assertEquals(['nintendo-switch' => 200, 'pc' => 200], $this->json($this->get("/api/curio-collections/$id", [], 3))['data']['attributes']['facets']);
+
+        // The owner's own collections: in one UPDATE.
+        $second = $this->newCollection(3, ['name' => 'Second']);
+        $this->assertSame(1, $updates(fn () => $this->send($this->request('POST', '/api/curio-collections/order', ['authenticatedAs' => 3, 'json' => ['ids' => [$second, $id]]])), 'curio_collections'));
+        $this->assertSame([$second, $id], $this->database()->table('curio_collections')->where('user_id', 3)->orderBy('position')->pluck('id')->map('intval')->all());
+    }
 }

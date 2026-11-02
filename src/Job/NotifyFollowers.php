@@ -54,6 +54,9 @@ class NotifyFollowers extends AbstractJob
             ->whereIn('id', fn ($q) => $q->select('user_id')->from('curio_follows')->where('collection_id', $collection->id))
             ->where('id', '!=', $collection->user_id)
             ->get()
+            // One visibility query per person, on purpose: whereVisibleTo runs every
+            // extension's user and Curio scopes (blocks, hidden profiles, groups),
+            // which PHP cannot repeat. It runs in the queue, never in a request.
             ->filter(fn (User $user) => isset($told[$user->id]) || ($this->itemId
                 ? Item::query()->whereVisibleTo($user)->whereKey($this->itemId)->exists()
                 : Collection::query()->whereVisibleTo($user)->whereKey($collection->id)->exists()));

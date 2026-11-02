@@ -36,6 +36,9 @@ class NotifyWishlists extends AbstractJob
             ->where('id', '!=', $item->user_id)
             ->limit(self::MAX_RECIPIENTS)
             ->get()
+            // One visibility query per person, on purpose: whereVisibleTo runs every
+            // extension's user and Curio scopes (blocks, hidden profiles, groups),
+            // which PHP cannot repeat. It runs in the queue, never in a request.
             // A wish is not a licence to look: only those who can see the offer hear of it.
             ->filter(fn (User $user) => Item::query()->whereVisibleTo($user)->whereKey($item->id)->exists());
 

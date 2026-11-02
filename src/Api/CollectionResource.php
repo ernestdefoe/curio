@@ -86,9 +86,7 @@ class CollectionResource extends AbstractDatabaseResource
                 ->can('ernestdefoe-curio.create')
                 ->action(function (Context $context) {
                     $ids = array_map('intval', array_slice((array) ($context->body()['ids'] ?? []), 0, Collection::MAX_PER_USER));
-                    foreach ($ids as $position => $id) {
-                        Collection::query()->where('id', $id)->where('user_id', $context->getActor()->id)->update(['position' => $position]);
-                    }
+                    $this->reposition(Collection::query()->where('user_id', $context->getActor()->id), $ids);
 
                     return [];
                 })
@@ -102,6 +100,7 @@ class CollectionResource extends AbstractDatabaseResource
                     // The owner, and only while their groups may import (one ability per endpoint, so checked here).
                     $context->getActor()->assertCan('ernestdefoe-curio.import');
 
+                    // Resolved here, not injected: the constructor runs on every API request.
                     return resolve(Importer::class)->import($context->model, Arr::get($context->request->getUploadedFiles(), 'file'), $context->getActor());
                 })
                 ->response(fn (Context $context, array $result) => new JsonResponse($result)),
@@ -171,11 +170,8 @@ class CollectionResource extends AbstractDatabaseResource
         }
 
         if ($order !== null) {
-            $this->db->transaction(function () use ($model, $order) {
-                foreach ($order as $position => $id) {
-                    Item::query()->where('collection_id', $model->id)->where('id', $id)->update(['position' => $position]);
-                }
-            });
+            $this->db->transaction(fn () => $this->reposition(Item::query()->where('collection_id', $model->id), $order));
+            // Resolved here, not injected: the constructor runs on every API request, this only on a save.
             resolve(CollectionStats::class)->refresh($model);
         }
 
@@ -191,19 +187,51 @@ class CollectionResource extends AbstractDatabaseResource
     {
         $field = Type::query()->find($collection->type_id)?->facetField();
 
-        $this->db->transaction(function () use ($collection, $field) {
-            Item::query()->where('collection_id', $collection->id)->select(['id', 'fields', 'facet'])
-                ->each(function (Item $item) use ($field) {
-                    $facet = $field ? ($item->fields[$field['key']] ?? null) : null;
-                    // Only a value the new field offers (or a card printing); anything else would show as a raw key.
-                    $facet = $field && Type::allows($field, $facet) ? $facet : null;
-                    if ($item->facet !== $facet) {
-                        Item::query()->whereKey($item->id)->update(['facet' => $facet]);
-                    }
-                });
+        // The items whose facet changes, grouped by their new facet: one UPDATE per value, not per item.
+        $changes = [];
+        Item::query()->where('collection_id', $collection->id)->select(['id', 'fields', 'facet'])
+            ->each(function (Item $item) use ($field, &$changes) {
+                $facet = $field ? ($item->fields[$field['key']] ?? null) : null;
+                // Only a value the new field offers (or a card printing); anything else would show as a raw key.
+                $facet = $field && Type::allows($field, $facet) ? $facet : null;
+                if ($item->facet !== $facet) {
+                    $changes[json_encode($facet)][] = $item->id;
+                }
+            });
+
+        $this->db->transaction(function () use ($collection, $changes) {
+            foreach ($changes as $facet => $ids) {
+                foreach (array_chunk($ids, 500) as $chunk) {
+                    Item::query()->where('collection_id', $collection->id)->whereIn('id', $chunk)->update(['facet' => json_decode($facet)]);
+                }
+            }
         });
 
         resolve(CollectionStats::class)->refresh($collection);
+    }
+
+    /**
+     * Gives each id its index in $ids as its position (a repeated id takes its
+     * last), in one UPDATE per 500 rows of $query rather than one per row.
+     *
+     * @param list<int> $ids
+     */
+    private function reposition(Builder $query, array $ids): void
+    {
+        $positions = [];
+        foreach ($ids as $position => $id) {
+            $positions[(int) $id] = (int) $position;
+        }
+
+        $column = $this->db->getQueryGrammar()->wrap('id');
+        foreach (array_chunk($positions, 500, true) as $chunk) {
+            $case = 'CASE '.$column;
+            foreach ($chunk as $id => $position) {
+                $case .= " WHEN $id THEN $position";
+            }
+
+            (clone $query)->whereIn('id', array_keys($chunk))->update(['position' => $this->db->raw($case.' END')]);
+        }
     }
 
     private function follow(Collection $collection, int $userId, bool $follow): void
