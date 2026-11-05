@@ -43,6 +43,18 @@ class TcgDex implements Source, Paged, CardLanguages
     /** Languages with their own sets, whose ids are the codes printed on the cards. */
     private const ASIAN = ['ja', 'ko', 'zh-tw', 'zh-cn', 'id', 'th'];
 
+    /**
+     * Japan's first sets (1996-2001) print the Pokédex number on the card,
+     * "No. 082", not its place in the set, so "Magneton 082" means that
+     * number there. Their English names, so "Magneton Expansion Pack" finds
+     * the set TCGdex only names in Japanese (拡張パック).
+     */
+    private const VINTAGE = [
+        'PMCG1' => 'Expansion Pack (Base Set)', 'PMCG2' => 'Pokémon Jungle', 'PMCG3' => 'Mystery of the Fossils',
+        'PMCG4' => 'Rocket Gang', 'PMCG5' => "Leaders' Stadium", 'PMCG6' => 'Challenge from the Darkness',
+        'neo1' => 'Gold, Silver, to a New World', 'neo2' => 'Crossing the Ruins', 'neo3' => 'Awakening Legends', 'neo4' => 'Darkness, and to Light',
+    ];
+
     /** Finishes TCGdex names a printing by (variants_detailed "type"). */
     private const FINISHES = ['normal', 'holo', 'reverse', 'metal', 'lenticular'];
 
@@ -100,6 +112,10 @@ class TcgDex implements Source, Paged, CardLanguages
                     break;
                 }
             }
+            // Nothing, with a number or set asked: perhaps one of Japan's first sets ("Magneton 082", "Magneton Expansion Pack").
+            if (! $cards && ($asked->number !== null || count($asked->words) > 1)) {
+                $cards = $this->find($lang = 'ja', $asked, true);
+            }
         }
 
         $shown = array_slice($cards, ($page - 1) * self::PER_PAGE, self::PER_PAGE);
@@ -111,7 +127,7 @@ class TcgDex implements Source, Paged, CardLanguages
             'year' => null,
             'cover' => self::image($c['image'], 'low'),
             'set' => $c['set'],
-            'number' => self::number($c['localId'], $c['official'], $c['setId']),
+            'number' => self::number($c['localId'], $c['official'], $c['setId'], $lang === 'ja' ? ($c['dex'] ?? 0) : null),
         ], $shown), count($cards) > $page * self::PER_PAGE];
     }
 
@@ -140,7 +156,7 @@ class TcgDex implements Source, Paged, CardLanguages
             'wikidata' => null,
             'facts' => ['card' => [
                 'set' => $set,
-                'number' => self::number($c['localId'], $c['set']['cardCount']['official'] ?? null, is_string($c['set']['id'] ?? null) ? $c['set']['id'] : ''),
+                'number' => self::number($c['localId'], $c['set']['cardCount']['official'] ?? null, is_string($c['set']['id'] ?? null) ? $c['set']['id'] : '', $m[1] === 'ja' ? ($c['dexId'][0] ?? 0) : null),
                 'rarity' => $rarity,
                 'language' => $m[1],
                 'variants' => self::variants($c['variants'] ?? null),
@@ -170,8 +186,15 @@ class TcgDex implements Source, Paged, CardLanguages
                 }
             }
             if ($number !== null) {
-                $cards = array_values(array_filter($cards, fn ($c) => CardQuery::sameNumber($c['localId'], $number)
-                    && ($asked->total === null || $c['official'] === null || CardQuery::sameNumber((string) $c['official'], $asked->total))));
+                // A card of Japan's first sets carries its Pokédex number: the species a typed name means.
+                if ($lang === 'ja' && $name !== '' && $asked->total === null && array_filter($cards, fn ($c) => isset(self::VINTAGE[$c['setId']]) && ! isset($c['dex']))) {
+                    $dex = $this->species($lang, $name);
+                    $cards = array_map(fn ($c) => isset(self::VINTAGE[$c['setId']]) ? $c + ['dex' => $dex] : $c, $cards);
+                }
+                $cards = array_values(array_filter($cards, fn ($c) => isset(self::VINTAGE[$c['setId']]) && $lang === 'ja'
+                    ? ($c['dex'] ?? null) !== null && $asked->total === null && CardQuery::sameNumber((string) $c['dex'], $number)
+                    : CardQuery::sameNumber($c['localId'], $number)
+                        && ($asked->total === null || $c['official'] === null || CardQuery::sameNumber((string) $c['official'], $asked->total))));
             }
             if ($cards) {
                 return $cards;
@@ -222,7 +245,7 @@ class TcgDex implements Source, Paged, CardLanguages
         foreach ($from as $other) {
             if ($dex = $this->species($other, $name)) {
                 // Shortest names first: シャリタツ before シャリタツex.
-                return $this->listed($lang, "dex.$dex", ['dexId' => "eq:$dex"], fn ($c) => [mb_strlen($c['name']), $c['image'] === null]);
+                return array_map(fn ($c) => $c + ['dex' => $dex], $this->listed($lang, "dex.$dex", ['dexId' => "eq:$dex"], fn ($c) => [mb_strlen($c['name']), $c['image'] === null]));
             }
         }
 
@@ -343,7 +366,8 @@ class TcgDex implements Source, Paged, CardLanguages
         }
 
         $byName = array_values(array_filter($cards, fn ($c) => CardQuery::plain($c['setId']) === $asked
-            || (mb_strlen($asked) >= 3 && $c['set'] !== null && str_contains(CardQuery::plain($c['set']), $asked))));
+            || (mb_strlen($asked) >= 3 && $c['set'] !== null && str_contains(CardQuery::plain($c['set']), $asked))
+            || ($lang === 'ja' && mb_strlen($asked) >= 3 && str_contains(CardQuery::plain(self::VINTAGE[$c['setId']] ?? ''), $asked))));
 
         // A set code is short and has letters ("FST"); "195264" is not one. Asian sets' ids are their codes.
         if ($byName || mb_strlen($asked) > 6 || ! preg_match('/\p{L}/u', $asked) || in_array($lang, self::ASIAN, true)) {
@@ -508,9 +532,16 @@ class TcgDex implements Source, Paged, CardLanguages
         return str_ends_with($card['id'], $suffix) ? substr($card['id'], 0, -strlen($suffix)) : '';
     }
 
-    /** "136/189", as printed on the card; a Japanese-style promo "201/SV-P". */
-    private static function number(string $local, mixed $official, string $setId): string
+    /**
+     * "136/189", as printed on the card; a Japanese-style promo "201/SV-P";
+     * "No. 082" in Japan's first sets ($dex is null outside Japanese cards).
+     */
+    private static function number(string $local, mixed $official, string $setId, mixed $dex = null): string
     {
+        if ($dex !== null && isset(self::VINTAGE[$setId])) {
+            return is_int($dex) && $dex > 0 ? sprintf('No. %03d', $dex) : $local;
+        }
+
         if (is_int($official) && $official > 0 && ctype_digit($local)) {
             return "$local/$official";
         }
