@@ -65,4 +65,7 @@ final class Settings
 
     /** Leave types with nothing in them off the Collections page. Off: every switched-on type shows, like the Tags page. */
     public const HIDE_EMPTY = 'ernestdefoe-curio.hide_empty_types';
+
+    /** Editions (Deluxe, GOTY) and DLC show off in their game's discussion. Off: each is its own title. */
+    public const EDITIONS = 'ernestdefoe-curio.editions_share_discussion';
 }

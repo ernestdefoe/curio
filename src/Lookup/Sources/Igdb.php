@@ -246,7 +246,7 @@ class Igdb implements Source
      * @return list<mixed>
      * @throws LookupException
      */
-    private function query(string $endpoint, string $body): array
+    public function query(string $endpoint, string $body): array
     {
         if (! $this->configured()) {
             throw new LookupException('IGDB is not set up');

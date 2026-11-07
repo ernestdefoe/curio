@@ -350,6 +350,8 @@ ernestdefoe-curio:
       upc_label: Clé UPCitemdb (facultatif)
       upc_help: "Le scan de codes-barres fonctionne sans aucune clé. Les livres sont cherchés sur Open Library et les disques sur Deezer et MusicBrainz. Les jeux, films et autres produits sont demandés à UPCitemdb (sans clé, 100 par jour, surtout les produits nord-américains) et à Open Icecat (sans clé, surtout les produits européens : jeux, consoles, électronique, jouets). Chaque code-barres trouvé par le forum, ou associé à la main par un membre, est gardé : il n’est jamais demandé deux fois. Une clé UPCitemdb payante ne fait que relever la limite quotidienne d’UPCitemdb ; la plupart des forums n’en ont jamais besoin."
       upc_link: Offres UPCitemdb
+      editions_label: Les éditions et DLC partagent la discussion de leur jeu
+      editions_help: "Avec Marquee, « Le montrer » sur une édition Deluxe, Ultimate ou Game of the Year, ou sur un DLC, ouvre la discussion du jeu lui-même (ou en commence une pour le jeu), pour que les possesseurs de chaque édition discutent au même endroit. Les extensions, extensions autonomes, remakes et compilations gardent la leur. Utilise les liens d’IGDB entre un jeu et ses éditions."
       barcodes_label: Scan et recherche de codes-barres
       barcodes_help: "Les membres peuvent scanner ou saisir un code-barres ou un ISBN pour trouver ce qu’ils ajoutent. Désactivé, le bouton Scanner disparaît, un nombre saisi dans la recherche est cherché comme un titre, et le forum n’interroge plus aucun service de codes-barres."
       barcodelookup_label: Clé API barcodelookup.com (facultatif, payant)

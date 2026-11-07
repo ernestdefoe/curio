@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $year
  * @property string|null $cover
  * @property string|null $wikidata_id
+ * @property string|null $base_id the game an edition or DLC belongs to ('' for none, null not asked yet)
+ * @property string|null $base_title
  * @property array{developer?: list<string>, publisher?: list<string>, released?: string, platforms?: list<string>, genres?: list<string>}|null $facts
  * @property int $languages
  * @property Carbon $refreshed_at

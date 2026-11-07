@@ -92,6 +92,12 @@ export const extend = [
       help: t('settings.latest_help'),
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.editions_share_discussion',
+      type: 'boolean',
+      label: t('settings.editions_label'),
+      help: t('settings.editions_help'),
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.hide_empty_types',
       type: 'boolean',
       label: t('settings.hide_empty_label'),

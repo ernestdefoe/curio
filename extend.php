@@ -4,6 +4,7 @@ use Ernestdefoe\Curio\Access;
 use Ernestdefoe\Curio\Api;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\Console\ImportShelf;
+use Ernestdefoe\Curio\Console\LinkEditions;
 use Ernestdefoe\Curio\Console\MatchWorks;
 use Ernestdefoe\Curio\Console\PruneWorks;
 use Ernestdefoe\Curio\Console\RefreshTexts;
@@ -63,6 +64,7 @@ return [
         ->default(Settings::TYPE_COLOR, 'background')
         ->default(Settings::LATEST_CHANGES, true)
         ->default(Settings::BARCODES, true)
+        ->default(Settings::EDITIONS, true)
         // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
         ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
         ->serializeToForum('curioBarcodes', Settings::BARCODES, 'boolval')
@@ -146,6 +148,7 @@ return [
         ->command(ImportShelf::class)
         ->command(MatchWorks::class)
         ->command(PruneWorks::class)
+        ->command(LinkEditions::class)
         ->schedule(MatchWorks::class, function (Event $event): void {
             $event->everyFiveMinutes()->withoutOverlapping();
         })
@@ -154,5 +157,8 @@ return [
         })
         ->schedule(PruneWorks::class, function (Event $event): void {
             $event->daily()->withoutOverlapping();
+        })
+        ->schedule(LinkEditions::class, function (Event $event): void {
+            $event->hourly()->withoutOverlapping();
         }),
 ];

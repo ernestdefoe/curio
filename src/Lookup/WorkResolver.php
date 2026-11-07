@@ -31,6 +31,7 @@ class WorkResolver
         private RemoteImage $remote,
         private Images $images,
         private WorkTexts $texts,
+        private GameBases $bases,
         private LoggerInterface $log
     ) {
     }
@@ -61,6 +62,12 @@ class WorkResolver
         $work->year = $details['year'] && $details['year'] > 0 && $details['year'] < 3000 ? $details['year'] : null;
         $work->cover = $this->cover($details['cover'] ?? null);
         $work->facts = self::facts($details['facts'] ?? null);
+        if (in_array($sourceKey, ['igdb', 'marquee-game'], true)) {
+            // The game an edition or DLC belongs to; left null for curio:link-editions when IGDB can't be asked.
+            $bases = $this->bases->for($sourceKey, [$id]);
+            $work->base_id = $bases === null ? null : ($bases[$id]['id'] ?? '');
+            $work->base_title = $bases[$id]['title'] ?? null;
+        }
         $work->refreshed_at = $now;
         $work->created_at = $now;
 

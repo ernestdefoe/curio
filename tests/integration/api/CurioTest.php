@@ -2723,6 +2723,21 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function an_edition_or_dlc_names_its_game_and_an_expansion_stays_its_own(): void
+    {
+        $bases = \Ernestdefoe\Curio\Lookup\GameBases::bases([
+            ['id' => 101, 'game_type' => 0, 'version_parent' => ['id' => 100, 'name' => 'Pragmata']],
+            ['id' => 102, 'game_type' => 1, 'parent_game' => ['id' => 100, 'name' => 'Pragmata']],
+            ['id' => 103, 'game_type' => 2, 'parent_game' => ['id' => 100, 'name' => 'Pragmata']],
+            ['id' => 104, 'game_type' => 4, 'parent_game' => ['id' => 100, 'name' => 'Pragmata']],
+            ['id' => 100, 'game_type' => 0],
+            ['id' => 105, 'game_type' => 0, 'version_parent' => 100],
+        ]);
+
+        $this->assertSame(['101' => ['id' => '100', 'title' => 'Pragmata'], '102' => ['id' => '100', 'title' => 'Pragmata']], $bases);
+    }
+
+    #[Test]
     public function a_marquee_card_knows_the_readers_copy_and_how_many_members_have_it_in_two_queries(): void
     {
         $users = $this->app()->getContainer()->make(\Flarum\User\UserRepository::class);
