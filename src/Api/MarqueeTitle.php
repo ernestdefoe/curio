@@ -62,7 +62,7 @@ class MarqueeTitle
         // database and prefix, where whereJsonContains does not.
         $discussion = $media ? (Discussion::query()->whereVisibleTo($actor)
             ->whereIn('marquee_media_id', $media)->orderBy('id')->limit(20)->get(['id', 'slug', 'marquee_media_id'])
-            ->sortBy(fn ($d) => [array_search($d->marquee_media_id, $media), $d->id])->first()
+            ->sortBy(fn ($d) => [array_search($d->getAttribute('marquee_media_id'), $media), $d->id])->first()
             ?? Discussion::query()->whereVisibleTo($actor)
                 ->where(function ($q) use ($media) {
                     foreach ($media as $id) {

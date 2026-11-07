@@ -41,12 +41,12 @@ class GameBases
         $body = 'fields game_type,version_parent.name,parent_game.name; where id = ('.implode(',', $ids).'); limit 500;';
 
         try {
-            $games = match (true) {
-                $sourceKey === 'igdb' && $this->igdb->configured() => $this->igdb->query('games', $body),
-                $sourceKey === 'marquee-game' && class_exists(self::CLIENT) && $this->extensions->isEnabled('ernestdefoe-marquee')
-                    && ($client = $this->container->make(self::CLIENT))->configured() => $client->query('games', $body),
+            $client = match (true) {
+                $sourceKey === 'igdb' => $this->igdb,
+                $sourceKey === 'marquee-game' && class_exists(self::CLIENT) && $this->extensions->isEnabled('ernestdefoe-marquee') => $this->container->make(self::CLIENT),
                 default => null,
             };
+            $games = $client?->configured() ? $client->query('games', $body) : null;
         } catch (Throwable $e) {
             return null;
         }
