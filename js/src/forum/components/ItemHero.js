@@ -59,7 +59,7 @@ export default class ItemHero extends Component {
           <div className="CurioItemHero-body">
             {badges.length ? <ul className="DiscussionHero-badges badges">{listItems(badges)}</ul> : null}
             <div className="CurioItemHero-kicker">
-              {typeBadge(type, 'CurioTypeBadge--solid')}
+              {typeBadge(type, 'CurioTypeBadge--solid', true)}
               {collection ? <Link href={collectionUrl(collection)}>{t('hero.from', { name: collection.name() })}</Link> : null}
             </div>
             <h1 className="DiscussionHero-title">{discussion.title()}</h1>

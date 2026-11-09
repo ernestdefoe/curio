@@ -157,7 +157,7 @@ export default class CollectionPage extends Page {
         </div>
         <div className="container CurioHero-inner">
           <div className="CurioHero-main">
-            {typeBadge(type, 'CurioTypeBadge--solid')}
+            {typeBadge(type, 'CurioTypeBadge--solid', true)}
             <h1 className="CurioHero-title">{c.name()}</h1>
             <div className="CurioHero-meta">
               {owner(c.user())}

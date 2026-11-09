@@ -5,11 +5,18 @@ import Avatar from 'flarum/common/components/Avatar';
 import username from 'flarum/common/helpers/username';
 import { t, label, collectionUrl, CONDITIONS } from '../util';
 
-export function typeBadge(type, extra = '') {
+/** The type's badge; `linked` makes it lead to every collection of that type. */
+export function typeBadge(type, extra = '', linked = false) {
   if (!type) return null;
-  return (
-    <span className={'CurioTypeBadge ' + extra} style={{ '--curio-accent': type.color() }}>
-      <Icon name={type.icon()} /> {label(type.names())}
+  const inner = [<Icon name={type.icon()} />, ' ', label(type.names())];
+  const style = { '--curio-accent': type.color() };
+  return linked ? (
+    <Link className={'CurioTypeBadge CurioTypeBadge--link ' + extra} style={style} href={app.route('curio.browse', { type: type.id() })}>
+      {inner}
+    </Link>
+  ) : (
+    <span className={'CurioTypeBadge ' + extra} style={style}>
+      {inner}
     </span>
   );
 }
