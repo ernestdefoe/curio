@@ -1456,6 +1456,16 @@ class CurioTest extends TestCase
     }
 
     #[Test]
+    public function card_types_never_track_progress(): void
+    {
+        // Cards are never started or completed.
+        $this->assertFalse($this->json($this->patchType($this->typeId('cards'), ['progress' => true]))['data']['attributes']['progress']);
+        // Nor is any type graded on the card scale.
+        $this->assertFalse($this->json($this->patchType($this->typeId('other'), ['progress' => true, 'conditionScale' => 'cards']))['data']['attributes']['progress']);
+        $this->assertTrue($this->json($this->patchType($this->typeId('lego'), ['progress' => true]))['data']['attributes']['progress']);
+    }
+
+    #[Test]
     public function a_type_colour_is_a_hex_code_or_blank(): void
     {
         $id = $this->typeId('lego');

@@ -20,6 +20,7 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 // What a type export carries: everything an admin sets, labels in every language.
 const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress', 'conditionScale', 'grading'];
 const SCALES = ['general', 'cards'];
+const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
 
 /** Saves text as a file in the browser. */
 function download(name, data) {
@@ -164,6 +165,8 @@ export default class TypesEditor {
     const d = this.draft;
     const igdb = d.source === 'games' && !!app.data.settings['ernestdefoe-curio.igdb_client_id'];
     const marqueeNeeded = ['movies', 'tv', 'games'].includes(d.source) && !igdb && !('ernestdefoe-marquee' in (app.data.extensions || {}));
+    // Cards are never started or completed: no progress to track.
+    const cards = CARD_SOURCES.includes(d.source) || d.conditionScale === 'cards';
 
     return (
       <div className="CurioAdmin-editor">
@@ -218,7 +221,7 @@ export default class TypesEditor {
             <label>{t('types.source')}</label>
             <Select value={d.source} onchange={(v) => (d.source = v)} options={Object.fromEntries(SOURCES.map((s) => [s, text('source.' + s)]))} />
             {marqueeNeeded ? <small className="CurioAdmin-warn">{t('types.needs_marquee')}</small> : null}
-            {['pokemon', 'magic', 'yugioh', 'cards'].includes(d.source) ? <small className="helpText">{t('types.cards_help')}</small> : null}
+            {CARD_SOURCES.includes(d.source) ? <small className="helpText">{t('types.cards_help')}</small> : null}
           </div>
           <div className="Form-group">
             <label>{t('types.conditions')}</label>
@@ -236,10 +239,14 @@ export default class TypesEditor {
             {t('types.enabled')}
           </Switch>
           <small className="helpText">{t('types.enabled_help')}</small>
-          <Switch state={d.progress} onchange={(v) => (d.progress = v)}>
-            {t('types.progress')}
-          </Switch>
-          <small className="helpText">{t('types.progress_help')}</small>
+          {cards
+            ? null
+            : [
+                <Switch state={d.progress} onchange={(v) => (d.progress = v)}>
+                  {t('types.progress')}
+                </Switch>,
+                <small className="helpText">{t('types.progress_help')}</small>,
+              ]}
           <Switch state={d.grading} onchange={(v) => (d.grading = v)}>
             {t('types.grading')}
           </Switch>

@@ -58,6 +58,18 @@ class Type extends AbstractModel
         'updated_at' => 'datetime',
     ];
 
+    /** The sources that look cards up. */
+    public const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
+
+    /**
+     * Trading cards: looked up as cards or graded on the card scale. Their
+     * items are never "started" or "completed", so they never track progress.
+     */
+    public function isCards(): bool
+    {
+        return in_array($this->source, self::CARD_SOURCES, true) || $this->conditions === 'cards';
+    }
+
     /** @return list<array{key: string, kind: string, labels: array<string, string>, options?: list<array{key: string, labels: array<string, string>}>}> */
     public function fieldList(): array
     {

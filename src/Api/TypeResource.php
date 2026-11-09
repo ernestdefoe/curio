@@ -80,6 +80,16 @@ class TypeResource extends AbstractDatabaseResource
         return $model;
     }
 
+    public function saving(object $model, OriginalContext $context): ?object
+    {
+        /** @var Type $model */
+        if ($model->isCards()) {
+            $model->progress = false;
+        }
+
+        return $model;
+    }
+
     /** The Collections page's per-type counts leave switched-off types out. */
     public function saved(object $model, OriginalContext $context): ?object
     {
