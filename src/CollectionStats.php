@@ -4,7 +4,9 @@ namespace Ernestdefoe\Curio;
 
 use Carbon\Carbon;
 use Ernestdefoe\Curio\Api\OverviewController;
+use Ernestdefoe\Curio\Event\ItemsChanged;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Contracts\Events\Dispatcher;
 
 /**
  * Keeps a collection's counts, its four-cover preview and its facet breakdown
@@ -14,7 +16,7 @@ use Illuminate\Contracts\Cache\Repository as Cache;
  */
 class CollectionStats
 {
-    public function __construct(private Cache $cache)
+    public function __construct(private Cache $cache, private Dispatcher $events)
     {
     }
 
@@ -54,5 +56,9 @@ class CollectionStats
         $collection->updated_at = Carbon::now();
         $collection->saveQuietly();
         OverviewController::forget($this->cache);
+
+        if ($collection->wasChanged('owned_count')) {
+            $this->events->dispatch(new ItemsChanged($collection));
+        }
     }
 }

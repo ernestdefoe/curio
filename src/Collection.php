@@ -4,11 +4,13 @@ namespace Ernestdefoe\Curio;
 
 use Carbon\Carbon;
 use Ernestdefoe\Curio\Api\OverviewController;
+use Ernestdefoe\Curio\Event\CollectionCreated;
 use Flarum\Database\AbstractModel;
 use Flarum\Database\ScopeVisibilityTrait;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -67,7 +69,10 @@ class Collection extends AbstractModel
         'updated_at' => 'datetime',
     ];
 
-    /** The browse page's counts follow a collection made, removed, renamed or shown to someone else. */
+    /**
+     * The browse page's counts follow a collection made, removed, renamed or
+     * shown to someone else; a new one is announced (FoF Badges listens).
+     */
     protected static function booted(): void
     {
         $forget = fn () => OverviewController::forget(resolve(Cache::class));
@@ -75,6 +80,9 @@ class Collection extends AbstractModel
         static::saved(function (self $collection) use ($forget) {
             if ($collection->wasRecentlyCreated || $collection->wasChanged(['visibility', 'type_id', 'name', 'slug'])) {
                 $forget();
+            }
+            if ($collection->wasRecentlyCreated) {
+                resolve(Dispatcher::class)->dispatch(new CollectionCreated($collection));
             }
         });
         static::deleted($forget);

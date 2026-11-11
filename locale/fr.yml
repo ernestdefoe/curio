@@ -346,6 +346,12 @@ ernestdefoe-curio:
       field_limit: Combien
       empty: Rien d'ajouté pour l'instant.
   admin:
+    badges:
+      items: "Curio : objets dans ses collections"
+      collections: "Curio : collections créées"
+      type: Type de collection Curio
+      any_type: Tous les types
+      type_help: Ne compter que les collections de ce type. S'applique à toutes les conditions Curio de ce badge. Les objets de la liste de souhaits ne comptent jamais.
     settings:
       upc_label: Clé UPCitemdb (facultatif)
       upc_help: "Le scan de codes-barres fonctionne sans aucune clé. Les livres sont cherchés sur Open Library et les disques sur Deezer et MusicBrainz. Les jeux, films et autres produits sont demandés à UPCitemdb (sans clé, 100 par jour, surtout les produits nord-américains) et à Open Icecat (sans clé, surtout les produits européens : jeux, consoles, électronique, jouets). Chaque code-barres trouvé par le forum, ou associé à la main par un membre, est gardé : il n’est jamais demandé deux fois. Une clé UPCitemdb payante ne fait que relever la limite quotidienne d’UPCitemdb ; la plupart des forums n’en ont jamais besoin."

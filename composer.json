@@ -15,7 +15,8 @@
         "flarum/core": "^2.0"
     },
     "suggest": {
-        "ernestdefoe/marquee": "Adds film, TV and game search (TMDB and IGDB) to Curio's look-ups."
+        "ernestdefoe/marquee": "Adds film, TV and game search (TMDB and IGDB) to Curio's look-ups.",
+        "fof/badges": "Award badges for items in members' collections and collections made with FoF Badges triggers (^2.0)."
     },
     "extra": {
         "flarum-extension": {
@@ -25,7 +26,8 @@
                 "name": "fas fa-boxes-stacked",
                 "backgroundColor": "#5b3fd1",
                 "color": "#ffffff"
-            }
+            },
+            "optional-dependencies": ["fof/badges"]
         }
     },
     "minimum-stability": "beta",
@@ -43,7 +45,8 @@
     "require-dev": {
         "flarum/phpstan": "^2.0",
         "flarum/testing": "^2.0",
-        "flarum/tags": "^2.0"
+        "flarum/tags": "^2.0",
+        "fof/badges": "^2.0"
     },
     "scripts": {
         "test": [

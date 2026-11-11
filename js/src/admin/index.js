@@ -5,6 +5,7 @@ import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import Link from 'flarum/common/components/Link';
 import { registerModels } from '../common/models';
 import TypesEditor from './TypesEditor';
+import badges from './badges';
 import { fofWidget } from '../common/widget';
 
 const t = (key, params) => app.translator.trans(`ernestdefoe-curio.admin.${key}`, params);
@@ -30,6 +31,7 @@ class CurioPage extends ExtensionPage {
 
 app.initializers.add('ernestdefoe-curio', () => {
   registerModels(app);
+  badges();
 
   // FoF Forum Widgets' layout editor only lists widgets registered on the
   // admin side too. Registered each time the editor opens, from the setting

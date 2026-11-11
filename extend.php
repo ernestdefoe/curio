@@ -2,8 +2,11 @@
 
 use Ernestdefoe\Curio\Access;
 use Ernestdefoe\Curio\Api;
+use Ernestdefoe\Curio\Badges;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\Console\ImportShelf;
+use Ernestdefoe\Curio\Event\CollectionCreated;
+use Ernestdefoe\Curio\Event\ItemsChanged;
 use Ernestdefoe\Curio\Console\LinkEditions;
 use Ernestdefoe\Curio\Console\MatchWorks;
 use Ernestdefoe\Curio\Console\PruneWorks;
@@ -100,6 +103,17 @@ return [
 
     (new Extend\Event())
         ->listen(Started::class, LinkShownItem::class),
+
+    // FoF Badges triggers: items in a member's collections and collections made.
+    // Nothing of FoF Badges is loaded unless it is enabled.
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('fof-badges', fn () => [
+            (new Extend\ServiceProvider())
+                ->register(Badges\BadgesServiceProvider::class),
+            (new Extend\Event())
+                ->listen(ItemsChanged::class, Badges\EvaluateBadges::class)
+                ->listen(CollectionCreated::class, Badges\EvaluateBadges::class),
+        ]),
 
     (new Extend\View())
         ->namespace('ernestdefoe-curio', __DIR__.'/views'),
