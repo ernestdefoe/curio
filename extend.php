@@ -14,7 +14,6 @@ use Ernestdefoe\Curio\Console\RefreshTexts;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Search;
 use Ernestdefoe\Curio\Settings;
-use Ernestdefoe\Curio\Storage\Images;
 use Ernestdefoe\Curio\Listener\LinkShownItem;
 use Ernestdefoe\Curio\Notification\NewItemsBlueprint;
 use Ernestdefoe\Curio\Notification\ProgressChangedBlueprint;
@@ -51,30 +50,32 @@ return [
     new Extend\Locales(__DIR__.'/locale'),
 
     (new Extend\Filesystem())
-        ->disk(Images::DISK, fn (Paths $paths, UrlGenerator $url) => [
+        ->disk('ernestdefoe-curio', fn (Paths $paths, UrlGenerator $url) => [
             'root' => "$paths->public/assets/curio",
             'url' => $url->to('forum')->path('assets/curio'),
             'visibility' => 'public',
         ]),
 
+    // Keys as strings, never Settings:: or Images:: constants: this file is read at boot,
+    // and a class autoloaded here fatals every request while a deploy updates composer.
     (new Extend\Settings())
-        ->default(Settings::MAX_UPLOAD_KB, 8192)
-        ->default(Settings::WIDGET, false)
-        ->default(Settings::BROWSE_LAYOUT, 'tags')
-        ->default(Settings::RANKING, 'collections')
-        ->default(Settings::SHORTCUT, 'both')
-        ->default(Settings::COVER_FIT, 'blur')
-        ->default(Settings::HIDE_EMPTY, false)
-        ->default(Settings::TYPE_COLOR, 'background')
-        ->default(Settings::LATEST_CHANGES, true)
-        ->default(Settings::BARCODES, true)
-        ->default(Settings::EDITIONS, true)
+        ->default('ernestdefoe-curio.max_upload_kb', 8192)
+        ->default('ernestdefoe-curio.widget', false)
+        ->default('ernestdefoe-curio.browse_layout', 'tags')
+        ->default('ernestdefoe-curio.browse_ranking', 'collections')
+        ->default('ernestdefoe-curio.shortcut', 'both')
+        ->default('ernestdefoe-curio.cover_fit', 'blur')
+        ->default('ernestdefoe-curio.hide_empty_types', false)
+        ->default('ernestdefoe-curio.type_color', 'background')
+        ->default('ernestdefoe-curio.latest_changes', true)
+        ->default('ernestdefoe-curio.barcodes', true)
+        ->default('ernestdefoe-curio.editions_share_discussion', true)
         // A boolean: whether to offer the "Recently added" widget to Bespoke / FoF Forum Widgets.
-        ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
-        ->serializeToForum('curioBarcodes', Settings::BARCODES, 'boolval')
-        ->serializeToForum('curioCoverFit', Settings::COVER_FIT, fn ($value) => in_array($value, Settings::COVER_FITS, true) ? $value : 'blur')
-        ->serializeToForum('curioShortcut', Settings::SHORTCUT, fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both')
-        // The collector badge (string keys: read at boot, a class constant here would fatal mid-deploy).
+        ->serializeToForum('curioWidget', 'ernestdefoe-curio.widget', 'boolval')
+        ->serializeToForum('curioBarcodes', 'ernestdefoe-curio.barcodes', 'boolval')
+        ->serializeToForum('curioCoverFit', 'ernestdefoe-curio.cover_fit', fn ($value) => in_array($value, Settings::COVER_FITS, true) ? $value : 'blur')
+        ->serializeToForum('curioShortcut', 'ernestdefoe-curio.shortcut', fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both')
+        // The collector badge.
         ->default('ernestdefoe-curio.collector_icon', 'fas fa-boxes-stacked')
         ->default('ernestdefoe-curio.collector_place', 'none')
         ->serializeToForum('curioCollector', 'ernestdefoe-curio.collector_place', fn ($value) => in_array($value, Settings::COLLECTOR_PLACES, true) ? $value : 'none')
