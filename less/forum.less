@@ -82,3 +82,42 @@
 .CurioMarqueeButton--wished .Button-icon {
   color: #e5486b;
 }
+
+
+// The collector badge: an icon, no background, in the admin's colour (or the
+// text's own). html:not(#x-hi) adds an id's weight, so themes' link colours
+// (Bespoke's :root:not(…) a:not(.Button)) don't win.
+html:not(#x-hi) .CurioCollector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--curio-collector, var(--muted-color));
+  text-decoration: none;
+  white-space: nowrap;
+
+  // A long label stops short instead of pushing the post's time off a phone.
+  &-label {
+    max-width: 12em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &:hover .CurioCollector-label {
+    text-decoration: underline;
+  }
+
+  &--post {
+    margin-left: 6px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  // On the card the count is text like "Joined …" beside it; only the icon takes the colour.
+  &--card {
+    color: inherit;
+
+    .icon {
+      color: var(--curio-collector, inherit);
+    }
+  }
+}

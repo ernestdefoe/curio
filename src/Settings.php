@@ -68,4 +68,18 @@ final class Settings
 
     /** Editions (Deluxe, GOTY) and DLC show off in their game's discussion. Off: each is its own title. */
     public const EDITIONS = 'ernestdefoe-curio.editions_share_discussion';
+
+    /** The collector badge, for members with a collection the reader may see: an icon, an optional label and a colour. */
+    public const COLLECTOR_ICON = 'ernestdefoe-curio.collector_icon';
+
+    public const COLLECTOR_TEXT = 'ernestdefoe-curio.collector_text';
+
+    public const COLLECTOR_COLOR = 'ernestdefoe-curio.collector_color';
+
+    /** Where it shows: "both", "posts" (beside the name on posts), "card" (profile card) or "none" (the default). */
+    public const COLLECTOR_PLACE = 'ernestdefoe-curio.collector_place';
+
+    public const COLLECTOR_PLACES = ['none', 'both', 'posts', 'card'];
+
+    public const COLLECTOR_PLACES_SHOWN = ['both', 'posts', 'card'];
 }

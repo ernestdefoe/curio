@@ -27,6 +27,7 @@ use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Discussion\Discussion;
 use Flarum\Discussion\Event\Started;
 use Flarum\Api\Resource\ForumResource;
+use Flarum\Api\Resource\UserResource;
 use Flarum\Api\Schema;
 use Flarum\Extend;
 use Flarum\Foundation\Paths;
@@ -72,7 +73,14 @@ return [
         ->serializeToForum('curioWidget', Settings::WIDGET, 'boolval')
         ->serializeToForum('curioBarcodes', Settings::BARCODES, 'boolval')
         ->serializeToForum('curioCoverFit', Settings::COVER_FIT, fn ($value) => in_array($value, Settings::COVER_FITS, true) ? $value : 'blur')
-        ->serializeToForum('curioShortcut', Settings::SHORTCUT, fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both'),
+        ->serializeToForum('curioShortcut', Settings::SHORTCUT, fn ($value) => in_array($value, Settings::SHORTCUTS, true) ? $value : 'both')
+        // The collector badge (string keys: read at boot, a class constant here would fatal mid-deploy).
+        ->default('ernestdefoe-curio.collector_icon', 'fas fa-boxes-stacked')
+        ->default('ernestdefoe-curio.collector_place', 'none')
+        ->serializeToForum('curioCollector', 'ernestdefoe-curio.collector_place', fn ($value) => in_array($value, Settings::COLLECTOR_PLACES, true) ? $value : 'none')
+        ->serializeToForum('curioCollectorIcon', 'ernestdefoe-curio.collector_icon')
+        ->serializeToForum('curioCollectorText', 'ernestdefoe-curio.collector_text')
+        ->serializeToForum('curioCollectorColor', 'ernestdefoe-curio.collector_color'),
 
     new Extend\ApiResource(Api\TypeResource::class),
     new Extend\ApiResource(Api\CollectionResource::class),
@@ -88,6 +96,9 @@ return [
             Schema\Boolean::make('canModerateCurio')
                 ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.moderate')),
         ]),
+
+    (new Extend\ApiResource(UserResource::class))
+        ->fields(Api\CollectorField::class),
 
     (new Extend\ApiResource(DiscussionResource::class))
         ->fields(Api\DiscussionFields::class)

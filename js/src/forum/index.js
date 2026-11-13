@@ -7,6 +7,7 @@ import UserPage from 'flarum/forum/components/UserPage';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import { registerModels } from '../common/models';
 import registerWidgets from './widgets';
+import collector from './collector';
 import { t } from './util';
 import { applyShowOff } from './showOff';
 import { FOLLOWED } from './components/notifications';
@@ -25,6 +26,7 @@ const shortcutIn = (place) => ['both', place].includes(app.forum.attribute('curi
 
 app.initializers.add('ernestdefoe-curio', () => {
   registerModels(app);
+  collector();
 
   // Pages load on first visit, never with every forum page.
   app.routes['curio.browse'] = { path: '/collections', component: () => import('./components/BrowsePage') };

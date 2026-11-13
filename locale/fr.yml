@@ -407,6 +407,18 @@ ernestdefoe-curio:
       shortcut_sidebar: Barre latérale seulement
       shortcut_menu: Menu du compte seulement
       shortcut_none: Nulle part (Profil → Collections reste disponible)
+      collector_place_label: Badge de collectionneur
+      collector_place_help: "Un badge pour les membres qui ont au moins une collection visible par le lecteur : à côté de leur nom dans les messages, et sur leur carte de profil avec le nombre de collections. Il respecte le « Qui peut la voir » de chaque collection : une collection réservée aux membres ne compte que pour les lecteurs connectés, une collection privée jamais."
+      collector_place_none: Ne pas l'afficher
+      collector_place_both: Dans les messages et sur les cartes de profil
+      collector_place_posts: Dans les messages uniquement
+      collector_place_card: Sur les cartes de profil uniquement
+      collector_icon_label: Icône du badge de collectionneur
+      collector_icon_help: "Une icône Font Awesome, comme fas fa-boxes-stacked ou fas fa-gem."
+      collector_text_label: Texte du badge de collectionneur (facultatif)
+      collector_text_help: Affiché à côté de l'icône dans les messages. Laissez vide pour l'icône seule.
+      collector_color_label: Couleur du badge de collectionneur (facultatif)
+      collector_color_help: La couleur de l'icône et du texte. Vide, il prend la couleur de texte atténuée du forum.
       widget_label: Proposer le widget « Ajouts récents »
       widget_help: Désactivé par défaut. Une fois activé, le widget peut être placé avec Bespoke ou FoF Forum Widgets (il apparaît d'abord dans la colonne de droite de FoF ; déplacez-le ou retirez-le dans l'éditeur de FoF).
       widget_title: Ajouts récents aux collections

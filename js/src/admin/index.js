@@ -127,6 +127,38 @@ export const extend = [
       default: 'both',
     }))
     .setting(() => ({
+      setting: 'ernestdefoe-curio.collector_place',
+      type: 'select',
+      label: t('settings.collector_place_label'),
+      help: t('settings.collector_place_help'),
+      options: {
+        none: t('settings.collector_place_none'),
+        both: t('settings.collector_place_both'),
+        posts: t('settings.collector_place_posts'),
+        card: t('settings.collector_place_card'),
+      },
+      default: 'none',
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.collector_icon',
+      type: 'text',
+      label: t('settings.collector_icon_label'),
+      help: t('settings.collector_icon_help'),
+      placeholder: 'fas fa-boxes-stacked',
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.collector_text',
+      type: 'text',
+      label: t('settings.collector_text_label'),
+      help: t('settings.collector_text_help'),
+    }))
+    .setting(() => ({
+      setting: 'ernestdefoe-curio.collector_color',
+      type: 'color-preview',
+      label: t('settings.collector_color_label'),
+      help: t('settings.collector_color_help'),
+    }))
+    .setting(() => ({
       setting: 'ernestdefoe-curio.widget',
       type: 'boolean',
       label: t('settings.widget_label'),
