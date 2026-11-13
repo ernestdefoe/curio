@@ -33,11 +33,15 @@ function badge(user, count, className, label) {
 }
 
 export default function collector() {
-  // Beside the name, apart from the group badges core stacks on the avatar.
+  // Beside the name, apart from the group badges core stacks on the avatar. Inside the
+  // name's heading (after its link), so it is sized and aligned by the name's own font.
   extend(PostUser.prototype, 'userViewItems', function (items, user) {
     const count = user.attribute('curioCollections');
     if (!count || !shows('posts')) return;
-    items.add('curioCollector', badge(user, count, 'CurioCollector--post', app.forum.attribute('curioCollectorText')), 95);
+    const el = badge(user, count, 'CurioCollector--post', app.forum.attribute('curioCollectorText'));
+    const name = items.has('postUser-name') ? items.get('postUser-name') : null;
+    if (Array.isArray(name?.children)) name.children.push(el);
+    else items.add('curioCollector', el, 95);
   });
 
   // After "Joined …", with the number of collections.

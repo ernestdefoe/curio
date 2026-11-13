@@ -106,10 +106,12 @@ html:not(#x-hi) .CurioCollector {
     text-decoration: underline;
   }
 
+  // The name's size and baseline (measured: centred on it within 0.2px, default and
+  // Bespoke, desktop and phone); a theme that resizes the name resizes it too.
   &--post {
     margin-left: 6px;
-    font-size: 13px;
-    vertical-align: middle;
+    font-size: 1em;
+    font-weight: normal;
   }
 
   // On the card the count is text like "Joined …" beside it; only the icon takes the colour.
