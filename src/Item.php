@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $graded
  * @property int|null $rating
  * @property string|null $progress
+ * @property float|null $hours
  * @property int $position
  * @property int|null $discussion_id
  * @property bool $needs_match
@@ -54,8 +55,11 @@ class Item extends AbstractModel
     /** Trading cards' own scale (TCGplayer's): Mint, Near Mint, Light, Moderately and Heavily Played, Damaged. */
     public const CARD_CONDITIONS = ['mint', 'near_mint', 'light_played', 'moderately_played', 'heavily_played', 'damaged'];
 
-    /** Where the owner is with it: not started, in progress, completed, or given up on. */
-    public const PROGRESS = ['pending', 'in_progress', 'completed', 'abandoned'];
+    /** Where the owner is with it: not started, in progress, completed, set aside for now, or given up on. */
+    public const PROGRESS = ['pending', 'in_progress', 'completed', 'on_hold', 'abandoned'];
+
+    /** The most hours an item can record (999,999.9 fits the column). */
+    public const MAX_HOURS = 999999;
 
     public const MAX_PHOTOS = 6;
 
@@ -74,6 +78,7 @@ class Item extends AbstractModel
         'favourite' => 'boolean',
         'graded' => 'boolean',
         'rating' => 'integer',
+        'hours' => 'float',
         'needs_match' => 'boolean',
         'position' => 'integer',
         'progress_changed_at' => 'datetime',

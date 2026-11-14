@@ -74,6 +74,7 @@ class TypeResource extends AbstractDatabaseResource
         // Flarum's models do not take the column defaults, so a new row states its own.
         $model->enabled ??= true;
         $model->progress ??= false;
+        $model->hours ??= false;
         $model->conditions ??= 'general';
         $model->grading ??= false;
 
@@ -85,6 +86,7 @@ class TypeResource extends AbstractDatabaseResource
         /** @var Type $model */
         if ($model->isCards()) {
             $model->progress = false;
+            $model->hours = false;
         }
 
         return $model;
@@ -155,6 +157,9 @@ class TypeResource extends AbstractDatabaseResource
                 ->writable(),
             // Whether its items track progress: not started, in progress, completed.
             Schema\Boolean::make('progress')
+                ->writable(),
+            // Whether its items record the hours spent on them (hours played, for games).
+            Schema\Boolean::make('hours')
                 ->writable(),
             // Which condition scale its items use: the general one, or trading cards'.
             Schema\Str::make('conditionScale')

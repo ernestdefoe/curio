@@ -13,6 +13,7 @@ Object.assign(CurioType.prototype, {
   searchable: Model.attribute('searchable'),
   enabled: Model.attribute('enabled'),
   progress: Model.attribute('progress'),
+  hours: Model.attribute('hours'),
   conditionScale: Model.attribute('conditionScale'),
   grading: Model.attribute('grading'),
 });
@@ -64,6 +65,7 @@ Object.assign(CurioItem.prototype, {
   graded: Model.attribute('graded'),
   rating: Model.attribute('rating'),
   progress: Model.attribute('progress'),
+  hours: Model.attribute('hours'),
   barcode: Model.attribute('barcode'),
   pricePaid: Model.attribute('pricePaid'),
   priceCurrency: Model.attribute('priceCurrency'),

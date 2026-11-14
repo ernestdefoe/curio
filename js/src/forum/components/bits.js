@@ -34,10 +34,11 @@ const PROGRESS_ICONS = {
   pending: 'far fa-circle',
   in_progress: 'fas fa-circle-half-stroke',
   completed: 'fas fa-circle-check',
+  on_hold: 'fas fa-circle-pause',
   abandoned: 'fas fa-circle-xmark',
 };
 
-/** Not started, in progress, completed or abandoned, where the item's type tracks it. */
+/** Not started, in progress, completed, on hold or abandoned, where the item's type tracks it. */
 export function progressPill(item, type) {
   const progress = type?.progress() && item.status() !== 'wishlist' ? item.progress() : null;
   if (!progress) return null;
@@ -47,6 +48,20 @@ export function progressPill(item, type) {
     </span>
   );
 }
+
+/** Hours spent on it ("42 h"), where the item's type tracks them. */
+export function hoursPill(item, type) {
+  const hours = type?.hours() && item.status() !== 'wishlist' ? item.hours() : null;
+  if (hours == null) return null;
+  return (
+    <span className="CurioHours">
+      <Icon name="far fa-clock" /> {t('hours.short', { hours: formatHours(hours) })}
+    </span>
+  );
+}
+
+/** 42, 12.5 or 1,234 in the reader's locale. */
+export const formatHours = (hours) => Number(hours).toLocaleString(app.translator.getLocale() || 'en', { maximumFractionDigits: 1 });
 
 /** "Graded": a professionally graded copy, where the item's type offers it. Its photos show by whom and the score. */
 export function gradedBadge(item, type) {

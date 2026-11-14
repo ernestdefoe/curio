@@ -25,6 +25,7 @@ class CsvImport
         'pending' => 'pending', 'not started' => 'pending', 'pas commencé' => 'pending', 'to-read' => 'pending',
         'in_progress' => 'in_progress', 'in progress' => 'in_progress', 'en cours' => 'in_progress', 'currently-reading' => 'in_progress',
         'completed' => 'completed', 'terminé' => 'completed', 'read' => 'completed',
+        'on_hold' => 'on_hold', 'on hold' => 'on_hold', 'paused' => 'on_hold', 'suspended' => 'on_hold', 'suspendu' => 'on_hold', 'en pause' => 'on_hold',
         'abandoned' => 'abandoned', 'abandonné' => 'abandoned', 'dropped' => 'abandoned', 'did-not-finish' => 'abandoned', 'did not finish' => 'abandoned',
     ];
 
@@ -129,6 +130,7 @@ class CsvImport
             // Curio's own export writes 0 for a rating of no stars; elsewhere 0 means unrated.
             'rating_zero' => true,
             'progress' => $raw['progress'] ?? null,
+            'hours' => $raw['hours'] ?? null,
             'graded' => in_array(mb_strtolower($raw['graded'] ?? ''), ['1', 'yes', 'true', 'oui'], true),
         ], $fields);
     }
@@ -205,6 +207,14 @@ class CsvImport
         return self::PROGRESS_WORDS[mb_strtolower(trim((string) $text))] ?? null;
     }
 
+    /** Hours as a number, a comma decimal too ("12,5"); anything else, or out of range, is left out. */
+    public static function hours(mixed $text): ?float
+    {
+        $text = str_replace(',', '.', trim((string) $text));
+
+        return is_numeric($text) && (float) $text >= 0 && (float) $text <= Item::MAX_HOURS ? round((float) $text, 1) : null;
+    }
+
     /** A condition on the type's own scale, by key, or for cards by code or name ("NM", "Near Mint"). */
     public static function condition(Type $type, mixed $text): ?string
     {
@@ -266,6 +276,7 @@ class CsvImport
             'favourite' => (bool) ($v['favourite'] ?? false),
             'rating' => self::rating($v['rating'] ?? null, ! empty($v['rating_zero'])),
             'progress' => $type->progress && $status !== 'wishlist' ? self::progress($v['progress'] ?? null) : null,
+            'hours' => $type->hours && $status !== 'wishlist' ? self::hours($v['hours'] ?? null) : null,
             'graded' => $type->grading && ! empty($v['graded']),
             'fields' => ItemResource::cleanFields($type, array_filter($fields, fn ($x) => $x !== null && $x !== '')),
         ];

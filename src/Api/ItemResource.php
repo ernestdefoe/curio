@@ -316,11 +316,18 @@ class ItemResource extends AbstractDatabaseResource
                 ->writable()
                 ->rule('integer')
                 ->rule('between:0,10'),
-            // Not started, in progress, completed or abandoned; shown where the item's type tracks it.
+            // Not started, in progress, completed, on hold or abandoned; shown where the item's type tracks it.
             Schema\Str::make('progress')
                 ->nullable()
                 ->writable()
                 ->in(Item::PROGRESS),
+            // Hours spent on it (played, for games), to a tenth; shown where the item's type tracks them.
+            Schema\Number::make('hours')
+                ->nullable()
+                ->writable()
+                ->rule('numeric')
+                ->rule('between:0,'.Item::MAX_HOURS)
+                ->set(fn (Item $item, $value) => $item->hours = $value === null ? null : round((float) $value, 1)),
             Schema\Str::make('barcode')
                 ->nullable()
                 ->visible($isOwner)

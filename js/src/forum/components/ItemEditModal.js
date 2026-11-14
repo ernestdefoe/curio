@@ -16,6 +16,12 @@ import Stars from './Stars';
 import { canScan, scan } from '../scanner';
 import useStyles from '../styles';
 
+/** The hours typed, or null when empty or not a number of hours ("12,5" reads as 12.5). */
+const hoursValue = (value) => {
+  const n = Number(String(value).trim().replace(',', '.'));
+  return String(value).trim() === '' || !Number.isFinite(n) || n < 0 ? null : Math.min(Math.round(n * 10) / 10, 999999);
+};
+
 const MAX_PHOTOS = 6;
 const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
 /** Words in a card search that name a printing, and the part of its key each means. */
@@ -112,6 +118,7 @@ export default class ItemEditModal extends FormModal {
     this.isOwner = !this.owner || (!!app.session.user && this.owner.id() === app.session.user.id());
     this.rating = Stream(item ? (item.rating() ?? null) : null);
     this.progress = Stream(item ? item.progress() || '' : '');
+    this.hours = Stream(item && item.hours() != null ? String(item.hours()) : '');
     this.pricePaid = Stream(item && item.pricePaid() !== null && item.pricePaid() !== undefined ? String(item.pricePaid()) : '');
     this.priceCurrency = Stream(item ? item.priceCurrency() || defaultCurrency() : defaultCurrency());
     this.code = null;
@@ -777,15 +784,34 @@ export default class ItemEditModal extends FormModal {
             </div>
           </div>
 
-          {this.type.progress() && this.status() !== 'wishlist' ? (
-            <div className="Form-group">
-              <label for="curio-progress">{t('progress.label')}</label>
-              <Select
-                id="curio-progress"
-                value={this.progress()}
-                onchange={this.progress}
-                options={{ '': text('progress.none'), ...Object.fromEntries(PROGRESS.map((p) => [p, text('progress.' + p)])) }}
-              />
+          {(this.type.progress() || this.type.hours()) && this.status() !== 'wishlist' ? (
+            // Progress and hours side by side; on a phone, hours under progress.
+            <div className="CurioPair CurioPair--progress">
+              {this.type.progress() ? (
+                <div className="Form-group">
+                  <label for="curio-progress">{t('progress.label')}</label>
+                  <Select
+                    id="curio-progress"
+                    value={this.progress()}
+                    onchange={this.progress}
+                    options={{ '': text('progress.none'), ...Object.fromEntries(PROGRESS.map((p) => [p, text('progress.' + p)])) }}
+                  />
+                </div>
+              ) : null}
+              {this.type.hours() ? (
+                <div className="Form-group">
+                  <label for="curio-hours">{t('hours.label')}</label>
+                  <input
+                    id="curio-hours"
+                    className="FormControl"
+                    type="text"
+                    inputmode="decimal"
+                    // Text, not a number field: a number field drops "12,5" to 125 in some browsers.
+                    pattern="[0-9]*([.,][0-9])?"
+                    bidi={this.hours}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1015,6 +1041,7 @@ export default class ItemEditModal extends FormModal {
       graded: !wanted && this.type.grading() ? this.graded() : !!item?.graded(),
       rating: wanted ? null : this.rating(),
       progress: wanted ? null : this.type.progress() ? this.progress() || null : item?.progress() || null,
+      hours: wanted ? null : this.type.hours() ? hoursValue(this.hours()) : (item?.hours() ?? null),
       pricePaid: wanted || price === '' || isNaN(Number(price)) ? null : Number(price),
       priceCurrency: wanted || price === '' ? null : this.priceCurrency(),
     };

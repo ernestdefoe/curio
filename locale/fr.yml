@@ -11,7 +11,11 @@ ernestdefoe-curio:
       pending: Pas commencé
       in_progress: En cours
       completed: Terminé
+      on_hold: Suspendu
       abandoned: Abandonné
+    hours:
+      label: Heures
+      short: "{hours} h"
     condition:
       sealed: Scellé
       mint: Neuf
@@ -464,7 +468,9 @@ ernestdefoe-curio:
       "on": Activé
       "off": Désactivé
       progress: Suivre l'avancement
-      progress_help: "Chaque objet peut être marqué Pas commencé, En cours, Terminé ou Abandonné : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
+      progress_help: "Chaque objet peut être marqué Pas commencé, En cours, Terminé, Suspendu ou Abandonné : un badge sur l'objet et un filtre sur la page de la collection. Pratique pour une pile de jeux, livres ou films à faire."
+      hours: Suivre les heures
+      hours_help: "Chaque objet peut indiquer les heures qu'on y a passées (heures de jeu, pour les jeux), affichées à côté de son avancement. Activé au départ pour les jeux vidéo."
       conditions: Échelle d'état
       conditions_general: "Générale (Scellé, Neuf, Très bon… Abîmé)"
       conditions_cards: "Cartes à collectionner (Mint, Near Mint, Légèrement joué… Abîmé)"

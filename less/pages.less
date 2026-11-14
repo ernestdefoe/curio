@@ -79,7 +79,8 @@
 
 // Progress: quiet for "not started", the forum colour while in progress, green when done,
 // the forum's error colour when abandoned.
-.CurioProgress {
+.CurioProgress,
+.CurioHours {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -93,6 +94,13 @@
   }
   &--completed {
     color: #15803d;
+  }
+  &--on_hold {
+    color: #b45309;
+
+    [data-theme^="dark"] & {
+      color: #f59e0b;
+    }
   }
   &--abandoned {
     color: var(--error-color);

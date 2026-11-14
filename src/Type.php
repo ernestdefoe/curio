@@ -20,6 +20,7 @@ use Flarum\Database\AbstractModel;
  * @property int $position
  * @property bool $enabled
  * @property bool $progress
+ * @property bool $hours
  * @property string $conditions
  * @property bool $grading
  * @property Carbon $created_at
@@ -53,6 +54,7 @@ class Type extends AbstractModel
         'position' => 'integer',
         'enabled' => 'boolean',
         'progress' => 'boolean',
+        'hours' => 'boolean',
         'grading' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

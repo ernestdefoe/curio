@@ -5,7 +5,7 @@ import Icon from 'flarum/common/components/Icon';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import { t, text, label, locale } from '../util';
 import { fieldValue, linkTo, reviewField, safeUrl } from '../../common/labels';
-import { typeBadge, statusPill, progressPill, gradedBadge, conditionPill, owner, backdrop } from './bits';
+import { typeBadge, statusPill, progressPill, hoursPill, gradedBadge, conditionPill, owner, backdrop } from './bits';
 import ItemEditModal from './ItemEditModal';
 import Link from 'flarum/common/components/Link';
 import Tooltip from 'flarum/common/components/Tooltip';
@@ -106,6 +106,7 @@ export default class ItemModal extends Modal {
             {typeBadge(type)}
             {statusPill(item.status())}
             {progressPill(item, type)}
+            {hoursPill(item, type)}
             {gradedBadge(item, type)}
             {item.favourite() ? (
               <span className="CurioFav">

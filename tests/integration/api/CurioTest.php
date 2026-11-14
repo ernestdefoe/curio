@@ -1645,9 +1645,9 @@ class CurioTest extends TestCase
 
         $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
         $this->assertStringContainsString(',progress', strtok($csv, "\n"));
-        $this->assertStringContainsString("Dropped,,,owned,,,,,,,,,abandoned,,,,,\n", $csv);
+        $this->assertStringContainsString("Dropped,,,owned,,,,,,,,,abandoned,,,,,,\n", $csv);
         // Four rows at most, so the importer's one insert per row stays under the repeated-query detector.
-        $csv = str_replace("Dropped,,,owned,,,,,,,,,abandoned,,,,,\n", '', $csv);
+        $csv = str_replace("Dropped,,,owned,,,,,,,,,abandoned,,,,,,\n", '', $csv);
 
         $to = $this->newCollection(3, ['name' => 'Copy']);
         $this->upload(3, $to, $csv."Outer Wilds,,,,,,,,,,,,En cours\n");
@@ -1658,6 +1658,46 @@ class CurioTest extends TestCase
         $more = $this->newCollection(3, ['name' => 'More']);
         $this->upload(3, $more, "title,progress\nSpiritfarer,Abandonné\nGris,did-not-finish\n");
         $this->assertSame(['Spiritfarer' => 'abandoned', 'Gris' => 'abandoned'], $this->database()->table('curio_items')->where('collection_id', $more)->orderBy('position')->pluck('progress', 'title')->all());
+    }
+
+    #[Test]
+    public function on_hold_is_a_progress_and_games_record_hours(): void
+    {
+        $types = array_column($this->json($this->get('/api/curio-types'))['data'], 'attributes', 'id');
+        $this->assertTrue($types[$this->typeId('games')]['hours']);
+        $this->assertFalse($types[$this->typeId('books')]['hours']);
+
+        $id = $this->newCollection(3);
+        $paused = $this->json($this->item(3, $id, ['title' => 'Hades', 'progress' => 'on_hold', 'hours' => 42.36]))['data'];
+        $this->assertSame('on_hold', $paused['attributes']['progress']);
+        $this->assertEquals(42.4, $paused['attributes']['hours'], 'kept to a tenth');
+        $this->assertSame(['Hades'], array_column(array_column($this->json($this->get('/api/curio-items', ['filter' => ['collection' => $id, 'progress' => 'on_hold']]))['data'], 'attributes'), 'title'));
+
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Negative', 'hours' => -1])->getStatusCode());
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Forever', 'hours' => 1000000])->getStatusCode());
+        $this->assertSame(422, $this->item(3, $id, ['title' => 'Words', 'hours' => 'lots'])->getStatusCode());
+
+        // Through CSV and back, and from French words and a comma decimal.
+        $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$id/export", ['authenticatedAs' => 3]))->getBody();
+        $this->assertStringContainsString(',progress,hours,', strtok($csv, "\n"));
+        $this->assertStringContainsString(',on_hold,42.4,', $csv);
+
+        $to = $this->newCollection(3, ['name' => 'Copy']);
+        $this->upload(3, $to, $csv."Celeste,,,,,,,,,,,,suspendu,\"12,5\"\n");
+        $rows = $this->database()->table('curio_items')->where('collection_id', $to)->orderBy('position')->get(['title', 'progress', 'hours']);
+        $this->assertSame([['Hades', 'on_hold', 42.4], ['Celeste', 'on_hold', 12.5]], $rows->map(fn ($r) => [$r->title, $r->progress, (float) $r->hours])->all());
+
+        // A type without hours keeps none from a spreadsheet.
+        $books = $this->newCollection(3, ['name' => 'Shelf'], 'books');
+        $this->upload(3, $books, "title,hours\nDune,30\n");
+        $this->assertNull($this->database()->table('curio_items')->where('collection_id', $books)->value('hours'));
+    }
+
+    #[Test]
+    public function card_types_never_record_hours(): void
+    {
+        $this->assertFalse($this->json($this->patchType($this->typeId('cards'), ['hours' => true]))['data']['attributes']['hours']);
+        $this->assertTrue($this->json($this->patchType($this->typeId('books'), ['hours' => true]))['data']['attributes']['hours']);
     }
 
     #[Test]
@@ -2444,7 +2484,7 @@ class CurioTest extends TestCase
 
         // The CSV carries both, and reads the card codes shops use.
         $csv = (string) $this->send($this->request('GET', "/api/curio-collections/$cards/export", ['authenticatedAs' => 3]))->getBody();
-        $this->assertStringContainsString(',progress,graded,', $csv);
+        $this->assertStringContainsString(',progress,hours,graded,', $csv);
         $this->assertStringContainsString(',damaged,', $csv);
         $this->assertStringContainsString(',yes,', explode("\n", $csv)[1]);
 

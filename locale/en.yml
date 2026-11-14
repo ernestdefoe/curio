@@ -11,7 +11,11 @@ ernestdefoe-curio:
       pending: Not started
       in_progress: In progress
       completed: Completed
+      on_hold: On hold
       abandoned: Abandoned
+    hours:
+      label: Hours
+      short: "{hours} h"
     condition:
       sealed: Sealed
       mint: Mint
@@ -464,7 +468,9 @@ ernestdefoe-curio:
       "on": "On"
       "off": "Off"
       progress: Track progress
-      progress_help: "Each item can be marked Not started, In progress, Completed or Abandoned: a badge on the item and a filter on the collection page. Handy for a backlog of games, books or films."
+      progress_help: "Each item can be marked Not started, In progress, Completed, On hold or Abandoned: a badge on the item and a filter on the collection page. Handy for a backlog of games, books or films."
+      hours: Track hours
+      hours_help: "Each item can record the hours spent on it (hours played, for games), shown beside its progress. On for Video games to start with."
       conditions: Condition scale
       conditions_general: "General (Sealed, Mint, Very good… Poor)"
       conditions_cards: "Trading cards (Mint, Near Mint, Light Played… Damaged)"

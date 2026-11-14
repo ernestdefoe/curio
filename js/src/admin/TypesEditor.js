@@ -18,7 +18,7 @@ const SOURCES = ['none', 'books', 'music', 'movies', 'tv', 'games', 'pokemon', '
 const KINDS = ['select', 'text', 'number', 'date', 'bool', 'link'];
 const clone = (v) => JSON.parse(JSON.stringify(v));
 // What a type export carries: everything an admin sets, labels in every language.
-const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress', 'conditionScale', 'grading'];
+const EXPORTED = ['slug', 'names', 'icon', 'color', 'shape', 'source', 'fields', 'enabled', 'progress', 'hours', 'conditionScale', 'grading'];
 const SCALES = ['general', 'cards'];
 const CARD_SOURCES = ['pokemon', 'magic', 'yugioh', 'cards'];
 
@@ -71,6 +71,7 @@ export default class TypesEditor {
           fields: clone(type.fields() || []),
           enabled: type.enabled() !== false,
           progress: !!type.progress(),
+          hours: !!type.hours(),
           conditionScale: type.conditionScale() || 'general',
           grading: !!type.grading(),
         }
@@ -83,6 +84,7 @@ export default class TypesEditor {
           fields: [],
           enabled: true,
           progress: false,
+          hours: false,
           conditionScale: 'general',
           grading: false,
         };
@@ -246,6 +248,10 @@ export default class TypesEditor {
                   {t('types.progress')}
                 </Switch>,
                 <small className="helpText">{t('types.progress_help')}</small>,
+                <Switch state={d.hours} onchange={(v) => (d.hours = v)}>
+                  {t('types.hours')}
+                </Switch>,
+                <small className="helpText">{t('types.hours_help')}</small>,
               ]}
           <Switch state={d.grading} onchange={(v) => (d.grading = v)}>
             {t('types.grading')}
