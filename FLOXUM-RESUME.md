@@ -16,8 +16,8 @@ Marquee moves its five columns off `discussions` (marquee_media_id, marquee_seas
 Readers: Curio (MarqueeTitle), Shelf (DiscussionLinks), Club (PickResource), Spoiler Shield (MarkWriter plus its 2026_11_10_200004 backfill). Each reads through `Link` when `class_exists(Link::class)`, and otherwise the old columns.
 
 Release order:
-1. Readers first: Curio v1.27.1, Shelf v1.1.3, Club v1.0.3, Spoiler Shield 1.1.1. Commit subjects `fix:` only, so the drafter bumps the patch.
-2. Then Marquee v1.21.0. It needs a `feat:` subject for the minor bump, and its composer.json conflicts with older readers: club <1.0.3, curio <1.27.1, shelf <1.1.3, spoiler-shield <1.1.1. If a reader ships at a different version (Shelf may take 1.1.3 for its security fix alone), raise the conflict to match.
+1. Readers first: Curio v1.27.1, Shelf v1.1.4 (v1.1.3 = the security fix shipped alone from main; rebase this branch onto it), Club v1.0.3, Spoiler Shield 1.1.1. Commit subjects `fix:` only, so the drafter bumps the patch.
+2. Then Marquee v1.21.0. It needs a `feat:` subject for the minor bump, and its composer.json conflicts with older readers: club <1.0.3, curio <1.27.1, shelf <1.1.4, spoiler-shield <1.1.1. If a reader ships at a different version, raise the conflict to match.
 3. Deploy readers first, then Marquee, then `php flarum migrate`. Do it on dev, then the showcase, then any live forum that runs them.
 4. Before ANY tag: one combined review package to the Command Center. It needs the commit ranges, each repo's fresh pre-floxum, and tests on SQLite, MySQL and PostgreSQL for all 5 repos. The readers are also tested on SQLite against Marquee 1.20.2.
 
