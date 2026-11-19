@@ -5,12 +5,13 @@ import DiscussionHero from 'flarum/forum/components/DiscussionHero';
 import LinkButton from 'flarum/common/components/LinkButton';
 import UserPage from 'flarum/forum/components/UserPage';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
-import { registerModels } from '../common/models';
 import registerWidgets from './widgets';
 import collector from './collector';
 import { t } from './util';
 import { applyShowOff } from './showOff';
 import { FOLLOWED } from './components/notifications';
+
+export { default as extend } from './extend';
 /** Loaded the first time a "Show it off" discussion is opened, never with other pages. */
 let ItemHero = null;
 let heroLoading = null;
@@ -25,13 +26,7 @@ const myCollections = () => app.route('user.curio', { username: app.session.user
 const shortcutIn = (place) => ['both', place].includes(app.forum.attribute('curioShortcut') ?? 'both');
 
 app.initializers.add('ernestdefoe-curio', () => {
-  registerModels(app);
   collector();
-
-  // Pages load on first visit, never with every forum page.
-  app.routes['curio.browse'] = { path: '/collections', component: () => import('./components/BrowsePage') };
-  app.routes['curio.collection'] = { path: '/collections/:id', component: () => import('./components/CollectionPage') };
-  app.routes['user.curio'] = { path: '/u/:username/collections', component: () => import('./components/UserCollectionsPage') };
 
   extend(UserPage.prototype, 'navItems', function (items) {
     if (!this.user || !app.forum.attribute('canViewCurio')) return;
@@ -145,6 +140,7 @@ function relatedCard(media) {
         method: 'GET',
         url: `${app.forum.attribute('apiUrl')}/curio/marquee-card`,
         params: { kind: media.kind(), id: media.externalId() },
+        // Quietly: without its card info, the title's buttons show as for one nobody has.
         errorHandler() {},
       })
       .then(
@@ -152,7 +148,9 @@ function relatedCard(media) {
           relatedCards.set(key, payload.data);
           m.redraw();
         },
-        () => {}
+        () => {
+          /* see errorHandler above */
+        }
       );
   }
   // Stands in for the discussion, so adding or editing a copy updates this title's buttons.

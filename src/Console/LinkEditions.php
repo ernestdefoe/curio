@@ -37,10 +37,13 @@ class LinkEditions extends AbstractCommand
                 continue;
             }
 
-            foreach ($works as $work) {
-                $base = $bases[$work->source_id] ?? null;
-                $linked += $base ? 1 : 0;
-                Work::query()->whereKey($work->id)->update(['base_id' => $base['id'] ?? '', 'base_title' => $base['title'] ?? null]);
+            // One UPDATE per game (its editions and DLC together), and one for every work that is
+            // its own game ('' marks it asked, so it is not asked again).
+            $groups = $works->groupBy(fn (Work $work) => $bases[$work->source_id]['id'] ?? '');
+            foreach ($groups as $baseId => $group) {
+                $base = $baseId === '' ? null : $bases[$group->first()->source_id];
+                $linked += $base ? $group->count() : 0;
+                Work::query()->whereIn('id', $group->pluck('id'))->update(['base_id' => (string) $baseId, 'base_title' => $base['title'] ?? null]);
             }
         }
 

@@ -29,8 +29,13 @@ class MatchWorks extends AbstractCommand
 
     private const CARDS_PER_RUN = 20;
 
-    public function __construct(private Queue $queue)
-    {
+    public function __construct(
+        private Queue $queue,
+        private Sources $sources,
+        private BarcodeLookup $barcodes,
+        private WorkResolver $works,
+        private CollectionStats $stats,
+    ) {
         parent::__construct();
     }
 
@@ -43,9 +48,9 @@ class MatchWorks extends AbstractCommand
 
     protected function fire(): int
     {
-        $sources = resolve(Sources::class);
-        $barcodes = resolve(BarcodeLookup::class);
-        $works = resolve(WorkResolver::class);
+        $sources = $this->sources;
+        $barcodes = $this->barcodes;
+        $works = $this->works;
         $matched = $tried = 0;
         $touched = [];
 
@@ -111,7 +116,7 @@ class MatchWorks extends AbstractCommand
 
         foreach (array_filter($touched) as $collection) {
             /** @var Collection $collection */
-            resolve(CollectionStats::class)->refresh($collection);
+            $this->stats->refresh($collection);
         }
 
         // Cards stored before 1.9 (marked by its migration): their artist and finishes, a few a run.

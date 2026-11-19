@@ -6,6 +6,7 @@ use Ernestdefoe\Curio\Settings;
 use Flarum\Settings\SettingsRepositoryInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Optional: when the admin adds a DeepL key, a description Wikipedia does not
@@ -14,9 +15,7 @@ use GuzzleHttp\Exception\GuzzleException;
  */
 class DeepL
 {
-    private ?Client $http = null;
-
-    public function __construct(private SettingsRepositoryInterface $settings)
+    public function __construct(private SettingsRepositoryInterface $settings, private Client $http, private LoggerInterface $log)
     {
     }
 
@@ -35,14 +34,17 @@ class DeepL
         }
 
         $host = str_ends_with($key, ':fx') ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
-        $this->http ??= new Client(['timeout' => 8, 'connect_timeout' => 3]);
-
         try {
             $response = $this->http->post("$host/v2/translate", [
+                'timeout' => 8,
+                'connect_timeout' => 3,
                 'headers' => ['Authorization' => 'DeepL-Auth-Key '.$key],
                 'json' => ['text' => [$text], 'target_lang' => strtoupper($language), 'source_lang' => 'EN'],
             ]);
-        } catch (GuzzleException) {
+        } catch (GuzzleException $e) {
+            // The English description stays; the message never holds the key.
+            $this->log->warning('[curio] DeepL translation failed: '.$e->getMessage());
+
             return null;
         }
 

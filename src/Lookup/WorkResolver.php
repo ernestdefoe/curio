@@ -20,10 +20,10 @@ use Throwable;
  */
 class WorkResolver
 {
-    /** A card's Variant choices, in the order they are offered. */
     /** Sources whose works are trading cards with an artist and finishes. */
     public const CARD_SOURCES = ['tcgdex', 'scryfall'];
 
+    /** A card's Variant choices, in the order they are offered. */
     public const VARIANTS = ['normal', 'reverse', 'holo', 'first_edition', 'w_promo', 'foil', 'etched'];
 
     public function __construct(

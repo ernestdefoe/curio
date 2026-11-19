@@ -38,8 +38,15 @@ class CollectionResource extends AbstractDatabaseResource
     /** @var array<int, list<int>> */
     private array $orders = [];
 
-    public function __construct(private Images $images, private TranslatorInterface $translator, private ConnectionInterface $db, private WorkPruner $works)
-    {
+    public function __construct(
+        private Images $images,
+        private TranslatorInterface $translator,
+        private ConnectionInterface $db,
+        private WorkPruner $works,
+        private CollectionStats $stats,
+        private Importer $importer,
+        private Exporter $exporter,
+    ) {
     }
 
     public function type(): string
@@ -75,7 +82,19 @@ class CollectionResource extends AbstractDatabaseResource
                 ->defaultInclude(['user', 'type']),
             Endpoint\Update::make()
                 ->authenticated()
+                ->can('update')
                 ->defaultInclude(['user', 'type']),
+            // Following someone else's collection: {"followed": true}. Its own endpoint, as a
+            // follower may not change the collection itself.
+            Endpoint\Endpoint::make('curio.collections.follow')
+                ->route('POST', '/{id}/follow')
+                ->authenticated()
+                ->can('follow')
+                ->action(function (Context $context) {
+                    $this->follow($context->model, $context->getActor()->id, (bool) ($context->body()['followed'] ?? false));
+
+                    return $context->model;
+                }),
             Endpoint\Delete::make()
                 ->authenticated()
                 ->can('delete'),
@@ -95,23 +114,17 @@ class CollectionResource extends AbstractDatabaseResource
             Endpoint\Endpoint::make('curio.collections.import')
                 ->route('POST', '/{id}/import')
                 ->authenticated()
-                ->can('update')
+                ->can('import')
                 ->action(function (Context $context) {
-                    // The owner, and only while their groups may import (one ability per endpoint, so checked here).
-                    $context->getActor()->assertCan('ernestdefoe-curio.import');
-
-                    // Resolved here, not injected: the constructor runs on every API request.
-                    return resolve(Importer::class)->import($context->model, Arr::get($context->request->getUploadedFiles(), 'file'), $context->getActor());
+                    return $this->importer->import($context->model, Arr::get($context->request->getUploadedFiles(), 'file'), $context->getActor());
                 })
                 ->response(fn (Context $context, array $result) => new JsonResponse($result)),
             Endpoint\Endpoint::make('curio.collections.export')
                 ->route('GET', '/{id}/export')
                 ->authenticated()
-                ->can('update')
+                ->can('export')
                 ->action(function (Context $context) {
-                    $context->getActor()->assertCan('ernestdefoe-curio.export');
-
-                    return resolve(Exporter::class)->csv($context->model);
+                    return $this->exporter->csv($context->model);
                 })
                 ->response(fn (Context $context, string $csv) => new TextResponse($csv, 200, [
                     'Content-Type' => 'text/csv; charset=utf-8',
@@ -171,8 +184,7 @@ class CollectionResource extends AbstractDatabaseResource
 
         if ($order !== null) {
             $this->db->transaction(fn () => $this->reposition(Item::query()->where('collection_id', $model->id), $order));
-            // Resolved here, not injected: the constructor runs on every API request, this only on a save.
-            resolve(CollectionStats::class)->refresh($model);
+            $this->stats->refresh($model);
         }
 
         return $model;
@@ -207,7 +219,7 @@ class CollectionResource extends AbstractDatabaseResource
             }
         });
 
-        resolve(CollectionStats::class)->refresh($collection);
+        $this->stats->refresh($collection);
     }
 
     /**
@@ -223,14 +235,18 @@ class CollectionResource extends AbstractDatabaseResource
             $positions[(int) $id] = (int) $position;
         }
 
-        $column = $this->db->getQueryGrammar()->wrap('id');
+        // CASE id WHEN ? THEN ? … ELSE position END, every id and position bound, under $query's own
+        // constraints. The ELSE gives PostgreSQL the column's type for the bound positions.
+        $grammar = $this->db->getQueryGrammar();
         foreach (array_chunk($positions, 500, true) as $chunk) {
-            $case = 'CASE '.$column;
+            $base = (clone $query)->whereIn('id', array_keys($chunk))->toBase();
+            $case = $this->db->raw('CASE '.$grammar->wrap('id').str_repeat(' WHEN ? THEN ?', count($chunk)).' ELSE '.$grammar->wrap('position').' END');
+            $bindings = [];
             foreach ($chunk as $id => $position) {
-                $case .= " WHEN $id THEN $position";
+                array_push($bindings, $id, $position);
             }
 
-            (clone $query)->whereIn('id', array_keys($chunk))->update(['position' => $this->db->raw($case.' END')]);
+            $this->db->update($grammar->compileUpdate($base, ['position' => $case]), [...$bindings, ...$base->getBindings()]);
         }
     }
 
@@ -243,6 +259,12 @@ class CollectionResource extends AbstractDatabaseResource
         } elseif (! $rows->exists()) {
             $this->db->table('curio_follows')->insertOrIgnore(['collection_id' => $collection->id, 'user_id' => $userId, 'created_at' => Carbon::now()]);
         }
+    }
+
+    /** Answering a follow or unfollow, which shows the new state. */
+    private function following(Context $context): bool
+    {
+        return $context->endpoint instanceof Endpoint\Endpoint && $context->endpoint->name === 'curio.collections.follow';
     }
 
     public function deleting(object $model, OriginalContext $context): void
@@ -301,13 +323,11 @@ class CollectionResource extends AbstractDatabaseResource
             Schema\DateTime::make('updatedAt'),
             // On the collection's own page: whether you follow it, and how many do.
             Schema\Boolean::make('followed')
-                ->visible(fn (Collection $c, Context $context) => $context->showing(self::class) || $context->updating(self::class))
+                ->visible(fn (Collection $c, Context $context) => $context->showing(self::class) || $this->following($context))
                 ->get(fn (Collection $c, Context $context) => ! $context->getActor()->isGuest()
-                    && $this->db->table('curio_follows')->where('collection_id', $c->id)->where('user_id', $context->getActor()->id)->exists())
-                ->writable(fn (Collection $c, Context $context) => $c->exists && ! $context->getActor()->isGuest() && ! $c->isOwnedBy($context->getActor()))
-                ->set(fn (Collection $c, $value, Context $context) => $this->follow($c, $context->getActor()->id, (bool) $value)),
+                    && $this->db->table('curio_follows')->where('collection_id', $c->id)->where('user_id', $context->getActor()->id)->exists()),
             Schema\Integer::make('followerCount')
-                ->visible(fn (Collection $c, Context $context) => $context->showing(self::class))
+                ->visible(fn (Collection $c, Context $context) => $context->showing(self::class) || $this->following($context))
                 ->get(fn (Collection $c) => $this->db->table('curio_follows')->where('collection_id', $c->id)->count()),
             Schema\Boolean::make('canEdit')
                 ->get(fn (Collection $c, Context $context) => $context->getActor()->can('update', $c)),

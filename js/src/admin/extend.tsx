@@ -1,66 +1,13 @@
-import app from 'flarum/admin/app';
 import { Admin } from 'flarum/common/extenders';
-import { extend as after } from 'flarum/common/extend';
-import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import Link from 'flarum/common/components/Link';
-import { registerModels } from '../common/models';
-import TypesEditor from './TypesEditor';
-import badges from './badges';
-import { fofWidget } from '../common/widget';
-
-const t = (key, params) => app.translator.trans(`ernestdefoe-curio.admin.${key}`, params);
-
-/** Settings, then the type editor, then permissions. */
-class CurioPage extends ExtensionPage {
-  sections(vnode) {
-    const items = super.sections(vnode);
-    items.setPriority('content', 30);
-    items.add(
-      'types',
-      <div className="ExtensionPage-settings CurioAdmin-section">
-        <div className="container">
-          <TypesEditor />
-        </div>
-      </div>,
-      20
-    );
-    items.setPriority('permissions', 10);
-    return items;
-  }
-}
-
-app.initializers.add('ernestdefoe-curio', () => {
-  registerModels(app);
-  badges();
-
-  // FoF Forum Widgets' layout editor only lists widgets registered on the
-  // admin side too. Registered each time the editor opens, from the setting
-  // as it is now: read only at boot, switching "Offer the widget" on left the
-  // editor without it until the whole admin was reloaded.
-  const fof = (path) => {
-    const mod = globalThis.flarum?.reg?.get?.('fof-forum-widgets-core', path);
-    return mod?.default ?? mod;
-  };
-  const Widgets = fof('common/extend/Widgets');
-  const WidgetEditor = fof('admin/components/WidgetEditor');
-  if (!Widgets || !WidgetEditor) return;
-
-  after(WidgetEditor.prototype, 'oninit', () => {
-    const on = ['1', 'true', true].includes(app.data.settings['ernestdefoe-curio.widget']);
-    const id = 'ernestdefoe-curio:curioRecent';
-    const has = app.widgets.widgets.some((w) => w.id === id);
-    if (on && !has) {
-      new Widgets()
-        .add({ ...fofWidget(null), title: () => t('settings.widget_title'), icon: 'fas fa-boxes-stacked' })
-        .extend(app, 'ernestdefoe-curio');
-    } else if (!on && has) {
-      app.widgets.widgets = app.widgets.widgets.filter((w) => w.id !== id);
-    }
-  });
-});
+import commonExtend from '../common/extend';
+import CurioPage from './CurioPage';
+import { t } from './t';
 
 // Callbacks, not values: this module runs before the app has booted.
-export const extend = [
+export default [
+  ...commonExtend,
+
   new Admin()
     .page(CurioPage)
     .setting(() => ({
@@ -69,7 +16,6 @@ export const extend = [
       label: t('settings.layout_label'),
       help: t('settings.layout_help'),
       options: { tags: t('settings.layout_tags'), covers: t('settings.layout_covers'), compact: t('settings.layout_compact') },
-      default: 'tags',
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.browse_ranking',
@@ -77,7 +23,6 @@ export const extend = [
       label: t('settings.ranking_label'),
       help: t('settings.ranking_help'),
       options: { collections: t('settings.ranking_collections'), collectors: t('settings.ranking_collectors'), both: t('settings.ranking_both') },
-      default: 'collections',
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.type_color',
@@ -85,7 +30,6 @@ export const extend = [
       label: t('settings.type_color_label'),
       help: t('settings.type_color_help'),
       options: { background: t('settings.type_color_background'), text: t('settings.type_color_text') },
-      default: 'background',
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.latest_changes',
@@ -111,7 +55,6 @@ export const extend = [
       label: t('settings.cover_fit_label'),
       help: t('settings.cover_fit_help'),
       options: { blur: t('settings.cover_fit_blur'), plain: t('settings.cover_fit_plain'), crop: t('settings.cover_fit_crop') },
-      default: 'blur',
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.shortcut',
@@ -124,7 +67,6 @@ export const extend = [
         menu: t('settings.shortcut_menu'),
         none: t('settings.shortcut_none'),
       },
-      default: 'both',
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.collector_place',
@@ -137,7 +79,6 @@ export const extend = [
         posts: t('settings.collector_place_posts'),
         card: t('settings.collector_place_card'),
       },
-      default: 'none',
     }))
     .setting(() => ({
       setting: 'ernestdefoe-curio.collector_icon',

@@ -46,5 +46,6 @@ return [
             });
     },
     'down' => function (Builder $schema) {
+        // Forward only: the Variant field may hold members' choices, and the old set-as-creator lines are not kept.
     },
 ];

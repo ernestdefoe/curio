@@ -6,6 +6,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -26,7 +27,9 @@ class RemoteImage
 
     private const MAX_PIXELS = 24_000_000;
 
-    private ?Client $http = null;
+    public function __construct(private Client $http, private LoggerInterface $log)
+    {
+    }
 
     public static function allowed(string|UriInterface $url): bool
     {
@@ -53,20 +56,27 @@ class RemoteImage
             return null;
         }
 
-        $this->http ??= new Client(['timeout' => 8, 'connect_timeout' => 3, 'allow_redirects' => [
-            'max' => 3,
-            'protocols' => ['https'],
-            'on_redirect' => function (RequestInterface $request, $response, UriInterface $uri) {
-                if (! self::allowed($uri)) {
-                    throw new RuntimeException('Cover redirected off the allow-list');
-                }
-            },
-        ]]);
-
         try {
             // Scryfall (and others) refuse a request that does not say who it is from.
-            $response = $this->http->get($url, ['stream' => true, 'headers' => ['Accept' => 'image/*', 'User-Agent' => 'Curio for Flarum (+https://github.com/ernestdefoe/curio)']]);
-        } catch (GuzzleException|RuntimeException) {
+            $response = $this->http->get($url, [
+                'stream' => true,
+                'timeout' => 8,
+                'connect_timeout' => 3,
+                'allow_redirects' => [
+                    'max' => 3,
+                    'protocols' => ['https'],
+                    'on_redirect' => function (RequestInterface $request, $response, UriInterface $uri) {
+                        if (! self::allowed($uri)) {
+                            throw new RuntimeException('Cover redirected off the allow-list');
+                        }
+                    },
+                ],
+                'headers' => ['Accept' => 'image/*', 'User-Agent' => 'Curio for Flarum (+https://github.com/ernestdefoe/curio)'],
+            ]);
+        } catch (GuzzleException|RuntimeException $e) {
+            // The work is stored without a cover, and the next refresh tries again.
+            $this->log->warning('[curio] Cover download failed: '.$e->getMessage());
+
             return null;
         }
 

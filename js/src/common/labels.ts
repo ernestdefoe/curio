@@ -1,4 +1,4 @@
-import { pick } from './pick.js';
+import { pick } from './pick.ts';
 
 export { pick };
 

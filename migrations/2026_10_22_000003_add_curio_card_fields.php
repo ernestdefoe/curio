@@ -31,5 +31,6 @@ return [
         }
     },
     'down' => function (Builder $schema) {
+        // Forward only: the fields may hold members' values by now, so they stay.
     },
 ];

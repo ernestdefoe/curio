@@ -3,6 +3,7 @@
 namespace Ernestdefoe\Curio\Import;
 
 use Carbon\Carbon;
+use Ernestdefoe\Curio\Allowance;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\CollectionStats;
 use Ernestdefoe\Curio\Item;
@@ -40,13 +41,16 @@ class Importer
             $fail('missing');
         }
 
+        // Only a spreadsheet saved as CSV (the content is then read as CSV text, never run or stored).
+        if (! in_array(strtolower(pathinfo((string) $file->getClientFilename(), PATHINFO_EXTENSION)), ['csv', 'txt'], true)) {
+            $fail('unknown_format');
+        }
+
         if (($file->getSize() ?? PHP_INT_MAX) > CsvImport::MAX_BYTES) {
             $fail('too_big', ['size' => '2 MB']);
         }
 
-        $key = "curio.imports.$actor->id";
-        $this->cache->add($key, 0, 3600);
-        if (! $actor->isAdmin() && $this->cache->increment($key) > self::PER_HOUR) {
+        if (! $actor->isAdmin() && ! Allowance::spend($this->cache, "curio.imports.$actor->id", self::PER_HOUR, 3600)) {
             $fail('too_often');
         }
 
@@ -61,32 +65,39 @@ class Importer
         $position = (int) Item::query()->where('collection_id', $collection->id)->max('position');
         $now = Carbon::now();
 
-        $this->db->transaction(function () use ($read, $collection, $facet, &$position, $now) {
-            foreach ($read['rows'] as $row) {
-                $item = new Item();
-                $item->collection_id = $collection->id;
-                $item->user_id = $collection->user_id;
-                $item->title = $row['title'];
-                $item->subtitle = $row['subtitle'];
-                $item->year = $row['year'];
-                $item->status = $row['status'];
-                $item->condition = $row['condition'];
-                $item->acquired_on = $row['acquired_on'];
-                $item->notes = $row['notes'];
-                $item->barcode = $row['barcode'];
-                $item->price_paid = $row['price_paid'] !== null ? (string) $row['price_paid'] : null;
-                $item->price_currency = $row['price_currency'];
-                $item->favourite = $row['favourite'];
-                $item->rating = $row['rating'];
-                $item->progress = $row['progress'];
-                $item->hours = $row['hours'];
-                $item->graded = $row['graded'];
-                $item->fields = $row['fields'];
-                $item->facet = $facet ? ($row['fields'][$facet['key']] ?? null) : null;
-                $item->position = ++$position;
-                $item->needs_match = true;
-                $item->created_at = $now;
-                $item->save();
+        // Built as models, so every cast applies, then inserted 200 rows a statement, not one a row.
+        $rows = [];
+        foreach ($read['rows'] as $row) {
+            $item = new Item();
+            $item->collection_id = $collection->id;
+            $item->user_id = $collection->user_id;
+            $item->title = $row['title'];
+            $item->subtitle = $row['subtitle'];
+            $item->year = $row['year'];
+            $item->status = $row['status'];
+            $item->condition = $row['condition'];
+            $item->acquired_on = $row['acquired_on'];
+            $item->notes = $row['notes'];
+            $item->barcode = $row['barcode'];
+            $item->price_paid = $row['price_paid'] !== null ? (string) $row['price_paid'] : null;
+            $item->price_currency = $row['price_currency'];
+            $item->favourite = $row['favourite'];
+            $item->rating = $row['rating'];
+            $item->progress = $row['progress'];
+            $item->hours = $row['hours'];
+            $item->graded = $row['graded'];
+            $item->fields = $row['fields'];
+            $item->facet = $facet ? ($row['fields'][$facet['key']] ?? null) : null;
+            $item->position = ++$position;
+            $item->needs_match = true;
+            $item->created_at = $now;
+            $item->updated_at = $now;
+            $rows[] = $item->getAttributes();
+        }
+
+        $this->db->transaction(function () use ($rows) {
+            foreach (array_chunk($rows, 200) as $chunk) {
+                Item::query()->insert($chunk);
             }
         });
 

@@ -38,6 +38,23 @@ class CollectionPolicy extends AbstractPolicy
             ? $this->allow() : $this->deny();
     }
 
+    /** Bringing a spreadsheet into a collection, or taking one out: its owner, while their groups may. */
+    public function import(User $actor, Collection $model): ?string
+    {
+        return $model->isOwnedBy($actor) && $actor->hasPermission('ernestdefoe-curio.import') ? $this->allow() : $this->deny();
+    }
+
+    public function export(User $actor, Collection $model): ?string
+    {
+        return $model->isOwnedBy($actor) && $actor->hasPermission('ernestdefoe-curio.export') ? $this->allow() : $this->deny();
+    }
+
+    /** Following a collection: anyone signed in, except its owner. */
+    public function follow(User $actor, Collection $model): ?string
+    {
+        return ! $actor->isGuest() && $model->user_id !== $actor->id ? $this->allow() : $this->deny();
+    }
+
     public function feature(User $actor, Collection $model): ?string
     {
         return $actor->hasPermission('ernestdefoe-curio.moderate') ? $this->allow() : $this->deny();

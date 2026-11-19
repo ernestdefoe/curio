@@ -59,5 +59,6 @@ return [
         $db->table('curio_works')->where('source', 'tcgdex')->update(['refreshed_at' => '2000-01-01 00:00:00']);
     },
     'down' => function (Builder $schema) {
+        // Forward only: the grades already moved into members' notes, and the old free-text field is gone.
     },
 ];

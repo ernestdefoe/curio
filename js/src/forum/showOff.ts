@@ -24,10 +24,15 @@ export function startShowOff(item) {
     const { kind, externalId, title: name, year, artist } = title;
     return mod
       .startDiscussion({ id: null, kind, externalId, title: name, year, poster: null, artist, seasons: null, season: null, episode: null })
-      .catch(() => {});
+      .catch(() => {
+        /* A guest: Marquee's start has already shown the log-in window. */
+      });
   }
 
   pending = { id: item.id(), title: item.displayTitle(), cover: item.coverUrl() };
+  // The sidebar's own start, through the prototype so the overrides other extensions
+  // put on it (Tags pre-selecting the tag being viewed) still run; it reads nothing from
+  // the component, so no sidebar instance is needed.
   return IndexSidebar.prototype.newDiscussionAction.call({}).catch(() => (pending = null));
 }
 

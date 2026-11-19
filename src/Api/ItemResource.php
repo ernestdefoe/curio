@@ -3,6 +3,7 @@
 namespace Ernestdefoe\Curio\Api;
 
 use Carbon\Carbon;
+use Ernestdefoe\Curio\Allowance;
 use Ernestdefoe\Curio\Collection;
 use Ernestdefoe\Curio\CollectionStats;
 use Ernestdefoe\Curio\Item;
@@ -58,6 +59,7 @@ class ItemResource extends AbstractDatabaseResource
         private WorkTexts $texts,
         private TranslatorInterface $translator,
         private Cache $cache,
+        private PhotoValidator $photos,
         private Queue $queue,
         private LoggerInterface $log
     ) {
@@ -84,7 +86,7 @@ class ItemResource extends AbstractDatabaseResource
             Endpoint\Index::make()
                 ->paginate(48, 96)
                 ->defaultSort('position')
-                ->eagerLoadWhenIncluded(['collection.user' => ['collection.user.groups'], 'user' => ['user.groups']])
+                ->eagerLoadWhenIncluded(['collection.user' => ['collection.user.groups'], 'user' => ['user.groups'], 'work' => ['work.texts']])
                 ->beforeSerialization(function (Context $context, array $results) {
                     $ids = [];
                     foreach ($results['models'] as $item) {
@@ -503,8 +505,8 @@ class ItemResource extends AbstractDatabaseResource
     private function addPhoto(Item $item, ?UploadedFileInterface $file, User $actor): Item
     {
         // Each photo is decoded and encoded twice: members get a dozen a minute and 200 a day.
-        if (! $actor->isAdmin() && (! $this->spend("curio.photos.$actor->id.minute", 12, 60)
-            || ! $this->spend("curio.photos.$actor->id.".date('Ymd'), 200, 2 * 86400))) {
+        if (! $actor->isAdmin() && (! Allowance::spend($this->cache, "curio.photos.$actor->id.minute", 12, 60)
+            || ! Allowance::spend($this->cache, "curio.photos.$actor->id.".date('Ymd'), 200, 2 * 86400))) {
             throw new FloodingException();
         }
 
@@ -516,7 +518,7 @@ class ItemResource extends AbstractDatabaseResource
             throw new ValidationException(['photo' => $this->translator->trans('validation.required', ['attribute' => 'photo'])]);
         }
 
-        resolve(PhotoValidator::class)->assertImageValid('photo', $file);
+        $this->photos->assertImageValid('photo', $file);
 
         $item->photos = [...($item->photos ?? []), $this->images->store((string) $file->getStream()->getMetadata('uri'), 'photos')];
         $item->save();
@@ -525,10 +527,6 @@ class ItemResource extends AbstractDatabaseResource
         return $item;
     }
 
-    /**
-     * A moderator's change to someone else's item goes in the forum's log,
-     * so there is a trail of who touched what.
-     */
     /**
      * Into another of the same member's collections, at its end. Another type
      * keeps only the details it has too, and a condition on its own scale.
@@ -560,6 +558,10 @@ class ItemResource extends AbstractDatabaseResource
         }
     }
 
+    /**
+     * A moderator's change to someone else's item goes in the forum's log,
+     * so there is a trail of who touched what.
+     */
     private function audit(User $actor, Item $item, string $action): void
     {
         if ($actor->isGuest() || $actor->id === $item->user_id) {
@@ -567,14 +569,6 @@ class ItemResource extends AbstractDatabaseResource
         }
 
         $this->log->info(sprintf('[curio] %s (#%d) %s item #%d “%s” in collection #%d of user #%d', $actor->username, $actor->id, $action, $item->id, preg_replace('/[\x00-\x1f\x7f]+/u', ' ', $item->title), $item->collection_id, $item->user_id));
-    }
-
-    /** A window that starts with the first use, so no clock boundary resets it early. */
-    private function spend(string $counter, int $limit, int $ttl): bool
-    {
-        $this->cache->add($counter, 0, $ttl);
-
-        return $this->cache->increment($counter) <= $limit;
     }
 
     private function removePhoto(Item $item, int $index): Item

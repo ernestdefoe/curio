@@ -575,13 +575,15 @@ class CurioTest extends TestCase
     public function followers_hear_about_new_things_once_a_day(): void
     {
         $id = $this->newCollection(3);
-        $follow = fn (int $as, bool $on) => $this->send($this->request('PATCH', "/api/curio-collections/$id", [
+        $follow = fn (int $as, bool $on) => $this->send($this->request('POST', "/api/curio-collections/$id/follow", [
             'authenticatedAs' => $as,
-            'json' => ['data' => ['type' => 'curio-collections', 'id' => (string) $id, 'attributes' => ['followed' => $on]]],
+            'json' => ['followed' => $on],
         ]));
 
         $this->assertTrue($this->json($follow(4, true))['data']['attributes']['followed']);
-        $follow(3, true);
+        // Following is all a follower may do: the collection itself stays its owner's.
+        $this->assertSame(403, $this->patchCollection(4, $id, ['name' => 'Mine now'])->getStatusCode());
+        $this->assertSame(403, $follow(3, true)->getStatusCode());
         $this->assertSame(0, $this->database()->table('curio_follows')->where('user_id', 3)->count());
         $this->assertSame(1, $this->json($this->get("/api/curio-collections/$id", [], 4))['data']['attributes']['followerCount']);
 
@@ -595,13 +597,23 @@ class CurioTest extends TestCase
         $this->assertFalse($this->json($follow(4, false))['data']['attributes']['followed']);
     }
 
-    private function upload(int $as, int $collection, string $csv): ResponseInterface
+    private function upload(int $as, int $collection, string $csv, string $name = 'export.csv'): ResponseInterface
     {
         $path = tempnam(sys_get_temp_dir(), 'curio');
         file_put_contents($path, $csv);
 
         return $this->send($this->request('POST', "/api/curio-collections/$collection/import", ['authenticatedAs' => $as])
-            ->withUploadedFiles(['file' => new UploadedFile($path, filesize($path), UPLOAD_ERR_OK, 'export.csv', 'text/csv')]));
+            ->withUploadedFiles(['file' => new UploadedFile($path, filesize($path), UPLOAD_ERR_OK, $name, 'text/csv')]));
+    }
+
+    #[Test]
+    public function only_a_csv_file_is_imported(): void
+    {
+        $id = $this->newCollection(3);
+
+        $this->assertSame(422, $this->upload(3, $id, "title\nOne\n", 'collection.php')->getStatusCode());
+        $this->assertSame(0, $this->database()->table('curio_items')->where('collection_id', $id)->count());
+        $this->assertSame(['format' => 'curio', 'imported' => 1, 'skipped' => 0], $this->json($this->upload(3, $id, "title\nOne\n", 'Collection.CSV')));
     }
 
     #[Test]
@@ -2250,7 +2262,10 @@ class CurioTest extends TestCase
 
     private function follow(int $as, int $collection): void
     {
-        $this->assertTrue($this->json($this->patchCollection($as, $collection, ['followed' => true]))['data']['attributes']['followed']);
+        $this->assertTrue($this->json($this->send($this->request('POST', "/api/curio-collections/$collection/follow", [
+            'authenticatedAs' => $as,
+            'json' => ['followed' => true],
+        ])))['data']['attributes']['followed']);
     }
 
     #[Test]
@@ -2694,6 +2709,11 @@ class CurioTest extends TestCase
         $this->assertSame(200, $response->getStatusCode(), (string) $response->getBody());
         $row = $this->database()->table('curio_collections')->where('id', $theirs)->first();
         $this->assertSame(['Fixed', 'Tidied up.', 'members', 3], [$row->name, $row->description, $row->visibility, (int) $row->user_id]);
+
+        // Tidying up is not taking a copy: the spreadsheet (prices paid, barcodes) stays the owner's, both ways.
+        $this->assertSame(403, $this->send($this->request('GET', "/api/curio-collections/$theirs/export", ['authenticatedAs' => 5]))->getStatusCode());
+        $this->assertSame(403, $this->upload(5, $theirs, "title\nPlanted\n")->getStatusCode());
+        $this->assertSame(0, $this->database()->table('curio_items')->where('collection_id', $theirs)->count());
     }
 
     #[Test]

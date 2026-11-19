@@ -214,7 +214,18 @@ export default class CollectionPage extends Page {
                   className={'Button ' + (c.followed() ? 'Button--primary' : 'CurioHero-ghost')}
                   icon={c.followed() ? 'fas fa-bell' : 'far fa-bell'}
                   aria-pressed={c.followed() ? 'true' : 'false'}
-                  onclick={() => c.save({ followed: !c.followed() })}
+                  onclick={() =>
+                    app
+                      .request({
+                        method: 'POST',
+                        url: `${app.forum.attribute('apiUrl')}/curio-collections/${c.id()}/follow`,
+                        body: { followed: !c.followed() },
+                      })
+                      .then((payload) => {
+                        app.store.pushPayload(payload);
+                        m.redraw();
+                      })
+                  }
                 >
                   {c.followed() ? t('page.following') : t('page.follow')}
                 </Button>

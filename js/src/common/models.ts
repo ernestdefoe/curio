@@ -106,13 +106,3 @@ Object.assign(CurioWork.prototype, {
   source: Model.attribute('source'),
   facts: Model.attribute('facts'),
 });
-
-export function registerModels(app) {
-  // The item a "Show it off" discussion is about (on the discussion page only).
-  app.store.models.discussions.prototype.curioItem = Model.hasOne('curioItem');
-
-  app.store.models['curio-types'] = CurioType;
-  app.store.models['curio-collections'] = CurioCollection;
-  app.store.models['curio-items'] = CurioItem;
-  app.store.models['curio-works'] = CurioWork;
-}

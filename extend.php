@@ -20,14 +20,12 @@ use Ernestdefoe\Curio\Notification\ProgressChangedBlueprint;
 use Ernestdefoe\Curio\Notification\RatingChangedBlueprint;
 use Ernestdefoe\Curio\Notification\WishlistAddedBlueprint;
 use Ernestdefoe\Curio\Notification\WishlistMatchBlueprint;
-use Flarum\Api\Context;
 use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Discussion\Discussion;
 use Flarum\Discussion\Event\Started;
 use Flarum\Api\Resource\ForumResource;
 use Flarum\Api\Resource\UserResource;
-use Flarum\Api\Schema;
 use Flarum\Extend;
 use Flarum\Foundation\Paths;
 use Flarum\Http\UrlGenerator;
@@ -89,14 +87,7 @@ return [
     new Extend\ApiResource(Api\WorkResource::class),
 
     (new Extend\ApiResource(ForumResource::class))
-        ->fields(fn () => [
-            Schema\Boolean::make('canViewCurio')
-                ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.view')),
-            Schema\Boolean::make('canCreateCurio')
-                ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.create')),
-            Schema\Boolean::make('canModerateCurio')
-                ->get(fn ($forum, Context $context) => $context->getActor()->hasPermission('ernestdefoe-curio.moderate')),
-        ]),
+        ->fields(Api\ForumFields::class),
 
     (new Extend\ApiResource(UserResource::class))
         ->fields(Api\CollectorField::class),
@@ -105,10 +96,15 @@ return [
         ->fields(Api\DiscussionFields::class)
         ->endpoint('show', fn (Endpoint\Show $endpoint) => $endpoint->addDefaultInclude([
             'curioItem', 'curioItem.work', 'curioItem.collection', 'curioItem.collection.user', 'curioItem.collection.type',
-        ])
-            // Marquee's title, loaded before the fields are read so curioMarquee can use it (Marquee
-            // includes it anyway; this only loads it earlier). Not there without Marquee.
-            ->eagerLoad(fn () => (new Discussion())->isRelation('marqueeMedia') ? ['marqueeMedia'] : [])),
+        ])),
+
+    // Marquee's title, loaded before the fields are read so curioMarquee can use it
+    // (Marquee includes it anyway; this only loads it earlier).
+    (new Extend\Conditional())
+        ->whenExtensionEnabled('ernestdefoe-marquee', fn () => [
+            (new Extend\ApiResource(DiscussionResource::class))
+                ->endpoint('show', fn (Endpoint\Show $endpoint) => $endpoint->eagerLoad(['marqueeMedia'])),
+        ]),
 
     (new Extend\Model(Discussion::class))
         ->cast('curio_item_id', 'integer'),

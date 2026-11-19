@@ -22,6 +22,9 @@ use Flarum\User\User;
  */
 class NotifyFollowers extends AbstractJob
 {
+    /** At most this many followers (the same cap as NotifyWishlists), so the job stays bounded however popular a collection gets. */
+    private const MAX_RECIPIENTS = 200;
+
     /** @var array<string, class-string<FollowedBlueprint>> */
     public const KINDS = [
         'new' => NewItemsBlueprint::class,
@@ -53,6 +56,8 @@ class NotifyFollowers extends AbstractJob
         $followers = User::query()
             ->whereIn('id', fn ($q) => $q->select('user_id')->from('curio_follows')->where('collection_id', $collection->id))
             ->where('id', '!=', $collection->user_id)
+            ->orderBy('id')
+            ->limit(self::MAX_RECIPIENTS)
             ->get()
             // One visibility query per person, on purpose: whereVisibleTo runs every
             // extension's user and Curio scopes (blocks, hidden profiles, groups),

@@ -22,11 +22,12 @@ use WeakMap;
  */
 class CollectorField
 {
-    /** @var WeakMap<object, CollectorBatch> one batch per request */
-    private static ?WeakMap $batches = null;
+    /** @var WeakMap<object, CollectorBatch> one batch per request, gone with it */
+    private WeakMap $batches;
 
     public function __construct(private SettingsRepositoryInterface $settings)
     {
+        $this->batches = new WeakMap();
     }
 
     public function __invoke(): array
@@ -36,14 +37,13 @@ class CollectorField
                 ->nullable()
                 ->visible(fn (User $user, Context $context) => in_array($this->settings->get(Settings::COLLECTOR_PLACE), Settings::COLLECTOR_PLACES_SHOWN, true)
                     && $context->getActor()->hasPermission('ernestdefoe-curio.view'))
-                ->get(fn (User $user, Context $context) => self::count($user, $context)),
+                ->get(fn (User $user, Context $context) => $this->count($user, $context)),
         ];
     }
 
-    private static function count(User $user, Context $context): Closure
+    private function count(User $user, Context $context): Closure
     {
-        self::$batches ??= new WeakMap();
-        $batch = self::$batches[$context->request] ??= new CollectorBatch($context->getActor());
+        $batch = $this->batches[$context->request] ??= new CollectorBatch($context->getActor());
         $batch->want($user->id);
 
         return fn () => $batch->count($user->id);

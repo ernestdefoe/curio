@@ -61,7 +61,7 @@ class BarcodeLookup
     /** "Barcode scanning and look-ups" (on unless the admin turned it off). */
     public function enabled(): bool
     {
-        return (bool) $this->settings->get(Settings::BARCODES, true);
+        return (bool) $this->settings->get(Settings::BARCODES);
     }
 
     /**

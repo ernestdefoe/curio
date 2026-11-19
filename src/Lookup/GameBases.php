@@ -5,6 +5,7 @@ namespace Ernestdefoe\Curio\Lookup;
 use Ernestdefoe\Curio\Lookup\Sources\Igdb;
 use Flarum\Extension\ExtensionManager;
 use Illuminate\Contracts\Container\Container;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -20,7 +21,7 @@ class GameBases
 
     private const CLIENT = 'Ernestdefoe\Marquee\Source\IgdbClient';
 
-    public function __construct(private Igdb $igdb, private ExtensionManager $extensions, private Container $container)
+    public function __construct(private Igdb $igdb, private ExtensionManager $extensions, private Container $container, private LoggerInterface $log)
     {
     }
 
@@ -48,6 +49,9 @@ class GameBases
             };
             $games = $client?->configured() ? $client->query('games', $body) : null;
         } catch (Throwable $e) {
+            // Asked again later (see the docblock); logged so a lasting failure is seen.
+            $this->log->warning('[curio] IGDB edition look-up failed: '.$e->getMessage());
+
             return null;
         }
 

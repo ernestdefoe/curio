@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pick, optionLabel, fieldValue } from '../src/common/labels.js';
-import { nextName, freeSlug } from '../src/admin/naming.js';
-import GridSort from '../src/common/gridSort.js';
+import { pick, optionLabel, fieldValue } from '../src/common/labels.ts';
+import { nextName, freeSlug } from '../src/admin/naming.ts';
+import GridSort from '../src/common/gridSort.ts';
 
 test('labels follow the reader’s language, then its base, then English', () => {
   const labels = { en: 'Platform', fr: 'Plateforme', 'pt-BR': 'Plataforma' };
@@ -43,8 +43,8 @@ test('arrow keys move a card one place and save once', () => {
   assert.equal(saves, 2);
 });
 
-import { onlyOption } from '../src/common/labels.js';
-import { ratingAt, starsLabel } from '../src/common/rating.js';
+import { onlyOption } from '../src/common/labels.ts';
+import { ratingAt, starsLabel } from '../src/common/rating.ts';
 
 test('a looked-up platform list picks an option only when exactly one matches', () => {
   const field = {
@@ -83,7 +83,7 @@ test('a duplicated type takes the next free number, never "Title 2 2"', () => {
   assert.equal(freeSlug('title', ['title', 'title-2']), 'title-3');
 });
 
-import { browseSections } from '../src/common/ranking.js';
+import { browseSections } from '../src/common/ranking.ts';
 
 test('featuring a collection adds the featured list and keeps the ranking', () => {
   assert.deepEqual(browseSections('collections', 0), ['top']);
@@ -95,7 +95,7 @@ test('featuring a collection adds the featured list and keeps the ranking', () =
   assert.deepEqual(browseSections(undefined, 0), ['top']);
 });
 
-import { printingLabel } from '../src/common/labels.js';
+import { printingLabel } from '../src/common/labels.ts';
 
 test('a card printing from TCGdex reads as its parts, and only well-formed keys do', () => {
   const field = { kind: 'select', key: 'variant', options: [{ key: 'holo', labels: { en: 'Holo' } }] };

@@ -12,9 +12,14 @@
     ],
     "require": {
         "php": "^8.3",
-        "flarum/core": "^2.0"
+        "flarum/core": "^2.0",
+        "guzzlehttp/guzzle": "^7.7",
+        "intervention/image": "^3.2"
     },
     "suggest": {
+        "ernestdefoe/bespoke": "Offers Curio's \"Recently added\" widget on Bespoke's home page.",
+        "ernestdefoe/shelf": "Brings members' \"In my collection\" titles from Shelf into Curio (php flarum curio:import-shelf).",
+        "fof/forum-widgets-core": "Offers Curio's \"Recently added\" widget to FoF Forum Widgets.",
         "ernestdefoe/marquee": "Adds film, TV and game search (TMDB and IGDB) to Curio's look-ups.",
         "fof/badges": "Award badges for items in members' collections and collections made with FoF Badges triggers (^2.0)."
     },
@@ -27,7 +32,13 @@
                 "backgroundColor": "#5b3fd1",
                 "color": "#ffffff"
             },
-            "optional-dependencies": ["fof/badges"]
+            "optional-dependencies": [
+                "fof/badges",
+                "ernestdefoe/marquee",
+                "ernestdefoe/bespoke",
+                "ernestdefoe/shelf",
+                "fof/forum-widgets-core"
+            ]
         }
     },
     "minimum-stability": "beta",
@@ -46,7 +57,8 @@
         "flarum/phpstan": "^2.0",
         "flarum/testing": "^2.0",
         "flarum/tags": "^2.0",
-        "fof/badges": "^2.0"
+        "fof/badges": "^2.0",
+        "ernestdefoe/marquee": "^1.20"
     },
     "scripts": {
         "test": [

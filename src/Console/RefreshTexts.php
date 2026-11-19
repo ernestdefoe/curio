@@ -17,6 +17,11 @@ use Symfony\Component\Console\Input\InputOption;
  */
 class RefreshTexts extends AbstractCommand
 {
+    public function __construct(private WorkTexts $texts, private WorkResolver $works)
+    {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->setName('curio:refresh-texts')
@@ -27,7 +32,7 @@ class RefreshTexts extends AbstractCommand
 
     protected function fire(): int
     {
-        $texts = resolve(WorkTexts::class);
+        $texts = $this->texts;
         $query = Work::query()->orderBy('refreshed_at');
 
         if (! $this->input->getOption('all')) {
@@ -38,7 +43,7 @@ class RefreshTexts extends AbstractCommand
                 ->limit(max(1, (int) $this->input->getOption('limit')));
         }
 
-        $works = resolve(WorkResolver::class);
+        $works = $this->works;
         $count = 0;
         $query->each(function (Work $work) use ($texts, $works, &$count) {
             if (in_array($work->source, WorkResolver::CARD_SOURCES, true)) {

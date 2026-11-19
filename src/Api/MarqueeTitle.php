@@ -5,6 +5,7 @@ namespace Ernestdefoe\Curio\Api;
 use Ernestdefoe\Curio\Item;
 use Ernestdefoe\Curio\Settings;
 use Ernestdefoe\Curio\Work;
+use Ernestdefoe\Marquee\Link;
 use Flarum\Discussion\Discussion;
 use Flarum\Extension\ExtensionManager;
 use Flarum\Settings\SettingsRepositoryInterface;
@@ -56,23 +57,7 @@ class MarqueeTitle
             ->where('kind', $kind)->whereIn('external_id', array_filter([$base, $work->source_id]))
             ->pluck('external_id', 'id')->sortBy(fn ($external) => $external !== ($base ?? $work->source_id))->keys()->all();
 
-        // The discussion whose card is this title, else one that shows it among
-        // its related titles (the other games under the same banner). Marquee
-        // keeps those as a JSON list of ids, "[33,34]"; LIKE works on every
-        // database and prefix, where whereJsonContains does not.
-        $discussion = $media ? (Discussion::query()->whereVisibleTo($actor)
-            ->whereIn('marquee_media_id', $media)->orderBy('id')->limit(20)->get(['id', 'slug', 'marquee_media_id'])
-            ->sortBy(fn ($d) => [array_search($d->getAttribute('marquee_media_id'), $media), $d->id])->first()
-            ?? Discussion::query()->whereVisibleTo($actor)
-                ->where(function ($q) use ($media) {
-                    foreach ($media as $id) {
-                        $q->orWhere('marquee_related', 'like', "[$id]")
-                            ->orWhere('marquee_related', 'like', "[$id,%")
-                            ->orWhere('marquee_related', 'like', "%,$id,%")
-                            ->orWhere('marquee_related', 'like', "%,$id]");
-                    }
-                })
-                ->orderBy('id')->first(['id', 'slug'])) : null;
+        $discussion = $media ? self::discussion($media, $actor) : null;
 
         // A new discussion is the game's, so the next edition finds it too.
         return [
@@ -84,5 +69,51 @@ class MarqueeTitle
             'artist' => $kind === 'music' ? $work->creator : null,
             'discussion' => $discussion ? ['id' => (string) $discussion->id, 'slug' => (string) $discussion->slug] : null,
         ];
+    }
+
+    /**
+     * The discussion whose card is this title, else one that shows it among
+     * its related titles (the other games under the same banner).
+     *
+     * @param list<int> $media Marquee title ids, the preferred one first
+     */
+    private static function discussion(array $media, User $actor): ?Discussion
+    {
+        if (! class_exists(Link::class)) {
+            return self::discussionFromColumns($media, $actor);
+        }
+
+        // Marquee 1.21+: its own tables, both looked up by their indexed media_id.
+        return Discussion::query()->whereVisibleTo($actor)
+            ->whereIn('id', fn ($q) => $q->select('discussion_id')->from('marquee_discussions')->whereIn('media_id', $media))
+            ->with('marqueeLink')->orderBy('id')->limit(20)->get(['id', 'slug'])
+            ->sortBy(fn (Discussion $d) => [array_search($d->getRelationValue('marqueeLink')?->media_id, $media), $d->id])->first()
+            ?? Discussion::query()->whereVisibleTo($actor)
+                ->whereIn('id', fn ($q) => $q->select('discussion_id')->from('marquee_related')->whereIn('media_id', $media))
+                ->orderBy('id')->first(['id', 'slug']);
+    }
+
+    /**
+     * Marquee 1.20 and older kept the link on `discussions`, the related titles
+     * as a JSON list of ids ("[33,34]"). Only until a forum updates Marquee:
+     * Marquee 1.21 refuses older Curio releases, so this goes with the next one.
+     *
+     * @param list<int> $media
+     */
+    private static function discussionFromColumns(array $media, User $actor): ?Discussion
+    {
+        return Discussion::query()->whereVisibleTo($actor)
+            ->whereIn('marquee_media_id', $media)->orderBy('id')->limit(20)->get(['id', 'slug', 'marquee_media_id'])
+            ->sortBy(fn ($d) => [array_search($d->getAttribute('marquee_media_id'), $media), $d->id])->first()
+            ?? Discussion::query()->whereVisibleTo($actor)
+                ->where(function ($q) use ($media) {
+                    foreach ($media as $id) {
+                        $q->orWhere('marquee_related', "[$id]")
+                            ->orWhere('marquee_related', 'like', "[$id,%")
+                            ->orWhere('marquee_related', 'like', "%,$id,%")
+                            ->orWhere('marquee_related', 'like', "%,$id]");
+                    }
+                })
+                ->orderBy('id')->first(['id', 'slug']);
     }
 }

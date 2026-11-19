@@ -71,7 +71,8 @@ class CollectorsController implements RequestHandlerInterface
                 'owned' => (int) $row->owned,
                 'wishlist' => (int) $row->wishlist,
             ])->values()->all(),
-            // Just what an avatar and a profile link need, for the client's store.
+            // Just what an avatar and a profile link need, for the client's store. Not a /api/users
+            // include: that endpoint lists users only for readers who may search them, guests never.
             'users' => $users->map(fn (User $user) => [
                 'type' => 'users',
                 'id' => (string) $user->id,

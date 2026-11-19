@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Curio\Lookup;
 
+use Ernestdefoe\Curio\Allowance;
 use Ernestdefoe\Curio\Settings;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -40,8 +41,8 @@ class UpcItemDb
         $key = trim((string) $this->settings->get(Settings::UPC_KEY));
         $day = date('Ymd');
 
-        if (! $this->spend("curio.upc.member.$actorId.$day", self::PER_MEMBER_PER_DAY)
-            || ($key === '' && ! $this->spend("curio.upc.forum.$day", self::FREE_PER_DAY))) {
+        if (! Allowance::spend($this->cache, "curio.upc.member.$actorId.$day", self::PER_MEMBER_PER_DAY, 2 * 86400)
+            || ($key === '' && ! Allowance::spend($this->cache, "curio.upc.forum.$day", self::FREE_PER_DAY, 2 * 86400))) {
             throw new LookupException('upcitemdb daily allowance spent', true);
         }
 
@@ -52,13 +53,6 @@ class UpcItemDb
         }
 
         return $name;
-    }
-
-    private function spend(string $counter, int $limit): bool
-    {
-        $this->cache->add($counter, 0, 2 * 86400);
-
-        return $this->cache->increment($counter) <= $limit;
     }
 
     protected function ask(string $ean, string $key): ?string

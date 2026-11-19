@@ -8,6 +8,7 @@ use Ernestdefoe\Curio\Type;
 use Ernestdefoe\Curio\Storage\Images;
 use Flarum\Http\RequestUtil;
 use Flarum\Settings\SettingsRepositoryInterface;
+use Flarum\User\User;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -47,7 +48,7 @@ class OverviewController implements RequestHandlerInterface
         $actor->assertCan('ernestdefoe-curio.view');
 
         $audience = $actor->hasPermission('ernestdefoe-curio.moderate') ? 'moderators' : ($actor->isGuest() ? 'guests' : 'members');
-        $overview = $this->cache->remember("curio.overview.4.$audience", self::SECONDS, fn () => $this->count(self::AUDIENCES[$audience]));
+        $overview = $this->cache->remember("curio.overview.4.$audience", self::SECONDS, fn () => $this->count(self::AUDIENCES[$audience], $actor));
 
         if ($audience === 'members') {
             $overview = $this->withOwnPrivate($overview, $actor->id);
@@ -66,11 +67,15 @@ class OverviewController implements RequestHandlerInterface
         ] + $overview);
     }
 
-    /** @param list<string>|null $visibilities null = every collection */
-    private function count(?array $visibilities): array
+    /**
+     * @param list<string>|null $visibilities null = every collection
+     * @param User $actor the audience's first visitor: whose owners it can see (the same for its whole audience in core)
+     */
+    private function count(?array $visibilities, User $actor): array
     {
-        // Collections of switched-on types that this audience can open.
+        // Collections of switched-on types, by owners this audience can see, that it can open.
         $open = Collection::query()->whereIn('type_id', Type::query()->where('enabled', true)->select('id'))
+            ->whereIn('user_id', User::query()->whereVisibleTo($actor)->select('users.id'))
             ->when($visibilities, fn ($q) => $q->whereIn('visibility', $visibilities));
 
         $types = [];

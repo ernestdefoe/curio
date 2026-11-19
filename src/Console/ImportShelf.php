@@ -33,6 +33,15 @@ class ImportShelf extends AbstractCommand
         'book' => ['books', 'openlibrary'],
     ];
 
+    public function __construct(
+        private ConnectionInterface $db,
+        private WorkResolver $works,
+        private CollectionStats $stats,
+        private SettingsRepositoryInterface $settings,
+    ) {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->setName('curio:import-shelf')
@@ -42,7 +51,7 @@ class ImportShelf extends AbstractCommand
 
     protected function fire(): int
     {
-        $db = resolve(ConnectionInterface::class);
+        $db = $this->db;
 
         if (! $db->getSchemaBuilder()->hasTable('shelf_entries') || ! $db->getSchemaBuilder()->hasTable('marquee_media')) {
             $this->error('Shelf is not installed here.');
@@ -51,9 +60,9 @@ class ImportShelf extends AbstractCommand
         }
 
         $dry = (bool) $this->input->getOption('dry-run');
-        $works = resolve(WorkResolver::class);
-        $stats = resolve(CollectionStats::class);
-        $locale = WorkTexts::base((string) resolve(SettingsRepositoryInterface::class)->get('default_locale', 'en'));
+        $works = $this->works;
+        $stats = $this->stats;
+        $locale = WorkTexts::base((string) $this->settings->get('default_locale', 'en'));
         $types = Type::query()->get()->keyBy('slug');
         $added = $skipped = 0;
         $touched = [];

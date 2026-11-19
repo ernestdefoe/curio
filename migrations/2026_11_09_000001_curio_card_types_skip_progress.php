@@ -11,5 +11,6 @@ return [
             ->update(['progress' => false]);
     },
     'down' => function () {
+        // Forward only: the admin may have switched progress back on for a card type since.
     },
 ];

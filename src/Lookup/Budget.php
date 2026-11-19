@@ -2,6 +2,7 @@
 
 namespace Ernestdefoe\Curio\Lookup;
 
+use Ernestdefoe\Curio\Allowance;
 use Illuminate\Contracts\Cache\Repository as Cache;
 
 /**
@@ -34,9 +35,7 @@ class Budget
     /** @throws LookupException when this member has spent their share of today's allowance */
     public function spendFor(string $service, int $actorId, int $perDay): void
     {
-        $counter = "curio.$service.member.$actorId.".date('Ymd');
-        $this->cache->add($counter, 0, 2 * 86400);
-        if ($this->cache->increment($counter) > $perDay) {
+        if (! Allowance::spend($this->cache, "curio.$service.member.$actorId.".date('Ymd'), $perDay, 2 * 86400)) {
             throw new LookupException("$service member allowance spent", true);
         }
     }
